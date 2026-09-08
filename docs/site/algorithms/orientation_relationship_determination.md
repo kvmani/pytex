@@ -32,15 +32,16 @@ is
 
 $$\mathbf{V}_i = \mathbf{C}_i^{\mathsf{T}} \mathbf{P}_i .$$
 
-This expression has exactly one definition in the library
-(`_measured_parent_to_child`); no call site re-derives where the transpose goes.
+This transpose convention is standard across PyTex (`_measured_parent_to_child`)
+to preserve consistent crystal-to-specimen mapping.
 
-The $\mathbf{V}_i$ are not directly comparable. Each orientation is defined only
-up to its own crystal symmetry, and different grains formed through different
-**variants** of the same relationship, which differ by a parent symmetry
-operation. Two pairs obeying one relationship can therefore produce
-$\mathbf{V}_i$ tens of degrees apart. Recovering the relationship means undoing
-both ambiguities.
+Measured relative rotations $\mathbf{V}_i$ cannot be compared directly without symmetry
+treatment. Each crystal orientation is defined only modulo its respective crystal point
+group, and distinct grains form through different **variants** of the same transformation
+relationship related by parent symmetry operations. Consequently, two pairs obeying the
+identical orientation relationship can exhibit raw relative rotations differing by tens
+of degrees. Accurately determining the underlying relationship requires systematically
+resolving both crystal symmetry and variant equivalence.
 
 ## 2. Symmetry, and what it does to the problem
 
@@ -58,10 +59,11 @@ descriptions the algorithm must choose among for each pair:
 | cubic → cubic | Kurdjumov-Sachs, fcc → bcc | 24 | 24 | 576 |
 | cubic → hexagonal | Burgers, bcc → hcp | 24 | 12 | 288 |
 
-The variant operation lives *inside* this coset: $\mathbf{V}_i = \mathbf{R}\,
-\mathbf{S}_{p,i}$, and $\mathbf{S}_{p,i} \in G_p$. That is the fact the whole
-algorithm rests on — absorbing the coset absorbs the variant, so pairs formed
-through different variants become comparable.
+Because transformation variants satisfy $\mathbf{V}_i = \mathbf{R}\,\mathbf{S}_{p,i}$
+with $\mathbf{S}_{p,i} \in G_p$, variant operations are contained entirely within the
+double coset $G_c \mathbf{V}_i G_p$. Minimizing over the double coset naturally absorbs
+variant distinctions, mapping pairs formed through different variants into a common
+orientation reference frame.
 
 ## 3. The starting estimate, without a nominal relationship
 
@@ -75,19 +77,21 @@ $\operatorname{tr}\mathbf{R} = 1 + 2\cos\theta$. This is the *disorientation*
 description of the relationship that pair shows. Every other pair has an
 equivalent description close to it, which the next step finds.
 
-:::{admonition} Constraint: reduce one pair, not all of them
+:::{admonition} Constraint: single-pair initial seeding vs independent reduction
 :class: warning
 
-Reducing every pair independently and averaging the results looks more robust
-and is wrong. The maximum-trace element is **not unique** when the
-relationship's own rotation is symmetric, so different pairs land on different
-tied representatives and their mean is a rotation none of them shows.
+Reducing each pair independently to its individual maximum-trace representative prior to
+averaging appears superficially appealing, but is mathematically invalid. When the
+underlying relationship rotation possesses symmetry, the maximum-trace element in the
+double coset is degenerate (not unique). Independent reduction causes different grain
+pairs to select incompatible tied symmetry representatives, causing their arithmetic mean
+to collapse to an unphysical intermediate rotation.
 
-Bain is the concrete failure: $45^{\circ}$ about $\langle 100 \rangle$ with three
-variants averages to a meaningless $26.9^{\circ}$, which then reads as
-Kurdjumov-Sachs. Seeding from one pair and resolving the rest against it breaks
-the ties consistently, and `test_bain_survives_the_double_coset_tie` fails if
-that regresses.
+The Bain orientation relationship illustrates this failure: the ideal $45.0^{\circ}$
+rotation about $\langle 100 \rangle$ across three variants averages under independent
+reduction to an unphysical $26.9^{\circ}$ misorientation, which incorrectly matches
+Kurdjumov–Sachs. Seeding from a single pair and resolving subsequent pairs relative to that
+seed guarantees consistent branch selection across the dataset.
 :::
 
 ## 4. Refinement: align, average, iterate
@@ -172,9 +176,12 @@ nothing — `matches_catalog` is `False` and `describe()` says so.
 
 ## 6. Stating it crystallographically
 
-A rotation matrix is unreadable; "$(111)_{\gamma}$ parallel to
-$(011)_{\alpha}$" is the working fact. `describe_orientation_relationship`
-recovers that statement from the rotation alone.
+While a rotation matrix $\mathbf{R}$ provides an exact numerical representation,
+orientation relationships are conventionally expressed in the materials literature
+through parallel low-index crystallographic planes and directions:
+$\{hkl\}_p \parallel \{hkl\}_c$ and $\langle uvw \rangle_p \parallel \langle uvw \rangle_c$.
+The function `describe_orientation_relationship` deduces this rational crystallographic
+statement from the rotation matrix and phase lattices.
 
 Every canonical-sign primitive parent triple up to `max_index` is carried into
 the child basis at once — planes on the reciprocal basis, directions on the
@@ -188,9 +195,11 @@ $$\left| \cos \angle\!\left( \hat{\mathbf{g}}_{\text{image}},\,
 Comparison uses $\lvert\cos\rvert$ because the canonical-sign filter has already
 collapsed each antiparallel pair to one representative.
 
-A rotation has three degrees of freedom, so **one plane clause fixes two and one
-in-plane direction clause fixes the third** — which is exactly the classical form
-of an orientation relationship. Everything else follows.
+Because a three-dimensional rotation possesses three degrees of freedom, matching one
+plane normal fixes two rotational degrees of freedom (aligning the axes), and matching
+an in-plane direction fixes the remaining torsional degree of freedom about that normal.
+This pair of statements forms the complete classical description of an orientation
+relationship.
 
 | system | relationship | recovered statement |
 | --- | --- | --- |

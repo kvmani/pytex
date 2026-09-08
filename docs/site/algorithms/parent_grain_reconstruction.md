@@ -39,23 +39,23 @@ gives 24 variants, Nishiyama-Wassermann 12, Burgers on bcc→hcp 12.
 **Reconstruction is the inverse**: given several child orientations known to
 share a parent, find $\mathbf{P}$.
 
-## 2. Why it is ambiguous, and why that is reported rather than hidden
+## 2. Inversion degeneracy and ambiguity analysis
 
 One child orientation with 24 possible variants gives **24 candidate parents**,
-all exactly consistent with the observation. Nothing in a single measurement
-distinguishes them.
+all exactly consistent with the observation. A single measurement cannot
+distinguish between them.
 
-Adding children helps only when they came from *different* variants: two
-children of the same variant are as ambiguous as one. So the resolving power
-depends not on how many children were measured but on **how many distinct
-variants they sample** — which is precisely what variant selection reduces.
-Strong variant selection therefore makes reconstruction harder, and it is common
-in exactly the materials where reconstruction is wanted.
+Adding child orientations resolves the ambiguity only when the children originate
+from *different* transformation variants: two children belonging to the same variant
+provide no additional resolving power. Consequently, reconstruction resolution
+depends on **how many distinct variants are sampled** among the daughter grains.
+Strong variant selection reduces variant diversity, making reconstruction
+intrinsically more challenging in materials with pronounced transformation texture.
 
-`ParentReconstructionReport` carries `is_ambiguous` and `ambiguous_indices`, not
-just a best answer. **`ambiguity_tolerance_deg` set to zero does not remove the
-ambiguity; it hides it**, and the parameter's documentation says so at the point
-of use.
+`ParentReconstructionReport` explicitly records `is_ambiguous` and `ambiguous_indices`
+alongside the optimal candidate. Setting `ambiguity_tolerance_deg` to zero suppresses
+detection of competing candidates without resolving the underlying crystallographic
+degeneracy, so reporting ambiguity explicitly ensures defensible reconstruction.
 
 ## 3. The scoring algorithm
 
@@ -91,8 +91,8 @@ operation.
 | `median` | a few children may be misindexed — one bad child cannot dominate |
 | `max` | every child must be explained; conservative |
 
-`median` is the one to reach for on real EBSD data, where a small fraction of
-misindexed points is normal and a mean residual is pulled by them.
+The `median` reduction is well-suited to experimental EBSD maps, where indexing
+noise or isolated spurious pixels could otherwise bias a sample mean.
 
 ### 3.2 Symmetry awareness
 

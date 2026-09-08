@@ -20,8 +20,8 @@ conventions, references, and API behavior.
 |---|---|---|
 | 0 | Implementation plan approved & active task ledger initialized | Complete |
 | 1 | Increment 1: Algorithm pages — Diffraction & TEM (`cbed`, `saed`, `composite_saed`, `tem_tilt`) | Complete |
-| 2 | Increment 2: Algorithm pages — Orientation Relationships & Microstructure (`or_det`, `variant`, `parent_recon`, `csl`, `ebsd_grains`, `kikuchi`, `misorientation`) | In progress |
-| 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | Pending |
+| 2 | Increment 2: Algorithm pages — Orientation Relationships & Microstructure (`or_det`, `variant`, `parent_recon`, `csl`, `ebsd_grains`, `kikuchi`, `misorientation`) | Complete |
+| 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | In progress |
 | 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | Pending |
 | 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | Pending |
 | 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | Pending |
@@ -32,6 +32,16 @@ conventions, references, and API behavior.
 - `docs/site/algorithms/composite_saed_assembly.md`: Replaced colloquial "surprises" with rigorous physical consequences of Ewald curvature; refined unified detector basis construction and product-anchored variant mapping; replaced internal developer notes in space-group and intensity normalization admonitions.
 - `docs/site/algorithms/tem_tilt_navigation.md`: Replaced conversational opening and "what is actually hard" table with physical/mathematical considerations; formalized holder frame identity as specimen reference frame; clarified double-tilt gimbal cancellation conditions and two-zone attitude determination consistency checks.
 - Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy, test_app_manifest).
+
+### Increment 2 Technical Summary
+- `docs/site/algorithms/orientation_relationship_determination.md`: Refined double coset symmetry reduction and variant absorption rationale; replaced informal Bain failure warning with mathematical degenerate tie explanation; articulated classical plane/direction parallelism recovery.
+- `docs/site/algorithms/variant_correspondence.md`: Clarified covariant plane vs contravariant direction index transformations across non-cubic lattices; improved index bound and symmetry grouping descriptions.
+- `docs/site/algorithms/parent_grain_reconstruction.md`: Replaced informal section titles with inversion degeneracy analysis; clarified variant diversity impact and median reduction robustness against EBSD misindexing.
+- `docs/site/algorithms/csl_boundaries.md`: Restructured opening and CSL registry tables with objective metallurgical context; clarified symmetry reduction and deterministic lower-$\Sigma$ tie-breaking; replaced informal limitations section with physical/stereological constraints.
+- `docs/site/algorithms/ebsd_grains_and_local_misorientation.md`: Replaced informal opening with rigorous EBSD derived-metrics overview; clarified cumulative orientation gradients in flood fill; refined boundary filtering and GND dimensional scaling.
+- `docs/site/algorithms/kikuchi_band_geometry.md`: Refined inverse bandwidth relationship to interplanar spacing and explicit construction-time frame validation rationale.
+- `docs/site/algorithms/misorientation_and_disorientation.md`: Standardized symmetry orbit and canonical fundamental-region selection; refined Mackenzie random baseline and skewness explanation.
+- Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
 
 ## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)
 

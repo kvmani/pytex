@@ -5,13 +5,14 @@
 `GrainBoundaryNetwork` supplying the boundaries and the workbench operation
 `ebsd.distribution` reporting the population.
 
-Some grain boundaries have low energy, resist migration, resist corrosion, and
-resist cracking; most do not. The **coincidence-site lattice** is the classical
-geometric criterion that separates them, and grain-boundary engineering is the
-practice of deliberately increasing the fraction of boundaries that satisfy it.
-This page states how a measured boundary is assigned a $\Sigma$ value, what the
-tolerance means, and — because it is the part most often left unsaid — what the
-classification does **not** establish.
+Certain special grain boundary orientations exhibit low interfacial energy,
+enhanced resistance to grain boundary migration, and improved resistance to
+intergranular corrosion and cracking. The **coincidence-site lattice** (CSL)
+provides the classical geometric framework for identifying these special
+boundaries, serving as the quantitative foundation for grain-boundary engineering.
+This page explains how a measured boundary is assigned a $\Sigma$ value, the
+physical basis of angular tolerances, and the geometric limitations inherent
+to boundary classification.
 
 ## 1. What $\Sigma$ counts
 
@@ -44,7 +45,7 @@ silently keeping one:
 | 3 | $60.0^\circ$ | $\langle 111 \rangle$ | the coherent twin of fcc and bcc metals |
 | 5 | $36.86^\circ$ | $\langle 100 \rangle$ | |
 | 7 | $38.21^\circ$ | $\langle 111 \rangle$ | |
-| 9 | $38.94^\circ$ | $\langle 110 \rangle$ | what two $\Sigma 3$ twins make |
+| 9 | $38.94^\circ$ | $\langle 110 \rangle$ | formed by adjacent $\Sigma 3$ variants |
 | 11 | $50.47^\circ$ | $\langle 110 \rangle$ | |
 | 13a / 13b | $22.62^\circ$ / $27.79^\circ$ | $\langle 100 \rangle$ / $\langle 111 \rangle$ | two distinct boundaries |
 | … | | | through $\Sigma 29$a/b |
@@ -95,47 +96,50 @@ input : misorientation matrices M_i = inv(o1) @ o2, crystal operators G,
 7  boundaries with no qualifying type return None -- "general", not "unclassified"
 ```
 
-Two details decide the answer and are easy to get wrong:
+Two mathematical considerations govern classification:
 
-**Step 4 must be symmetry-reduced.** The deviation is the minimum over the
-crystal symmetry orbit, exactly as in
-{doc}`misorientation_and_disorientation`. Comparing raw matrices measures the
-distance to one arbitrary representative of the ideal boundary and misses the
-other 575.
+**Step 4 requires symmetry reduction.** The angular deviation must be minimized
+over the full bicrystal symmetry orbit, as formulated in
+{doc}`misorientation_and_disorientation`. Comparing unreduced rotation matrices
+evaluates only an arbitrary representative of the ideal boundary and neglects
+symmetry equivalents (576 in cubic–cubic bicrystals).
 
-**Step 6's tie-break prefers the lower $\Sigma$.** Tolerance bands overlap, so a
-boundary can lie within tolerance of two types at once. Preferring the smaller
-$\Sigma$ follows the convention that the more coincident description is the
-operative one, and — more importantly — it is *deterministic*, so the same
-boundary does not change class between runs.
+**Step 6's tie-break prefers the lower $\Sigma$.** Because tolerance bands of
+distinct CSL types can overlap, a boundary may fall within the acceptance threshold
+of multiple types simultaneously. Preferring the smaller $\Sigma$ adheres to the
+physical convention that the higher coincidence description governs interfacial
+structure, while providing a deterministic classification.
 
-**$\Sigma 1$ is excluded by default** because it is the low-angle case: every
-boundary below the tolerance would classify as $\Sigma 1$ and swamp the
-statistics with a category that says only "these grains are barely
-misoriented".
+**$\Sigma 1$ is excluded by default** because it corresponds to low-angle grain
+boundaries. Classifying sub-boundaries as $\Sigma 1$ would conflate dislocation
+cell walls with special coincidence structures.
 
-## 5. What a $\Sigma$ value does not tell you
+## 5. Physical interpretation and geometric limitations
 
-This is the section to read before quoting a $\Sigma 3$ fraction as a
-materials-property result.
+When reporting CSL distributions (such as $\Sigma 3$ fractions) in materials
+characterization, several physical and stereological limitations must be observed:
 
-- **It is a misorientation criterion only.** A boundary's character depends on
-  its **plane** as well as its misorientation. The coherent $\Sigma 3$ on
-  $\{111\}$ has very low energy; the *incoherent* $\Sigma 3$, the same
-  misorientation on a different plane, does not, and behaves like a general
-  high-angle boundary. Classification here uses misorientation alone, so it
-  cannot separate them. A $\Sigma 3$ fraction is an upper bound on the coherent
-  twin fraction.
-- **Low $\Sigma$ does not guarantee low energy.** The geometric argument is a
-  correlation with exceptions, and the exceptions are not rare.
-- **The tolerance is a convention.** See section 3.
-- **A 2-D section undercounts.** Boundary planes intersecting a polished surface
-  are sampled by their trace, not by their area, so a boundary-plane
-  distribution from a single section is biased.
+- **Misorientation vs boundary plane.** A boundary's energy and mobility depend
+  on five macroscopic degrees of freedom: three for misorientation and two for
+  the boundary plane normal. The coherent $\Sigma 3$ boundary on $\{111\}$ exhibits
+  exceptionally low interfacial energy, whereas an incoherent $\Sigma 3$ boundary
+  with identical misorientation on an arbitrary plane behaves like a general
+  high-angle boundary. Because standard 2D EBSD classifies boundaries by
+  misorientation alone, the calculated $\Sigma 3$ fraction represents an upper bound
+  on the coherent twin population.
+- **CSL geometry vs interfacial energy.** While high coincidence (low $\Sigma$)
+  correlates broadly with lower interfacial energy, coincidence is a geometric
+  criterion rather than an energetic law; significant energy variations exist
+  within any CSL category.
+- **Angular tolerance dependence.** The classified fraction depends strongly on
+  the chosen angular threshold $\Delta\theta_{\max}$ (Brandon, Palumbo–Aust, or
+  custom criteria). Quoted fractions must always state the criterion employed.
+- **Stereological sectioning effects.** Planar 2D sections sample boundary traces
+  rather than true boundary surface areas, introducing stereological projection bias.
 
 `CSLMatch` therefore carries `deviation_deg` alongside the $\Sigma$ value. A
-boundary at $0.2^\circ$ from ideal and one at $8.5^\circ$ are both "$\Sigma 3$",
-and reporting only the label discards the distinction.
+boundary at $0.2^\circ$ from ideal and one at $8.5^\circ$ are both classified as "$\Sigma 3$",
+and reporting the numerical deviation preserves this important structural distinction.
 
 ## 6. Cost
 

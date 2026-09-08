@@ -8,12 +8,13 @@ the GROD/GOS/GAM family on `GrainSegmentation`, and
 `geometrically_necessary_dislocation_density`; exposed as the workbench
 operations `ebsd.map`, `ebsd.grod`, `ebsd.kam` and `ebsd.scan_summary`.
 
-An EBSD scan is a grid of orientations. Everything a materials scientist reads
-off it — grain size, subgrain structure, stored deformation, dislocation
-content — is *derived*, and every derived number carries the parameters that
-produced it. This page states each derivation and the parameter that decides it,
-because a grain size quoted without its threshold, or a KAM map without its
-kernel, is not reproducible.
+An electron backscatter diffraction (EBSD) scan consists of a spatial grid of
+crystal orientations. Microstructural metrics such as grain size, subgrain
+morphology, local misorientation, and geometrically necessary dislocation (GND)
+density are derived quantities that depend directly on numerical parameters. This
+page details the algorithms for grain segmentation, local misorientation (KAM,
+GROD, GOS, GAM), and dislocation density, documenting the governing parameters
+required for reproducible reporting.
 
 ```{figure} ../../figures/ebsd_grain_metrics_algorithm.svg
 :alt: Four-lane flow sheet. Lane 1 turns the orientation grid into a neighbour
@@ -43,29 +44,28 @@ input : orientations on a grid, threshold theta_c, connectivity, symmetry_aware
 6  number the grains by each component's lowest member index
 ```
 
-Step 5 is a flood fill, computed as connected components of a sparse adjacency
-matrix rather than a Python union-find — the traversal is the same, the compiled
-version is what makes a full-size map tractable. Step 6 is done explicitly
-rather than inherited from the traversal order, so grain ids are a stable
-function of the data and not of a library's internals.
+Step 5 performs a flood fill, evaluated as connected components of a sparse adjacency
+matrix. Step 6 numbers grains deterministically by the lowest member index in each
+component, ensuring that grain labels remain independent of internal graph traversal order.
 
-### 1.2 The threshold decides the answer
+### 1.2 The segmentation threshold $\theta_c$
 
-$\theta_c$ is conventionally $5\text{–}15^\circ$, and **it is not a detail**:
-it decides whether subgrains are resolved as separate grains, so it moves grain
-size, grain count, and every distribution derived from them. `GrainSegmentation`
-stores it rather than merely applying it, so a downstream metric cannot be
-reported without the criterion that produced it.
+$\theta_c$ is conventionally chosen between $5^\circ$ and $15^\circ$. This threshold
+determines whether subgrain boundaries are classified as internal low-angle boundaries
+or as independent grain boundaries, directly influencing grain size distributions and
+grain counts. `GrainSegmentation` records $\theta_c$ explicitly to preserve metadata
+traceability for all downstream metrics.
 
-### 1.3 The failure mode that is inherent, not a bug
+### 1.3 Cumulative orientation gradients in flood-fill segmentation
 
-Flood fill merges points connected by a *chain* of small steps. **A grain with a
-continuous orientation gradient can therefore exceed the threshold end to end**
-while never exceeding it between neighbours — a heavily deformed grain is one
-grain by this criterion however far it has rotated across its width. This is a
-property of the definition, shared by every flood-fill segmentation in the
-field, and it is the reason the local-misorientation family of section 2 exists:
-the gradient the segmentation absorbs is exactly what GROD then measures.
+Flood-fill segmentation groups pixels connected by paths of adjacent neighbors whose
+pairwise misorientations fall below $\theta_c$. Consequently, a grain containing a
+continuous internal orientation gradient can exhibit a cumulative misorientation from
+edge to edge that substantially exceeds $\theta_c$, provided neighbor-to-neighbor steps
+remain below the threshold. This behavior is an inherent characteristic of
+connected-component segmentation. The intra-granular orientation spread absorbed by
+grain segmentation is quantitatively evaluated by the grain reference orientation
+deviation (GROD) described in Section 2.
 
 ### 1.4 Symmetry awareness
 
@@ -104,13 +104,15 @@ input : neighbour shell `order`, connectivity, threshold_deg, statistic, segment
 5  points with no admissible neighbour report zero
 ```
 
-**Excluding the boundary is not optional in practice.** Without step 3 a pixel
-on a grain boundary reports the *boundary misorientation* — tens of degrees —
-rather than the local gradient, and the KAM map becomes a boundary map with a
-deformation map faintly visible underneath. Two ways to exclude are offered, and
-they are not equivalent: `threshold_deg` is the conventional one; passing a
-`segmentation` is stricter and more physical, because it excludes by grain
-membership rather than by angle, and it is *required* for the GAM definition.
+**Boundary filtering in local misorientation evaluation.** Without boundary
+filtering in step 3, pixels adjacent to grain boundaries incorporate high-angle
+boundary misorientations (often tens of degrees) rather than intragranular
+deformation gradients, distorting the local misorientation distribution. Two
+exclusion strategies are provided: an angular threshold (`threshold_deg`, typically
+$2^\circ\text{–}5^\circ$) or an explicit grain segmentation mask. Filtering by
+grain segmentation is physically preferred because it strictly restricts neighbor
+comparisons to the host grain and prevents truncation of steep genuine deformation
+gradients.
 
 `order` sets the kernel radius. A larger kernel smooths and lowers KAM, so **KAM
 values are comparable only at equal step size and equal order** — the quantity
@@ -136,25 +138,24 @@ on the GND density, and it is labelled as one. It is also, by construction, only
 the *geometrically necessary* content — statistically stored dislocations
 produce no net lattice curvature and are invisible to the method entirely.
 
-### 3.2 The KAM route (`method="kam"`)
+### 3.2 The scalar KAM route (`method="kam"`)
 
 $$
 \rho \;\approx\; \frac{2\theta}{b\,u}
 $$
 
 with $\theta$ the KAM in radians, $b$ the Burgers vector and $u$ the step size.
-Cruder — it discards the *direction* of the gradient, which is the whole content
-of the Nye tensor — but it is what a large part of the EBSD literature reports,
-so it is provided for comparability rather than because it is better. When
-comparing with a published number, check which route that number used.
+While this scalar estimation neglects gradient directionality compared to the
+full Nye tensor formulation, it remains widely used in experimental EBSD
+literature and is included for cross-study comparison.
 
-### 3.3 Units and the things that silently corrupt them
+### 3.3 Dimensional scaling and parameter sensitivity
 
 | Parameter | Meaning | Failure if wrong |
 | --- | --- | --- |
 | `burgers_vector_nm` | Cu 0.2556, α-Fe 0.2483, Al 0.2863 | density scales as $1/b$ |
 | `step_scale_m` | metres per map coordinate unit; default treats them as µm | density scales as $1/u$; a factor of $10^{6}$ if the map is in metres |
-| `kam_threshold_deg` | boundary exclusion for the KAM route | boundary pixels return meaningless densities |
+| `kam_threshold_deg` | boundary exclusion for the KAM route | boundary pixels return unphysical densities |
 
 `NaN` is returned where the gradient could not be measured — across a phase
 boundary, for instance — rather than zero, because zero is a physical claim and

@@ -20,29 +20,32 @@ The algorithm, with the constraint governing each stage.
 
 ## 1. The two index maps, and why they differ
 
-A relationship is a rotation $\mathbf{R}$ on Cartesian vectors, but crystal
-objects are given as *indices* — components in a lattice basis. Two different
-bases are involved, and using the wrong one is the classic error.
+An orientation relationship is defined as a rotation $\mathbf{R}$ between Cartesian
+reference frames. Crystallographic planes and directions, however, are expressed as
+integer Miller indices with respect to direct and reciprocal lattice bases. Proper
+transformation requires distinguishing contravariant direction vectors from covariant
+plane normal vectors.
 
-Let $\mathbf{A}$ be the direct structure matrix whose columns are the lattice
-vectors in Cartesian coordinates, and $\mathbf{A}^{*}$ the reciprocal one. A
-**direction** $[uvw]$ has Cartesian image $\mathbf{A}\mathbf{u}$; a **plane**
-$(hkl)$ has Cartesian *normal* $\mathbf{A}^{*}\mathbf{h}$, because Miller indices
-are already reciprocal-basis components. So the two index maps are
+Let $\mathbf{A}$ be the direct structure matrix whose columns are the direct-lattice
+basis vectors in Cartesian coordinates, and $\mathbf{A}^{*}$ the reciprocal matrix. A
+**direction** $[uvw]$ corresponds to Cartesian vector $\mathbf{A}\mathbf{u}$; a **plane**
+$(hkl)$ has Cartesian normal $\mathbf{A}^{*}\mathbf{h}$, because Miller indices represent
+reciprocal-basis components. The direct and reciprocal index transformation matrices are:
 
 $$\mathbf{M} = \mathbf{A}_c^{-1}\,\mathbf{R}\,\mathbf{A}_p , \qquad
 \mathbf{M}^{*} = \left(\mathbf{A}_c^{*}\right)^{-1}\mathbf{R}\,\mathbf{A}_p^{*} ,$$
 
-and they satisfy $\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}$, which is exactly
-what preserves the zone law: if $\mathbf{h}\cdot\mathbf{u} = 0$ in the parent
-then $\mathbf{h}_c\cdot\mathbf{u}_c = 0$ in the child. A plane containing a
-direction still contains its image.
+which satisfy $\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}$. This relation preserves the
+fundamental zone law: if $\mathbf{h}\cdot\mathbf{u} = 0$ in the parent crystal, then
+$\mathbf{h}_c\cdot\mathbf{u}_c = 0$ in the child crystal, ensuring that a direction lying
+within a plane remains within the transformed plane.
 
-For a cubic-to-cubic relationship $\mathbf{A}^{*} \propto \mathbf{A}^{-\mathsf{T}}$
-with a scalar factor, and the two maps coincide up to that scale — which is why
-the error is invisible in cubic tests and appears the moment a hexagonal phase is
-involved. The library routes every mapping through one pair of helpers so the
-choice cannot be made per call site.
+For cubic lattices, the direct and reciprocal basis matrices are mutually proportional,
+so direct and reciprocal transformations yield identical directional vectors up to a
+scalar factor. For non-cubic crystal systems (such as hexagonal, trigonal, or monoclinic
+lattices), direct and reciprocal transformations diverge significantly. PyTex routes all
+transformations through dedicated direct and reciprocal mapping primitives to preserve
+mathematical rigor across all crystal systems.
 
 ## 2. Variants
 
@@ -104,18 +107,19 @@ Raising `max_index` **never worsens** a residual — the larger candidate set
 contains the smaller — and **never changes which correspondences are exact**. The
 set of exactly-parallel variants is identical at bound 3 and bound 17.
 
-What it does change is how the *irrational* images are labelled, and therefore
-how many index families they fall into. "Four distinct images" is a statement
-partly about the bookkeeping, not purely about the crystallography, and
-`describe()` says so rather than letting the count be over-read.
+What it alters is the nominal Miller-index labeling assigned to irrational
+images, and consequently the grouping of variants into rational index families.
+The number of distinct rational families depends partly on the chosen index bound,
+which `describe()` explicitly documents to avoid misinterpreting nominal index
+groupings as fundamental physical constraints.
 :::
 
-## 4. Grouping: what makes 24 rows readable
+## 4. Symmetry grouping and variant classification
 
-Each rationalized image is reduced to its symmetry-canonical family
-representative under the *image phase* point group; variants sharing a
-representative share an `equivalence_group`. This turns a wall of indices into
-the actual answer.
+Each rationalized image is reduced to its symmetry-canonical family representative
+under the point group of the product phase; variants sharing a representative
+share an `equivalence_group`. This groups equivalent variant responses into
+crystallographically coherent packets.
 
 ### Cubic: the packet structure of lath martensite
 

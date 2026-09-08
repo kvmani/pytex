@@ -7,14 +7,15 @@
 `pytex.ebsd.csl.classify_misorientations` classifying the result and the
 workbench operations `ebsd.distribution` and `ebsd.or_from_grains` consuming it.
 
-Everything that distinguishes one grain boundary from another is a statement
-about **misorientation**, and almost every such statement is wrong unless it is
-made about the **disorientation** instead. This page states the difference, the
-reduction that turns one into the other, the baseline a measured distribution
-must be compared against, and the three numbers that are routinely quoted for
-each other.
+Grain boundary properties depend critically on relative crystallographic
+orientation. Because crystal symmetry generates multiple equivalent descriptions
+of any boundary, quantitative boundary analysis requires the unique canonical
+representation known as **disorientation**. This page details the misorientation
+symmetry orbit, the algorithm for reducing misorientations into the fundamental
+zone, and the theoretical random baseline (Mackenzie distribution) used for
+statistical comparison.
 
-## 1. Misorientation is not unique, and that is the whole problem
+## 1. Symmetry equivalence and the misorientation orbit
 
 For two orientations $g_1, g_2$ (crystal-to-specimen, Bunge) the misorientation
 is the rotation carrying one crystal frame onto the other:
@@ -31,16 +32,17 @@ $$
 \bigl\{\, S_1 \,\Delta g\, S_2^{\mathsf{T}} \;:\; S_1 \in G_1,\; S_2 \in G_2 \,\bigr\}.
 $$
 
-For cubic-cubic that orbit has $24 \times 24 = 576$ members. They are all equally
-valid descriptions of the same physical boundary, and their rotation angles range
-from a few degrees to nearly $180^\circ$. **Any statement about "the
-misorientation angle" that does not say which representative was taken is
-undefined**, and a histogram built from arbitrary representatives is noise.
+For cubic-cubic bicrystals, that orbit contains $24 \times 24 = 576$ members.
+They are all physically equivalent descriptions of the same boundary, with
+rotation angles ranging from small values up to $180^\circ$. Consequently,
+the scalar misorientation angle is ill-defined unless a specific symmetry
+representative is specified. Unreduced or arbitrarily selected orbit
+representatives produce inconsistent angular distributions.
 
 ## 2. The disorientation: one representative, chosen canonically
 
-The **disorientation** is the orbit member with the smallest rotation angle — the
-one lying in the misorientation fundamental zone.
+The **disorientation** is the orbit member with the smallest rotation angle —
+the unique representative lying in the misorientation fundamental zone.
 
 ```text
 input : misorientation m, symmetry groups G_left, G_right
@@ -51,18 +53,16 @@ input : misorientation m, symmetry groups G_left, G_right
 4  take the minimum key
 ```
 
-Step 3 is worth dwelling on. Selecting purely on angle is ambiguous, because
-distinct orbit members can share the minimum angle exactly — a symmetric
-boundary has several equally small representatives. Choosing among them by
-whichever floating-point comparison happens to win makes the answer depend on
-rounding, and a disorientation *axis* that flips between runs breaks every
-downstream statistic that groups by axis. The canonical key breaks ties
-deterministically, so the same boundary always returns the same representative.
+Step 3 provides deterministic tie-breaking. Selecting a representative based
+solely on rotation angle is insufficient when multiple orbit members attain the
+minimum angle simultaneously (common in symmetric tilt and twist boundaries).
+PyTex scores candidate quaternions using a canonical fundamental-region key,
+guaranteeing that identical boundary misorientations always yield the same
+rotation axis and angle across independent evaluations.
 
-**Bounds worth memorising.** For cubic-cubic symmetry the disorientation angle
-never exceeds $62.8^\circ$. A reported "misorientation" above that is not a
-disorientation, and is either an unreduced representative or a different
-convention.
+**Fundamental bounds.** For cubic-cubic symmetry, the disorientation angle
+never exceeds $62.8^\circ$ (the Mackenzie cutoff). A reported misorientation
+above this bound represents an unreduced orbit member rather than a disorientation.
 
 ### Cost
 
@@ -73,28 +73,25 @@ segmentation and KAM) evaluate the orbit vectorised over all pairs at once and
 reduce with a scalar projection rather than forming every candidate matrix,
 which is what makes a full-map KAM tractable.
 
-## 3. The baseline: Mackenzie, and the three numbers people confuse
+## 3. Theoretical random baseline: the Mackenzie distribution
 
-A measured distribution means nothing on its own. The reference is the
-distribution of a **randomly textured** aggregate — the Mackenzie distribution —
-and PyTex generates it by sampling rather than by transcribing a curve:
+A measured distribution requires comparison against a theoretical reference.
+For randomly textured polycrystals, the disorientation angle distribution follows
+the Mackenzie distribution. PyTex samples this reference distribution directly:
 `random_disorientation_angles_deg` draws Haar-uniform quaternions (uniform on
-$SO(3)$, not uniform in Euler angles, which is a different and wrong
-distribution) and reduces each to its disorientation.
+$SO(3)$, rather than uniform in Euler angles) and reduces each to its disorientation.
 
-Three numbers are routinely quoted for one another:
+Key angular characteristics for cubic–cubic boundaries:
 
-| Quantity | Cubic value | What it is |
+| Quantity | Cubic value | Definition |
 | --- | --- | --- |
-| **Mode** | $\approx 45^\circ$ | where the distribution peaks |
-| **Mean** | $\approx 40.7^\circ$ | the average angle |
-| **Maximum** | $62.8^\circ$ | the hard cutoff of the fundamental zone |
+| **Mode** | $\approx 45^\circ$ | peak of the probability density function |
+| **Mean** | $\approx 40.7^\circ$ | expected value across the distribution |
+| **Maximum** | $62.8^\circ$ | upper boundary of the cubic misorientation fundamental zone |
 
-The mean is *below* the mode because the distribution is left-skewed: a long
-low-angle tail pulls the mean down while the hard cutoff at $62.8^\circ$ stops
-the upper side compensating. **Quoting $45^\circ$ as the mean conflates the mode
-with the mean**, and `MisorientationDistribution.mean_angle_deg` documents the
-distinction at the point of use rather than leaving it to be rediscovered.
+The mean angle lies below the mode because the distribution is left-skewed:
+a low-angle tail extends to $0^\circ$ while the sharp cutoff at $62.8^\circ$ limits
+the upper tail. PyTex documents this distinction explicitly at `MisorientationDistribution.mean_angle_deg`.
 
 ### Correlated versus uncorrelated
 

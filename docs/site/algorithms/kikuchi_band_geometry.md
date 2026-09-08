@@ -73,10 +73,11 @@ $$
 so **band width is a direct measurement of interplanar spacing** — an *inverse*
 one. Wide bands are low-$d$ planes; narrow bands are high-$d$.
 
-This inverts an intuition that catches people out and is worth stating
-explicitly: `min_d_spacing_angstrom` excludes the **widest** bands, not the
-narrowest, because it drops the small-$d$ planes. The weak high-order bands that
-clutter a pattern are the wide ones.
+This inverse relationship between interplanar spacing and angular width governs
+parameter selection: setting a lower bound via `min_d_spacing_angstrom` excludes
+low-$d$ planes, which correspond to the widest bands. Discarding these wide,
+higher-order reflections simplifies pattern analysis by retaining the prominent
+low-index bands.
 
 $\lambda$ is the **relativistically corrected** electron wavelength. At 20 kV
 the correction is about 2 %, and at 200 kV about 30 % — omitting it puts every
@@ -104,11 +105,10 @@ input : geometry (detector, energy, frames), phase, orientation,
    when the zone law h u + k v + l w = 0 holds
 ```
 
-Step 5 is where the frames must be right, and the implementation **checks rather
-than assumes**: the geometry's specimen frame must match the orientation's, and
-the orientation's crystal frame and phase are checked against the phase
-argument. A frame mismatch here produces a plausible, wrong pattern — the most
-expensive kind of error in this domain.
+Step 5 enforces strict frame consistency: the detector geometry's specimen frame
+must match that of the orientation, and the orientation's crystal frame and phase
+metadata are verified against the phase argument. Construction-time invariant
+checks prevent subtle frame misalignments from generating erroneous diffraction patterns.
 
 ### 3.1 Zone axes organise the pattern
 
