@@ -30,7 +30,7 @@ Let $\mathbf{A}$ be the direct structure matrix whose columns are the direct-lat
 basis vectors in Cartesian coordinates, and $\mathbf{A}^{*}$ the reciprocal matrix. A
 **direction** $[uvw]$ corresponds to Cartesian vector $\mathbf{A}\mathbf{u}$; a **plane**
 $(hkl)$ has Cartesian normal $\mathbf{A}^{*}\mathbf{h}$, because Miller indices represent
-reciprocal-basis components. The direct and reciprocal index transformation matrices are:
+reciprocal-basis components. The direct and reciprocal {ref}`index transformation matrices <term-index-correspondence>` are:
 
 $$\mathbf{M} = \mathbf{A}_c^{-1}\,\mathbf{R}\,\mathbf{A}_p , \qquad
 \mathbf{M}^{*} = \left(\mathbf{A}_c^{*}\right)^{-1}\mathbf{R}\,\mathbf{A}_p^{*} ,$$
@@ -49,7 +49,7 @@ mathematical rigor across all crystal systems.
 
 ## 2. Variants
 
-A variant is the relationship composed with a parent symmetry operation,
+A {ref}`variant <term-variant>` is the relationship composed with a parent symmetry operation,
 $\mathbf{V}_k = \mathbf{R}\,\mathbf{S}_{p,k}$, reduced by the child-symmetry
 orbit so that two operations giving crystallographically identical children count
 once. That reduction is what produces the literature counts:

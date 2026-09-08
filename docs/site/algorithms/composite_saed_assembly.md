@@ -23,25 +23,18 @@ The algorithm, with the constraint governing each stage.
 
 ## 1. Geometry: the Ewald construction and the excitation error
 
-For a beam of wavelength $\lambda$ along $-\hat{\mathbf{z}}$, the Ewald sphere has
-radius $1/\lambda$ and is centred at $-\hat{\mathbf{z}}/\lambda$. A reciprocal
-lattice point $\mathbf{g}$ diffracts when it lies on that sphere. Real crystals
-are thin, so the points are relrods and a reflection is excited when it lies
-*near* the sphere. The signed distance along the beam is the **excitation
-error**:
+For an electron beam of wavelength $\lambda$ propagating along $-\hat{\mathbf{z}}$, the {ref}`Ewald sphere <term-ewald-sphere>` has radius $1/\lambda$ and is centred at $-\hat{\mathbf{z}}/\lambda$. A reciprocal lattice point $\mathbf{g}$ satisfies the exact Bragg diffraction condition when it intersects this sphere.
 
-$$s_g = g_z - \frac{\lambda \lVert \mathbf{g} \rVert^2}{2},$$
+Because real TEM specimens are thin foils of finite thickness $t$, reciprocal lattice nodes are elongated into {ref}`relrods <term-relrod>`, allowing reflections to excite even when they do not intersect the sphere exactly. The signed distance along the beam direction is the {ref}`excitation error <term-excitation-error>` $s_g$:
 
-with $g_z$ the component along the zone axis. Two physical consequences follow from the Ewald sphere geometry:
+$$
+s_g = g_z - \frac{\lambda \lVert \mathbf{g} \rVert^2}{2},
+$$
 
-- A reciprocal lattice point lying strictly within the zero-order Laue zone has $g_z = 0$,
-  yielding $s_g = -\lambda\lVert\mathbf{g}\rVert^2/2 \neq 0$. Consequently, the exact
-  Bragg condition ($s_g = 0$) does not coincide with the zero-order Laue plane, but
-  occurs where the curved Ewald sphere intersects the reciprocal lattice.
-- Because high-energy electron wavelengths are small ($\lambda = 0.025079$ Å at 200 kV
-  and $0.019687$ Å at 300 kV, relativistically), the Ewald sphere curvature is gentle
-  across the low-index reflection regime, rendering the observed zone-axis pattern an
-  approximately planar section of reciprocal space.
+where $g_z = \mathbf{g} \cdot \hat{\mathbf{z}}$ is the zone-axis component of reciprocal lattice vector $\mathbf{g}$ (in $\text{\AA}^{-1}$), $\lVert\mathbf{g}\rVert = 1/d_{hkl}$ is the reciprocal magnitude (in $\text{\AA}^{-1}$), and $\lambda$ is the relativistic electron wavelength (in $\text{\AA}$). Two physical consequences follow from this geometry:
+
+- A reciprocal lattice point lying strictly within the zero-order Laue zone (ZOLZ) has $g_z = 0$, yielding $s_g = -\lambda\lVert\mathbf{g}\rVert^2/2 \neq 0$. Consequently, the exact Bragg condition ($s_g = 0$) does not coincide with the zero-order Laue plane, but occurs along a ring where the curved Ewald sphere intersects the reciprocal lattice.
+- Because high-energy electron wavelengths are small ($\lambda = 0.025079$ Å at 200 kV and $0.019687$ Å at 300 kV, relativistically), the Ewald sphere curvature is gentle across the low-index reflection regime, rendering the observed zone-axis pattern an approximately planar section of reciprocal space.
 
 A reflection is kept when $\lvert s_g \rvert \le$
 `max_excitation_error_inv_angstrom`. The default of 0.05 Å⁻¹ keeps every
@@ -58,7 +51,7 @@ multiplies the amplitude, so the intensity is weighted by $|S_t(s_g)|^2$. The ex
 is one and the first relrod zero is at $|s_g|=1/t$. The older Lorentzian width is retained as a
 mutually exclusive compatibility model; neither envelope adds dynamical scattering.
 
-The detector position follows from the camera constant $L\lambda$:
+The detector position follows from the microscope {ref}`camera constant <term-camera-constant>` $\Lambda = L\lambda$:
 
 $$\mathbf{r}_{\text{mm}} = (L\lambda)\,
 \begin{pmatrix} \mathbf{g}\cdot\hat{\mathbf{u}} \\

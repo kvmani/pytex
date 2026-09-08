@@ -5,6 +5,47 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Grand Technical Glossary and In-Depth Mathematical Explanations — COMPLETE (2026-09-08)
+
+**Objective.** Review the user-facing documentation across PyTex to provide deeper explanatory mathematics and rigorous physical context for complex or uncommon terms and phrases (e.g., *excitation error*, *extinction distance*, *relrod*, *HOLZ lines*, *double diffraction*, *camera constant*, *Kikuchi bands*, *gnomonic projection*, *CSL*, *KAM*, *GND*, *Taylor factor*, *double coset*). Create a comprehensive Grand Glossary of Terms and Symbols in `docs/site/concepts/technical_glossary_and_symbols.md` with full mathematical definitions, variable breakdowns, and physical significance, and provide cross-links from algorithm, theory, and workflow pages directly to these definitions.
+
+### Progress Ledger
+
+| Step | Scope | State |
+|---|---|---|
+| 0 | Active task ledger initialized | Complete |
+| 1 | Grand Technical Glossary (`docs/site/concepts/technical_glossary_and_symbols.md`): Author exhaustive mathematical glossary across all 5 scientific domains | Complete |
+| 2 | Diffraction & TEM Pages: Enhance explanatory mathematics for excitation error, Ewald sphere, relrods, extinction distance, and cross-link to glossary | Complete |
+| 3 | Microstructure, Texture, Plasticity & OR Pages: Enhance explanatory mathematics and link complex terms to glossary | Complete |
+| 4 | Verification & ratchets: Sphinx warnings (0), test_documentation_policy, test_reference_policy, integrity check | Complete |
+
+### Technical Summary
+
+- **Grand Technical Glossary and Symbols (`docs/site/concepts/technical_glossary_and_symbols.md`):**
+  - Authoritatively expanded into a comprehensive reference organized into 9 major sections: Geometry and Reference Frames, Index Notation and Metric Tensors, Diffraction Physics & TEM Metrology, Texture & Orientation Analysis, EBSD & Microstructural Metrics, Crystal Plasticity & Elastic Homogenization, Orientation Relationships & Phase Transformations, Core Mathematical Symbols Table, and References.
+  - Every technical term receives full LaTeX mathematical formulas, defined variables and physical dimensions/units, physical interpretations, experimental context, PyTex implementation references, and bidirectional cross-links.
+  - Defined explicit MyST target anchors (`(term-excitation-error)=`, `(term-extinction-distance)=`, `(term-ewald-sphere)=`, `(term-relrod)=`, `(term-holz)=`, `(term-double-diffraction)=`, `(term-camera-constant)=`, `(term-kikuchi-bands)=`, `(term-gnomonic-projection)=`, `(term-mott-bethe)=`, `(term-caglioti)=`, `(term-cbed)=`, `(term-odf)=`, `(term-mrd)=`, `(term-pole-figure)=`, `(term-inverse-pole-figure)=`, `(term-ghost-problem)=`, `(term-kearns-parameter)=`, `(term-bunge-euler)=`, `(term-misorientation)=`, `(term-disorientation)=`, `(term-csl)=`, `(term-kam)=`, `(term-gnd)=`, `(term-ssd)=`, `(term-grod)=`, `(term-gos)=`, `(term-schmid-factor)=`, `(term-taylor-factor)=`, `(term-elastic-bounds)=`, `(term-variant)=`, `(term-double-coset)=`, `(term-index-correspondence)=`).
+- **Diffraction & TEM Pages:**
+  - `docs/site/workflows/composite_or_diffraction.md`: Added explicit mathematical derivation and variable breakdown for excitation error $s_g = g_z - \frac{\lambda\lVert\mathbf{g}\rVert^2}{2}$, relrod shape factor $I \propto \operatorname{sinc}^2(\pi t s_g)$, camera constant $\Lambda = L\lambda$, and cross-links to the Grand Glossary.
+  - `docs/site/workflows/diffraction_spots.md`: Formulated Ewald-sphere candidate selection, derived the connection between 3D wavevector magnitude mismatch $s = \lVert\mathbf{k}_{\mathrm{out}}\rVert - \lVert\mathbf{k}_{\mathrm{in}}\rVert$ and small-angle excitation error $s \approx -s_g$, and added glossary cross-links.
+  - `docs/site/theory/reciprocal_space_and_kinematic_spots.md`: Derived the algebraic equivalence between the laboratory-frame wavevector mismatch $s$ and the zone-axis deviation parameter $s_g$ via first-order Taylor expansion, proving $|s| \approx |s_g|$.
+  - `docs/site/algorithms/composite_saed_assembly.md`: Formulated Ewald sphere geometry, relrods, excitation error, camera constant, and linked each directly to the Grand Glossary.
+  - `docs/site/algorithms/cbed_thickness_and_symmetry.md` & `docs/site/theory/dynamical_cbed_and_symmetry_determination.md`: Linked excitation error, extinction distance, Kossel-Möllenstedt regime, and dynamical potential Fourier coefficients to the Grand Glossary.
+- **Microstructure, Texture, Plasticity & OR Pages:**
+  - `docs/site/workflows/kikuchi_geometry.md`: Fixed the inverse relationship between Kikuchi band angular width and interplanar spacing ($2\theta_B \approx \lambda/d$), added mathematical formulations for Kossel cones, and cross-linked to Kikuchi bands and gnomonic projection.
+  - `docs/site/workflows/ebsd_kam.md`: Formulated the physical connection between KAM, lattice curvature $\kappa \approx \mathrm{KAM}/\Delta x$, and geometrically necessary dislocation density $\rho_{\mathrm{GND}} \approx \frac{\alpha\,\mathrm{KAM}}{b\,\Delta x}$, explaining high-angle boundary thresholding and linking to KAM, disorientation, and GND glossary entries.
+  - `docs/site/algorithms/csl_boundaries.md`: Cross-linked CSL definitions and the Brandon criterion tolerance $\Delta\theta \le \theta_0 / \sqrt{\Sigma}$.
+  - `docs/site/algorithms/schmid_and_taylor.md`: Cross-linked Schmid factor $m = \cos\phi\cos\lambda \le 0.5$ and Taylor factor $M = \sum |\mathrm{d}\gamma_s| / \mathrm{d}\varepsilon_{\mathrm{eq}}$ to glossary entries.
+  - `docs/site/algorithms/elastic_homogenization.md`: Cross-linked Voigt, Reuss, and Hill bounds to the glossary.
+  - `docs/site/algorithms/kearns_parameter.md`: Cross-linked Kearns parameter and basal orientation tensor to the glossary.
+  - `docs/site/algorithms/variant_correspondence.md`: Cross-linked direct and reciprocal index transformation matrices $\mathbf{M}, \mathbf{M}^*$ and crystallographic variants.
+  - `docs/site/algorithms/orientation_relationship_determination.md`: Cross-linked variants and double cosets to the glossary.
+- **Verification:**
+  - `python scripts/check_sphinx_warnings.py --max-warnings 0`: Built Sphinx site and verified 0 warnings.
+  - `python scripts/check_repo_integrity.py`: Passed with 0 integrity or hygiene violations.
+  - `python -m ruff check docs/`: Passed with 0 linter issues.
+  - `python -m pytest -p no:napari tests/unit/test_documentation_policy.py tests/unit/test_reference_policy.py tests/unit/test_repo_integrity.py`: 51 passed with 0 warnings.
+
 ## Rewrite Documentation for Clarity, Accuracy, and Consistent Scientific Style — COMPLETE (2026-09-08)
 
 **Objective.** Review and improve user-facing documentation across `docs/site/algorithms`, `docs/site/theory`,

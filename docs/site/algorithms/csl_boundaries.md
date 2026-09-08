@@ -7,7 +7,7 @@
 
 Certain special grain boundary orientations exhibit low interfacial energy,
 enhanced resistance to grain boundary migration, and improved resistance to
-intergranular corrosion and cracking. The **coincidence-site lattice** (CSL)
+intergranular corrosion and cracking. The {ref}`coincidence-site lattice (CSL) <term-csl>`
 provides the classical geometric framework for identifying these special
 boundaries, serving as the quantitative foundation for grain-boundary engineering.
 This page explains how a measured boundary is assigned a $\Sigma$ value, the
@@ -55,8 +55,7 @@ silently keeping one:
 
 ## 3. The Brandon criterion
 
-A measured boundary never sits exactly on an ideal misorientation. Brandon's
-criterion admits a deviation that tightens as $\Sigma$ rises:
+A measured boundary never sits exactly on an ideal misorientation. {ref}`Brandon's criterion <term-csl>` admits a deviation that tightens as $\Sigma$ rises:
 
 $$
 \Delta\theta_{\max}(\Sigma) \;=\; \frac{\theta_0}{\sqrt{\Sigma}},

@@ -22,19 +22,41 @@ The current implementation uses this relation as an explicit filter when a zone 
 
 ## Kinematic Spot Construction
 
-With incident wavevector $\mathbf{k}_{\mathrm{in}}$ and reciprocal vector $\mathbf{g}$ in the laboratory frame, the candidate outgoing wavevector is
+With incident wavevector $\mathbf{k}_{\mathrm{in}}$ (where $\lVert\mathbf{k}_{\mathrm{in}}\rVert = 1/\lambda$) and reciprocal lattice vector $\mathbf{g}$ transformed into the laboratory frame, the candidate scattered wavevector is:
 
 $$
 \mathbf{k}_{\mathrm{out}} = \mathbf{k}_{\mathrm{in}} + \mathbf{g}
 $$
 
-PyTex then evaluates the excitation error as the scalar mismatch
+The {ref}`Ewald sphere <term-ewald-sphere>` requires elastic scattering conservation, $\lVert\mathbf{k}_{\mathrm{out}}\rVert = 1/\lambda$. In experimental diffraction, finite specimen thickness relaxes this strict condition into a tolerance band governed by {ref}`relrods <term-relrod>`. PyTex evaluates the {ref}`excitation error <term-excitation-error>` as the scalar magnitude mismatch:
 
 $$
-s = \lVert \mathbf{k}_{\mathrm{out}} \rVert - \lVert \mathbf{k}_{\mathrm{in}} \rVert
+s = \lVert \mathbf{k}_{\mathrm{out}} \rVert - \lVert \mathbf{k}_{\mathrm{in}} \rVert = \lVert \mathbf{k}_{\mathrm{in}} + \mathbf{g} \rVert - \frac{1}{\lambda}
 $$
 
-and accepts candidates within a configured tolerance.
+### Equivalence to the Small-Angle Zone-Axis Excitation Error
+
+When the incident beam travels antiparallel to the zone axis $\hat{\mathbf{z}}$ such that $\mathbf{k}_{\mathrm{in}} = (0, 0, -1/\lambda)$, the scattered wavevector has components $\mathbf{k}_{\mathrm{out}} = (g_x, g_y, -1/\lambda + g_z)$, where $g_z = \mathbf{g}\cdot\hat{\mathbf{z}}$. Its magnitude is:
+
+$$
+\lVert \mathbf{k}_{\mathrm{out}} \rVert = \sqrt{g_x^2 + g_y^2 + \left(-\frac{1}{\lambda} + g_z\right)^2} = \sqrt{\frac{1}{\lambda^2} - \frac{2 g_z}{\lambda} + \lVert \mathbf{g} \rVert^2} = \frac{1}{\lambda}\sqrt{1 - 2\lambda g_z + \lambda^2 \lVert \mathbf{g} \rVert^2}
+$$
+
+Expanding the square root to first order in $\lambda$ ($\sqrt{1+u} \approx 1 + u/2$):
+
+$$
+\lVert \mathbf{k}_{\mathrm{out}} \rVert \approx \frac{1}{\lambda} \left(1 - \lambda g_z + \frac{\lambda^2 \lVert \mathbf{g} \rVert^2}{2}\right) = \frac{1}{\lambda} - g_z + \frac{\lambda \lVert \mathbf{g} \rVert^2}{2}
+$$
+
+Subtracting $\lVert\mathbf{k}_{\mathrm{in}}\rVert = 1/\lambda$ yields:
+
+$$
+s = \lVert \mathbf{k}_{\mathrm{out}} \rVert - \lVert \mathbf{k}_{\mathrm{in}} \rVert \approx -\left(g_z - \frac{\lambda \lVert \mathbf{g} \rVert^2}{2}\right) = -s_g
+$$
+
+Where $s_g = g_z - \frac{\lambda \lVert \mathbf{g} \rVert^2}{2}$ is the standard electron microscopy excitation error defined in the {ref}`Grand Technical Glossary <term-excitation-error>`. The 3D wavevector mismatch $|s|$ evaluated in the laboratory frame is thus algebraically identical to the small-angle deviation parameter $|s_g|$, ensuring mathematical consistency across all diffraction simulation modules in PyTex.
+
+Candidates are accepted when $|s| \le s_{\max}$ (typically $0.05\ \text{\AA}^{-1}$).
 
 ## Reflection Families
 

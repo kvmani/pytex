@@ -84,7 +84,7 @@ $$
 ## 2. Variational homogenization bounds
 
 Because exact stress and strain distributions depend on intergranular boundary topology
-and grain morphology, variational energy principles establish rigorous bounds on
+and grain morphology, variational energy principles establish rigorous {ref}`Voigt, Reuss, and Hill bounds <term-elastic-bounds>` on
 effective polycrystalline elasticity.
 
 ### 2.1 The Voigt bound (uniform strain)

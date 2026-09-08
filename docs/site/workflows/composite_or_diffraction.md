@@ -41,21 +41,17 @@ The workflow is strictly kinematic (no dynamical / multi-beam effects):
    $\mathbf{V}_i (\mathbf{u}, \mathbf{v}, \mathbf{z})$ — algebraically identical to
    pulling child reciprocal vectors back to the parent frame before projection.
    All sub-patterns therefore share one detector.
-3. **Reflection selection.** A reflection $\mathbf{g}$ is kept when its excitation
-   error $s_g = g_z - g^{2}\lambda / 2$ satisfies $|s_g| \le s_{\max}$, where $g_z$
-   is the zone-axis component of $\mathbf{g}$ and $\lambda$ is the relativistic
-   electron wavelength. This small-angle kinematic criterion treats rational parent
-   zones and irrational child zones uniformly and rigorously accounts for Ewald-sphere
-   curvature ($s_g = -g^{2}\lambda / 2 \le 0$ for exact zero-order-Laue-zone spots).
-4. **Intensity.** $I \propto |F_{hkl}|^{2}$ from the atomic-number electron
-   structure-factor proxy (with isotropic Debye-Waller damping), optionally multiplied by the
-   plane-parallel finite-thickness factor $\operatorname{sinc}^{2}(t s_g)$ or by the legacy
-   Lorentzian relrod proxy, with lattice-centering systematic absences applied. Each
-   sub-pattern is max-normalized; kinematic cross-phase intensity ratios are
-   undefined at this level of theory and are a rendering choice.
-5. **Detector map.** $r_{\mathrm{mm}} = \Lambda\, g_{\perp}$ with camera constant
-   $\Lambda$, the standard SAED
-   small-angle scale between reciprocal length and detector millimeters.
+3. **Reflection selection.** A reflection $\mathbf{g}$ is kept when its {ref}`excitation error <term-excitation-error>` $s_g$ satisfies $|s_g| \le s_{\max}$. In electron diffraction, $s_g$ represents the signed distance in reciprocal space from the reciprocal lattice node $\mathbf{g}$ to the {ref}`Ewald sphere <term-ewald-sphere>`. For an incident beam along $-\hat{\mathbf{z}}$, the small-angle expansion of the Ewald sphere intersection yields:
+   $$
+   s_g = g_z - \frac{\lambda \lVert \mathbf{g} \rVert^2}{2},
+   $$
+   where $g_z = \mathbf{g} \cdot \hat{\mathbf{z}}$ is the zone-axis component of $\mathbf{g}$ (in $\text{\AA}^{-1}$), $\lVert\mathbf{g}\rVert = 1/d$ is the reciprocal lattice vector magnitude (in $\text{\AA}^{-1}$), and $\lambda$ is the relativistic electron wavelength (in $\text{\AA}$). This criterion treats rational parent zones ($g_z = 0$) and irrational child zones ($g_z \neq 0$) uniformly, and rigorously accounts for Ewald-sphere curvature (since $s_g = -\lambda\lVert\mathbf{g}\rVert^2 / 2 \le 0$ for exact zero-order-Laue-zone reflections).
+4. **Intensity.** Kinematic intensity follows $I \propto |F_{hkl}|^{2}$ from the atomic-number electron structure-factor proxy (with isotropic Debye-Waller thermal damping). When specimen foil thickness $t$ is specified, the intensity is modulated by the plane-parallel {ref}`relrod shape factor <term-relrod>`:
+   $$
+   I_g(s_g, t) \propto |F_{hkl}|^2 \left[\frac{\sin(\pi t s_g)}{\pi t s_g}\right]^2 = |F_{hkl}|^2 \operatorname{sinc}^2(\pi t s_g),
+   $$
+   which naturally accounts for the finite excitation width of thin foil specimens without introducing multi-beam dynamical complexity. Lattice-centering systematic absences are strictly enforced. Each sub-pattern is max-normalized; kinematic cross-phase intensity ratios are a rendering choice.
+5. **Detector map.** Detector coordinates follow the linear relation $r_{\mathrm{mm}} = \Lambda\, g_{\perp}$ via the microscope {ref}`camera constant <term-camera-constant>` $\Lambda = L\lambda$, where $L$ is effective camera length and $g_{\perp} = \sqrt{\lVert\mathbf{g}\rVert^2 - g_z^2}$ is the in-plane component of $\mathbf{g}$.
 
 The relativistic wavelength
 

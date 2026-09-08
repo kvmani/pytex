@@ -32,7 +32,7 @@ $$
 \tau = \sigma \, m,
 $$
 
-where the **Schmid factor** $m$ is defined as:
+where the {ref}`Schmid factor <term-schmid-factor>` $m$ is defined as:
 
 $$
 m = \cos\phi\,\cos\lambda = (\mathbf{n} \cdot \mathbf{d})\,(\mathbf{b} \cdot \mathbf{d}),
@@ -137,7 +137,7 @@ $$
 $$
 
 PyTex solves this constrained linear program using `scipy.optimize.linprog` with the
-HiGHS interior-point and simplex solvers. The **Taylor factor** $M$ is then evaluated as:
+HiGHS interior-point and simplex solvers. The {ref}`Taylor factor <term-taylor-factor>` $M$ is then evaluated as:
 
 $$
 M = \frac{\sum_{s=1}^S |\gamma_s|}{\varepsilon_{\text{eq}}},

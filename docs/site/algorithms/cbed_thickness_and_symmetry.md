@@ -26,11 +26,7 @@ worth demonstrating.
 
 ## 1. Why a convergent beam carries the information
 
-A parallel beam sets one incident direction, so each reflection is one spot at
-one excitation error. Converging the beam onto the specimen illuminates a *cone*
-of incident directions at once. Every reflection becomes a **disc**, and
-position within a disc is incident direction — so a disc is a continuous scan of
-the rocking curve, recorded in one exposure.
+A parallel beam sets one incident direction, so each reflection is one spot at one {ref}`excitation error <term-excitation-error>` $s_g$. Converging the beam onto the specimen illuminates a *cone* of incident directions at once. Every reflection becomes a **disc**, and position within a disc is incident direction — so a disc is a continuous scan of the rocking curve, recorded in one exposure.
 
 Two consequences drive everything below:
 
@@ -42,7 +38,7 @@ Two consequences drive everything below:
 
 The disc half-angle is the convergence semi-angle $\alpha$; discs of radius
 $\alpha/\lambda$ sit at the reciprocal-lattice positions. Whether neighbouring
-discs overlap is the Kossel-Möllenstedt (separate) versus Kossel (overlapping)
+discs overlap is the {ref}`Kossel-Möllenstedt <term-cbed>` (separate) versus Kossel (overlapping)
 distinction, and `ConvergentBeamConfig` reports which regime it is in rather
 than leaving it to be inferred from the picture.
 
@@ -50,9 +46,9 @@ than leaving it to be inferred from the picture.
 
 ### 2.1 The physics, in one line
 
-In the two-beam approximation the diffracted intensity oscillates with depth at
-a rate set by the **effective** extinction distance, which stiffens as the
-reflection is tilted away from the Bragg condition:
+In two-beam dynamical theory, the diffracted intensity oscillates with depth at
+a rate set by the effective {ref}`extinction distance <term-extinction-distance>` $\xi_g^* = 1/s_{\mathrm{eff}}$, which stiffens as the
+reflection is tilted away from the Bragg condition ($s \neq 0$):
 
 $$
 I_g(s, t) = \frac{\sin^{2}(\pi t s_{\mathrm{eff}})}{(\xi_g s_{\mathrm{eff}})^{2}},

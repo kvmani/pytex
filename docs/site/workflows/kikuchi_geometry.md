@@ -22,7 +22,7 @@ cones — the Kossel cones — of semi-angle $90^\circ - \theta_B$ about the pla
 intersections with the detector are the two edges of the band, and the plane's own trace runs
 midway between them.
 
-The gnomonic projection is central projection from the diffraction source onto the detector plane,
+The {ref}`gnomonic projection <term-gnomonic-projection>` is central projection from the diffraction source onto the detector plane,
 in units of the detector distance. Its defining property is that **a great circle maps to a
 straight line**. A lattice-plane trace is a great circle, so:
 
@@ -36,15 +36,15 @@ edges are conics — hyperbolae at the small Bragg angles of electron diffractio
 textbook statement that the edges are straight and parallel to the centre is the small-angle
 approximation; PyTex does not make it, and samples the exact cones instead.
 
-## Band Width Measures The Lattice
+## Band Width Measures The Lattice Inversely
 
-The angular width of a band is exactly $2\theta_B$, and
+The angular width of a {ref}`Kikuchi band <term-kikuchi-bands>` is exactly $2\theta_B$, and:
 
-$$\sin\theta_B = \frac{\lambda}{2d},$$
+$$
+\sin\theta_B = \frac{\lambda}{2d}, \qquad 2\theta_B \approx \frac{\lambda}{d},
+$$
 
-so a wide band means a large interplanar spacing. This is what makes band widths usable for phase
-discrimination. For nickel at 20 kV the strongest bands, from $\{111\}$ with $d = 2.0345$ Å, are
-about 2.42 degrees wide — a value the worked example
+so **band width is an inverse measurement of interplanar spacing**: wide bands correspond to small interplanar spacings (high-index planes), while narrow, intense bands correspond to large interplanar spacings (low-index planes). This is what makes band widths usable for phase discrimination and lattice indexing. For nickel at 20 kV the prominent bands from $\{111\}$ with $d = 2.0345$ Å are about 2.42 degrees wide — a value the worked example
 `diffraction-ni-111-kikuchi-band-width` computes live and checks against a hand derivation.
 
 The *apparent* width in gnomonic units is a different quantity: the projection stretches with

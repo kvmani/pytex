@@ -32,7 +32,7 @@ $$
   A_{gh} = \nu_{g-h} \quad (g \neq h)
 $$ (eq-dyn-system)
 
-with the excitation errors $s_{g}(\boldsymbol{\theta})$ of Eq. (1) of the companion note
+with the {ref}`excitation errors <term-excitation-error>` $s_{g}(\boldsymbol{\theta})$ of Eq. (1) of the companion note
 and the Fourier coefficients of the scaled potential
 
 $$
@@ -41,7 +41,7 @@ $$
 $$ (eq-dyn-nu)
 
 The scaling in {eq}`eq-dyn-nu` is chosen so that the modulus of the coupling coefficient is
-exactly the reciprocal of the two-beam extinction distance already validated against Williams
+exactly the reciprocal of the two-beam {ref}`extinction distance <term-extinction-distance>` $\xi_g$ already validated against Williams
 and Carter's Table 23.1. The absolute scale of the many-beam calculation is therefore not a
 second, independent claim: it is the same claim, and it is pinned by the two-beam limit below.
 

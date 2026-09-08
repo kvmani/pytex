@@ -4,9 +4,9 @@ Kernel-average misorientation (KAM) is a local orientation-gradient metric on an
 now computes it on a shared neighbor-graph substrate rather than only on a fixed regular-grid
 implementation path.
 
-## Definition
+## Definition and Physical Meaning
 
-For a measurement site $i$ with neighbor set $\mathcal{N}(i)$, PyTex uses
+{ref}`Kernel-average misorientation (KAM) <term-kam>` quantifies local intragranular lattice distortion and orientation gradients from 2D EBSD maps. For a measurement pixel $i$ with valid neighbor set $\mathcal{N}(i)$, PyTex computes:
 
 ```{math}
 \mathrm{KAM}(i) =
@@ -14,14 +14,30 @@ For a measurement site $i$ with neighbor set $\mathcal{N}(i)$, PyTex uses
 \sum_{j \in \mathcal{N}(i)} \omega\!\left(g_i, g_j\right),
 ```
 
-where $\omega$ is the misorientation angle or the symmetry-reduced disorientation angle,
-depending on `symmetry_aware`.
+where $\omega(g_i, g_j)$ is the {ref}`disorientation angle <term-disorientation>` (when `symmetry_aware=True`) or the unsymmetrized misorientation angle.
+
+### Relation to Lattice Curvature and Dislocation Density
+
+In deformed crystals, local misorientations across neighboring pixels reflect underlying lattice curvature $\boldsymbol{\kappa} = \nabla\boldsymbol{\omega}$. To leading order, the scalar misorientation angle per neighbor step $\Delta x$ approximates local curvature:
+
+$$
+\kappa \approx \frac{\mathrm{KAM}}{\Delta x}
+$$
+
+Through the Nye dislocation tensor $\boldsymbol{\alpha} = \boldsymbol{\kappa}^\mathsf{T} - \operatorname{tr}(\boldsymbol{\kappa})\mathbf{I}$, this curvature provides an experimental proxy for {ref}`Geometrically Necessary Dislocation (GND) <term-gnd>` density:
+
+$$
+\rho_{\mathrm{GND}} \approx \frac{\alpha_{\mathrm{geom}} \, \mathrm{KAM}}{b \, \Delta x}
+$$
+
+where $b$ is the dislocation Burgers vector magnitude (in $\text{m}$), $\Delta x$ is the grid spacing (in $\text{m}$), and $\alpha_{\mathrm{geom}}$ is a dimensionless geometric factor ($\sim 2-3$ depending on boundary type and slip geometry).
+
+High-angle grain boundaries represent discrete structural interfaces rather than continuous lattice curvature. Setting an upper threshold angle $\theta_{\mathrm{threshold}}$ (typically $2^\circ$ to $5^\circ$) excludes intergranular boundaries so that the computed metric selectively reflects intragranular deformation.
 
 ## What PyTex Exposes
 
 - regular-grid adjacency for 4- and 8-connectivity
 - staggered hexagonal-grid adjacency with the natural 6-connectivity
-- graph-backed adjacency for irregular coordinate sets
 - explicit neighbor order
 - optional thresholding
 - symmetry-aware or raw-angle evaluation

@@ -27,7 +27,7 @@ of each modality.
 
 For a crystal orientation characterized by a unit basal pole $\mathbf{v} \parallel [0001]$
 in the specimen reference frame, the angle $\alpha_d$ relative to a specimen direction
-$\mathbf{d}$ satisfies $\cos\alpha_d = \mathbf{v} \cdot \mathbf{d}$. The Kearns parameter
+$\mathbf{d}$ satisfies $\cos\alpha_d = \mathbf{v} \cdot \mathbf{d}$. The {ref}`Kearns parameter <term-kearns-parameter>`
 $f_d$ is defined as the ensemble-averaged squared direction cosine:
 
 $$

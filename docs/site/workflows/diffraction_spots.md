@@ -35,16 +35,24 @@ PyTex now exposes `ZoneAxis` as a direct-space object with explicit phase meanin
 
 ## Ewald-Style Spot Selection
 
-The current kinematic simulation follows the standard teaching geometry:
+The kinematic diffraction engine simulates spot patterns by testing reciprocal lattice vectors against the {ref}`Ewald sphere <term-ewald-sphere>`:
 
-1. construct reciprocal vectors from Miller indices
-2. map them from crystal coordinates into specimen coordinates through the orientation
-3. map specimen coordinates into laboratory coordinates through the explicit specimen-to-lab rotation
-4. form $\mathbf{k}_{\text{out}} = \mathbf{k}_{\text{in}} + \mathbf{g}$
-5. keep candidates whose excitation error is small enough
-6. project the outgoing direction onto the detector plane
-7. group symmetry-equivalent reflections into explicit reflection families
-8. assign a minimal proxy intensity for ranking and filtering
+1. Construct reciprocal lattice vectors $\mathbf{g} = h\mathbf{a}^* + k\mathbf{b}^* + l\mathbf{c}^*$ from Miller indices $(hkl)$ in crystal coordinates.
+2. Transform $\mathbf{g}$ into specimen coordinates via the crystal {ref}`orientation <term-reference-frame>` $\mathbf{R}_{\mathrm{c}\to\mathrm{s}}$.
+3. Transform specimen coordinates into laboratory coordinates via the instrument specimen-to-laboratory rotation $\mathbf{R}_{\mathrm{s}\to\mathrm{lab}}$.
+4. Form the candidate scattered wavevector:
+   $$
+   \mathbf{k}_{\text{out}} = \mathbf{k}_{\text{in}} + \mathbf{g}
+   $$
+   where $\mathbf{k}_{\text{in}}$ is the incident wavevector with magnitude $|\mathbf{k}_{\text{in}}| = 1/\lambda$.
+5. Evaluate the {ref}`excitation error <term-excitation-error>` as the scalar wavevector mismatch:
+   $$
+   s = \lVert \mathbf{k}_{\text{out}} \rVert - \lVert \mathbf{k}_{\text{in}} \rVert = \lVert \mathbf{k}_{\text{in}} + \mathbf{g} \rVert - \frac{1}{\lambda}
+   $$
+   When $\mathbf{k}_{\text{in}}$ is aligned antiparallel to the zone axis $\hat{\mathbf{z}}$, a first-order Taylor expansion yields $s \approx -s_g = -\left(g_z - \frac{\lambda \lVert\mathbf{g}\rVert^2}{2}\right)$. Candidates are accepted when $|s| \le s_{\max}$ (or $|s_g| \le s_{\max}$).
+6. Project accepted outgoing directions $\hat{\mathbf{k}}_{\text{out}} = \mathbf{k}_{\text{out}} / \lVert\mathbf{k}_{\text{out}}\rVert$ onto the detector plane $(u, v)$ via the camera length and detector basis.
+7. Group symmetry-equivalent reflections into explicit reflection families $\{hkl\}$.
+8. Assign proxy or physical structure-factor intensities modulated by the {ref}`relrod shape factor <term-relrod>` $I \propto \operatorname{sinc}^2(\pi t s_g)$ for ranking and visualization.
 
 ![Kinematic Spot Projection](../../figures/kinematic_spot_projection.svg)
 

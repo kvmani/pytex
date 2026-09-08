@@ -37,7 +37,7 @@ to preserve consistent crystal-to-specimen mapping.
 
 Measured relative rotations $\mathbf{V}_i$ cannot be compared directly without symmetry
 treatment. Each crystal orientation is defined only modulo its respective crystal point
-group, and distinct grains form through different **variants** of the same transformation
+group, and distinct grains form through different {ref}`variants <term-variant>` of the same transformation
 relationship related by parent symmetry operations. Consequently, two pairs obeying the
 identical orientation relationship can exhibit raw relative rotations differing by tens
 of degrees. Accurately determining the underlying relationship requires systematically
@@ -51,7 +51,7 @@ rotations. Every description of one measurement is
 $$\mathbf{S}_c\,\mathbf{V}_i\,\mathbf{S}_p, \qquad
 \mathbf{S}_c \in G_c,\; \mathbf{S}_p \in G_p ,$$
 
-the **double coset** $G_c \mathbf{V}_i G_p$. Its size is the number of
+the {ref}`double coset <term-double-coset>` $G_c \mathbf{V}_i G_p$. Its size is the number of
 descriptions the algorithm must choose among for each pair:
 
 | system | example | $\lvert G_p \rvert$ | $\lvert G_c \rvert$ | descriptions per pair |
