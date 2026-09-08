@@ -18,14 +18,14 @@ This page drills into the diffraction layer as the detector, beam, and reciproca
 :class: architecture-poster-figure
 :::
 
-## Why This Layer Matters
+## Geometric Rigor and Coordinate Invariance
 
-Diffraction is where PyTex has to keep geometry honest:
+Diffraction calculations require explicit frame distinctions:
 
-- detector coordinates are not specimen coordinates
-- reciprocal-space quantities are not detector-plane offsets
-- kinematic spot generation must preserve frame ownership
-- local indexing should remain interpretable rather than becoming a black box
+- detector coordinates are distinct from specimen coordinates
+- reciprocal-space wavevectors must not be conflated with detector-plane projections
+- kinematic spot simulations must maintain explicit coordinate system provenance
+- indexing solutions must provide transparent residuals rather than unverified heuristic matches
 
 ## Current State
 

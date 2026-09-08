@@ -23,8 +23,8 @@ conventions, references, and API behavior.
 | 2 | Increment 2: Algorithm pages — Orientation Relationships & Microstructure (`or_det`, `variant`, `parent_recon`, `csl`, `ebsd_grains`, `kikuchi`, `misorientation`) | Complete |
 | 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | Complete |
 | 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | Complete |
-| 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | In progress |
-| 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | Pending |
+| 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | Complete |
+| 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | In progress |
 
 ### Increment 1 Technical Summary
 - `docs/site/algorithms/cbed_thickness_and_symmetry.md`: Replaced colloquial/rhetorical wording ("fishing expedition" -> physical regularisation; "projection symmetry is generally higher than the truth" -> projection symmetry can exceed 3D crystal symmetry; "three refusals, and why each is right" -> diagnostic error conditions and physical constraints).
@@ -71,6 +71,13 @@ conventions, references, and API behavior.
 - `docs/site/theory/kearns_parameter_and_basal_pole_texture.md`: Upgraded introduction to formal second-moment orientation tensor and multi-technique equivalence.
 - `docs/site/theory/schmid_and_taylor_plasticity.md`: Formalized complementary stress- and strain-controlled plastic formulations.
 - `docs/site/theory/orientation_relationship_determination.md`: Refined introduction to double-coset symmetry quotienting, Karcher Riemannian mean refinement, and rational parallelism recovery.
+- Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
+
+### Increment 5 Technical Summary
+- `docs/site/concepts/diffraction_foundation.md`: Replaced conversational phrasing with rigorous geometric coordinate invariance and frame distinction principles.
+- `docs/site/workflows/composite_or_diffraction.md`: Upgraded Ewald-sphere curvature treatment, exact child-zone rationalization, and space-group centering verification.
+- `docs/site/workflows/saed_pattern_solving.md`: Standardized solution diagnostics and uniqueness criteria; clarified physical off-zone partial matching expectations.
+- `docs/site/workflows/tem_pattern_indexing.md`: Formulated end-to-end TEM workflow overview and camera constant calibration significance.
 - Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
 
 ## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)

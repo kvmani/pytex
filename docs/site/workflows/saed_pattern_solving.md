@@ -96,12 +96,11 @@ intensities at all. Geometry alone decides.
 
 Systematic absences come from each phase's space group, so a phase supplied
 without one is treated as primitive and may be offered reflections its real
-structure forbids — the same trap described in
-{doc}`composite_or_diffraction`.
+structure forbids, as discussed in {doc}`composite_or_diffraction`.
 
-## Reading the answer honestly
+## Solution Diagnostics and Uniqueness Criteria
 
-Three things the report tells you that a bare indexing would not:
+Three properties reported by the solver distinguish physical solutions from ambiguous matches:
 
 **The zone-sense ambiguity is intrinsic.** A single SAED pattern cannot
 distinguish a zone axis from its reverse when the reflection set is
@@ -140,8 +139,9 @@ relationship at all — worth checking rather than assuming.
   zone**. A crystal tilted off zone — for instance a transformation variant seen
   from a *parent* zone axis, whose own child zone axis is generally irrational —
   produces spots that do not all lie in one zero-order Laue zone, and will be
-  only partly indexed. That partial match is the honest outcome; a full match
-  would mean the solver was inventing reflections.
+  only partly indexed. Partial matching is the expected physical result under
+  off-zone conditions; forcing a complete match would spuriously include
+  reflections whose excitation errors exceed physical tolerances.
 - Zero-order Laue zone only: no HOLZ rings, and no double-diffraction spots.
 - Spot *detection* from image data is out of scope. The solver consumes picked
   or listed coordinates; `DiffractionPattern.cluster_observations` is the

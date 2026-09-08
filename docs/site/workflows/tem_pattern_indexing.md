@@ -1,9 +1,10 @@
 # Indexing A Pattern And Choosing Where To Tilt Next
 
-This page is the microscope session, in order: what am I looking at, what is it,
-where should I go next, and how do I get there. It is the workflow the TEM panel
-of the workbench implements, and every step of it is available from Python
-without the application.
+This guide presents an integrated experimental workflow for transmission electron microscopy:
+importing selected-area electron diffraction (SAED) patterns, calibrating camera constants,
+refining planar lattice geometry and beam centers, indexing candidate zone axes, and calculating
+double-tilt stage angles $(\alpha, \beta)$ to navigate between zone axes. The workflow is
+accessible interactively in the workbench TEM panel and scriptable via Python APIs.
 
 The companion pages are
 [Solving a measured SAED pattern](saed_pattern_solving.md) for the indexing
@@ -85,9 +86,9 @@ Note what the calibration does *not* affect. The ratio of two lengths on the sam
 plate, and the angle between them, are calibration-free — which is why the
 ratio-and-angle method identifies a zone axis without it, and why the hcp
 prism-zone aspect ratio measures $c/a$ on an uncalibrated instrument. The camera
-constant enters only when an absolute spacing is wanted. That is exactly why a
-wrong camera constant is dangerous: it produces a self-consistent pattern of the
-wrong material rather than an obviously broken one.
+constant enters only when an absolute reciprocal spacing is required. An inaccurate
+camera constant can yield an internally consistent zone axis indexing corresponding to
+an incorrect phase metric, underscoring the importance of verified standard calibration.
 
 ## 3. Fit the lattice, and settle the beam centre
 

@@ -45,7 +45,7 @@ The workflow is strictly kinematic (no dynamical / multi-beam effects):
    error $s_g = g_z - g^{2}\lambda / 2$ satisfies $|s_g| \le s_{\max}$, where $g_z$
    is the zone-axis component of $\mathbf{g}$ and $\lambda$ is the relativistic
    electron wavelength. This small-angle kinematic criterion treats rational parent
-   zones and irrational child zones uniformly and stays honest about Ewald-sphere
+   zones and irrational child zones uniformly and rigorously accounts for Ewald-sphere
    curvature ($s_g = -g^{2}\lambda / 2 \le 0$ for exact zero-order-Laue-zone spots).
 4. **Intensity.** $I \propto |F_{hkl}|^{2}$ from the atomic-number electron
    structure-factor proxy (with isotropic Debye-Waller damping), optionally multiplied by the
@@ -139,9 +139,9 @@ single-phase {doc}`saed_generation` workflow does:
 
 The child zone axes are stored as exact `CrystalDirection` objects;
 {func}`~pytex.diffraction.rationalize_zone_axis` supplies nearest-integer
-`[uvw]` labels with an honest angular deviation, so a Kurdjumov-Sachs child
+`[uvw]` labels with the exact angular deviation, so a Kurdjumov-Sachs child
 zone that lands exactly on $\langle 111 \rangle$ reports $0^{\circ}$ while an off-zone variant
-reports its true tilt.
+reports its true tilt angle.
 
 ## Anchoring On A Product Zone Instead
 
@@ -224,19 +224,18 @@ exact and nearest-rational child zone axis, and the full simulation
 configuration. Figures are closed after writing, so calling it in a loop leaks
 nothing.
 
-### The centering trap
+### Space Group Centering Verification
 
-`ReflectionCondition.from_phase` reads the lattice centering from the first
-letter of a phase's space-group symbol, and falls back to primitive when the
-phase carries none. A body-centred phase supplied **without** that metadata is
-therefore simulated as primitive, and its pattern shows reflections the real
-structure forbids — with nothing in the spot list to say so.
+`ReflectionCondition.from_phase` extracts lattice centering from the space-group Hermann–Mauguin symbol
+and falls back to primitive centering when none is specified. A body-centered or face-centered phase
+supplied without space-group metadata is therefore simulated as primitive, causing the pattern to
+display reflections forbidden by the true physical centering.
 
-`pattern.centering_audit()` reports, per phase, the centering applied and
-whether it was *declared* or *assumed*; `describe()` and the manifest carry the
-same statement, and the reflection table's `describe()` raises a warning when
-anything was assumed. If a simulated bcc pattern shows a $\{100\}$ reflection,
-this is why.
+`pattern.centering_audit()` reports, per phase, the centering applied and whether it was declared
+explicitly or assumed by fallback. The `describe()` method and the JSON manifest record this status,
+and the reflection table issues a warning whenever fallback centering was invoked. For example,
+a simulated BCC pattern that erroneously displays $\{100\}$ reflections indicates missing space-group
+centering metadata.
 
 ## Current Limits
 
