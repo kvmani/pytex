@@ -227,8 +227,8 @@ half-width is $\Delta\theta = 1/(t|\mathbf{g}_{\perp}|)$. It narrows in proporti
 thickness — HOLZ metrology wants a *thick* specimen, the opposite of the usual thin-foil
 instinct.
 
-**The metrology, and the trap in it.** Scaling the lattice by $1+\varepsilon$ shrinks
-every $\mathbf{g}$ by the same factor. Substituting into {eq}`eq-holz-line`,
+**Strain metrology and accelerating voltage covariance.** Scaling the lattice by $1+\varepsilon$
+contracts reciprocal lattice vectors by $(1+\varepsilon)^{-1}$. Substituting into {eq}`eq-holz-line`,
 
 $$
 d_{g}(\varepsilon, \lambda) = \frac{g_{z}}{|\mathbf{g}_{\perp}|}
@@ -238,13 +238,13 @@ d_{g}(\varepsilon, \lambda) = \frac{g_{z}}{|\mathbf{g}_{\perp}|}
     = \frac{\lambda|\mathbf{g}|^{2}}{2|\mathbf{g}_{\perp}|}
 $$
 
-and the wavelength enters the same term with the opposite sign. Setting $\lambda \to \lambda(1+\varepsilon)$ therefore cancels a lattice strain $\varepsilon$ exactly, at every
-reflection simultaneously. *A fractional change in lattice parameter and a fractional
-change in wavelength are indistinguishable from HOLZ line positions.* This is not a limitation
-of the model: it is why quantitative HOLZ metrology begins by calibrating the accelerating
-voltage against a standard of known lattice parameter, and why an uncalibrated measurement of a
-lattice parameter is a measurement of the high-tension supply. `pytex` asserts the
-degeneracy to $10^{-16}$ rather than describing it.
+Because electron wavelength enters the second term with equal magnitude and opposite algebraic sign,
+setting $\lambda \to \lambda(1+\varepsilon)$ identically cancels isotropic lattice dilation across all
+reflections simultaneously. *A uniform fractional change in lattice parameter and an equivalent
+fractional change in electron wavelength are kinematically degenerate.* Consequently, quantitative
+HOLZ lattice parameter and strain metrology requires prior calibration of the microscope accelerating
+voltage against an unstrained reference standard. PyTex confirms this exact numerical invariance
+in unit test suites.
 
 **Why intersections are measured, not lines.** For nickel down $[001]$ at 200 kV in a
 $1000$ Å foil, the best single line moves $0.059$ mrad per unit strain against a
@@ -319,10 +319,11 @@ with the coupled method and reading the symmetry back separates them with residu
 against $0.32$, and inverting the observation returns $\{\bar{4}2m, \bar{4}3m\}$ for the
 polar structure with the centrosymmetry verdict *false*. Confine the beam set to the
 zeroth Laue zone and the same crystal reports the four-fold whole-pattern symmetry of a
-centrosymmetric one: the projected potential of zincblende down $[001]$ *is*
-centrosymmetric. That is the single most important caveat in CBED symmetry work, and it is
-enforced rather than described — `symmetry_observations` refuses a projection
-calculation unless asked a second time.
+centrosymmetric one: the projected potential of zincblende down $[001]$ is centrosymmetric.
+This illustrates a fundamental physical constraint in CBED symmetry analysis: 2D projection
+symmetry in the ZOLZ can exceed 3D crystal symmetry, necessitating 3D HOLZ beam inclusion for
+unambiguous determination of non-centrosymmetric point groups. PyTex enforces this constraint
+in `symmetry_observations`.
 
 **Not implemented.** Buxton's table also lists dark-field and $\pm\mathbf{G}$
 symmetries for reflections lying on symmetry lines, recorded at their own Bragg conditions.

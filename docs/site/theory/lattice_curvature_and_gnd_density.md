@@ -93,32 +93,27 @@ $$
 \rho_{\mathrm{GND}} = \frac{2\theta}{b\,u}
 $$
 
-with $\theta$ the kernel average misorientation and $u$ the step size. It is
-cruder — it discards the direction of the gradient — but it is what much of
-the EBSD literature reports, so it is provided for comparability. For a pure
-single-axis tilt the two agree exactly: the four-connectivity KAM at an interior
-point is half the per-step misorientation, so $2\theta/(bu)$ reduces to
-$(\mathrm{d}\theta/\mathrm{d}x)/b$, which is the curvature result. PyTex pins
-that agreement as a test, which cross-checks the two implementations against
-each other rather than against a recorded number.
+where $\theta$ denotes the kernel average misorientation in radians, $u$ is the spatial step
+size, and $b$ is the Burgers vector magnitude. While this scalar formulation omits gradient
+directionality, it is standard in the metallurgical literature for comparative characterization.
+For an idealized single-axis tilt boundary, the scalar model and the curvature tensor formulation
+yield identical results: on a four-connected grid, the interior KAM equals half the per-step
+misorientation, so $2\theta/(bu)$ reduces to $(\partial\theta/\partial x)/b$. PyTex verifies this
+exact equivalence in unit tests.
 
-## Two Honest Caveats
+## Methodological Assumptions and Physical Constraints
 
-**It is a lower bound.**
+**Lower-bound property.** Dislocation dipoles and multipoles that produce no net lattice
+curvature do not induce spatial orientation gradients, and statistically stored dislocations (SSDs)
+cancel over short correlation lengths. Consequently, $\rho_{\mathrm{GND}}$ represents a rigorous
+lower bound on the total dislocation density ($\rho_{\text{total}} = \rho_{\mathrm{GND}} + \rho_{\mathrm{SSD}}$).
 
-Dislocation content producing no in-plane curvature is invisible to a surface
-map, and statistically stored content is invisible by construction. A reported
-$\rho_{\mathrm{GND}}$ is therefore always a lower bound on the total dislocation
-density, and usually a substantial one.
-
-**It is resolution dependent.**
-
-GND density measured from an orientation map is not a property of the material
-alone. A finer step resolves sharper gradients and reports a higher density,
-because sub-step curvature is averaged away. The step size must be quoted with
-any value, and two maps are comparable only at equal step size. PyTex keeps the
-step scale an explicit argument for this reason, and pins the scaling behaviour
-as a test so it cannot be silently normalized away.
+**Resolution dependence.** Dislocation density derived from orientation gradient mapping is not an
+intrinsic material constant independent of measurement scale. Finer acquisition step sizes resolve
+higher local curvature gradients, systematically increasing computed $\rho_{\mathrm{GND}}$.
+Quantitative comparisons across specimens are valid only when acquired at identical spatial step
+sizes and evaluated with identical kernel topologies. PyTex requires explicit declaration of the
+step scale argument to ensure transparency.
 
 ## Units
 

@@ -1,24 +1,26 @@
 # Precise Lattice-Parameter Determination
 
-This note derives the methods PyTex uses to determine a unit cell from a measured powder
-diffractogram, and explains why the obvious method fails. It covers peak detection and profile
-fitting, the aberrations of a laboratory diffractometer, K$\alpha_2$ treatment, indexing and its
-figures of merit, and the two determination methods — Cohen least squares on the reciprocal metric
-tensor, and Le Bail whole-pattern decomposition.
+This note derives the methods implemented in PyTex for high-precision unit-cell parameter
+determination from measured powder X-ray diffractograms. It contrasts naive reflection averaging
+with aberration-corrected formulations, detailing automated peak identification, laboratory
+diffractometer systematic error profiles, doublet handling, indexing figures of merit, and
+parameter determination via Cohen least squares on the reciprocal metric tensor and whole-pattern
+Le Bail decomposition.
 
 The implementation lives in `pytex.diffraction.xrd_peaks`, `pytex.diffraction.xrd_corrections`,
 `pytex.diffraction.xrd_indexing` and `pytex.diffraction.xrd_lattice_parameter`.
 
 **This is determination, not refinement.** Nothing here varies an atomic coordinate, a thermal
 parameter, or a site occupancy. The structure is held fixed and only the cell and the errors of the
-instrument are determined. That restriction is the point: it is what stops texture and an imperfect
-structural model from leaking into the answer. For structure refinement see
-{doc}`../algorithms/index` and `pytex.diffraction.rietveld`.
+instrument are determined. That restriction is deliberate: it prevents preferred orientation and
+imperfect structural models from biasing the lattice parameters. For full crystal structure
+refinement see {doc}`../algorithms/rietveld_refinement` and `pytex.diffraction.rietveld`.
 
-## 1. Why averaging over reflections does not work
+## 1. Systematic Error Propagation in Individual Reflection Spacings
 
-The intuitive method is to compute a lattice parameter from each reflection and average. It is
-worth understanding precisely, because it fails for a reason that no amount of extra data repairs.
+A direct method calculates an apparent lattice parameter independently from each indexed reflection
+and computes their arithmetic mean. Examining the differential error propagation demonstrates why
+this approach is systematically limited:
 
 Differentiating Bragg's law $\lambda = 2 d \sin\theta$ at fixed $\lambda$,
 
@@ -336,19 +338,20 @@ $$
    Levenberg–Marquardt;
 4. repeat.
 
-Step 2 is the whole trick. A Pawley fit instead treats the intensities as free least-squares
-parameters, whose normal matrix becomes singular exactly when two reflections overlap completely —
-which is the case the method exists to handle. Le Bail's partition is stable there, because two
-exactly coincident reflections simply split the intensity in their current ratio and neither the
-cell nor the fit notices.
+Step 2 represents the key decoupling mechanism that distinguishes Le Bail decomposition from
+Pawley refinement. Pawley fitting treats reflection intensities as unconstrained least-squares
+parameters, causing the normal matrix to become ill-conditioned or singular whenever reflections
+overlap closely. Le Bail's intensity partition remains numerically stable under overlap:
+coincident reflections partition observed intensity according to their current calculated ratio,
+enabling continuous profile convergence without matrix singularity.
 
-Because the intensities are extracted rather than modelled, **neither texture nor a wrong atomic
-basis can bias the cell**. The converse is that Le Bail intensities are fine for describing a
-profile and unfit for structural work: for two reflections that overlap completely, the partition
-between them is whatever ratio the iteration started with.
+Because reflection intensities are extracted directly from the observed pattern rather than computed
+from atomic coordinates, **preferred orientation, unmodeled atomic coordinates, and site occupancies
+cannot bias the extracted unit cell**. Conversely, Le Bail extracted intensities reflect the
+initial partition ratio for completely overlapping reflections and should not be used as structure
+factors for ab-initio crystal structure solution.
 
-Three implementation points are load-bearing, and each of them produced a *wrong cell* rather than
-merely a poor fit when got wrong:
+Three implementation considerations are essential for physical validity:
 
 - **The profile of one reflection is the whole K$\alpha$ multiplet.** Modelling only $\alpha_1$
   against doublet data leaves a residual as large as the $\alpha_2$ peak itself, which the

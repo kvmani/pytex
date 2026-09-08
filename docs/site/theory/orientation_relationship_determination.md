@@ -1,9 +1,11 @@
 # Determining An Orientation Relationship From Measured Orientations
 
-The index-correspondence note fixes what an orientation relationship *does* once its
-rotation $\mathbf{R}$ is known. This note fixes how $\mathbf{R}$ is *recovered* from
-measured parent and child orientations, and how it is then named and stated. The algorithm is
-implemented in `pytex.core.transformation.characterize_orientation_relationship`.
+This note derives the mathematical formulation and optimization framework implemented in
+`pytex.core.transformation.characterize_orientation_relationship` to determine orientation
+relationships from experimental parent and child orientation data. It covers double-coset symmetry
+quotienting, data-driven Karcher mean refinement on the $\mathrm{SO}(3)$ Riemannian manifold,
+automated classification against classical cataloged relationships, and recovery of rational
+plane and direction parallelisms.
 
 ## The Measured Quantity
 

@@ -1,10 +1,13 @@
 # The Kearns Parameter And Basal-Pole Texture
 
-The Kearns parameter $f$ is the most used scalar index of texture in the zirconium industry, and
-it is quoted in component specifications, correlated with irradiation growth and creep, and
-measured routinely by four different techniques that do not always agree. This note derives it,
-shows that all four techniques estimate one and the same tensor, and works out exactly how much
-each technique's approximations cost.
+The Kearns orientation parameter $f$ serves as the canonical second-moment texture metric for
+hexagonal close-packed materials (notably zirconium and titanium alloys). It correlates directly
+with anisotropic physical properties governed by second-rank tensors, including thermal expansion,
+irradiation growth, and macroscopic compliance. This note derives the orientation tensor
+formulation of the Kearns parameter, demonstrates the mathematical equivalence of its four
+standard experimental determination routes (XRD direct integration, inverse pole figure integration,
+Bunge ODF expansion, and EBSD discrete averaging), and quantifies the systematic errors associated
+with experimental approximations.
 
 ## Why One Number Can Replace An Orientation Distribution
 

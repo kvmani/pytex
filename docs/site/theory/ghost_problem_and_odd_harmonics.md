@@ -100,20 +100,21 @@ Three things, only one of which is a computation:
 3. **Anomalous scattering**, which breaks Friedel's law and is the only way a diffraction
    experiment itself can see the difference. It is rarely exploited for texture.
 
-## What PyTex Does
+## Implementation Formulation in PyTex
 
-`HarmonicODF` carries `even_degrees_only` as an explicit, recorded field, defaulting to `True` when
-the inputs are antipodal pole figures. The default is the honest one: it declines to invent the
-half of the ODF the data cannot support, rather than returning odd coefficients that are artefacts
-of the regularizer. The flag is part of the object, so a reconstruction states on its face which
-half of orientation space it is speaking about.
+`HarmonicODF` records `even_degrees_only` as an explicit metadata attribute, defaulting to `True`
+when the input consists of centrosymmetric (antipodal) diffraction pole figures. This default policy
+ensures that unconstrained odd-degree harmonic coefficients are not spuriously populated by numerical
+regularization artifacts in the absence of explicit non-negativity optimization. The attribute
+remains permanently attached to the reconstruction object to preserve scientific provenance.
 
-The forward operator folds opposite normals together whenever the pole figure declares itself
-antipodal, which is Friedel's law written into the model rather than only into the prose. That
-folding is what makes the degeneracy exact in the code: an odd-degree basis function produces no
-predicted pole density at all, so nothing in the fit can depend on it. Without the folding the
-operator would appear to determine part of the odd component — an artefact of the model, not a
-measurement — and a correction could not honestly claim to leave the fit alone.
+The forward projection operator explicitly folds antipodal pole directions together whenever the
+input pole figure declares centrosymmetry, embedding Friedel's law directly into the mathematical
+model. This operator structure enforces exact mathematical degeneracy: odd-degree spherical harmonic
+basis functions evaluate to zero under antipodal projection, preventing regularized inversion from
+fitting spurious odd components. Without explicit antipodal folding, numerical discretization
+quadrature errors could spuriously couple odd harmonics to the measured projections, compromising
+the orthogonality of the subsequent ghost-correction phase.
 
 (the-correction-pytex-applies)=
 ## The Correction PyTex Applies

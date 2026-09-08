@@ -1,34 +1,38 @@
 # Pole-Figure Arithmetic And The m.r.d. Scale
 
-A pole figure is a density on a sphere, and almost every mistake made with one comes from treating
-it as an image instead. Three of those mistakes are silent — they produce a plausible figure with
-the wrong numbers on it — and each has an exact closed form showing how wrong.
+A pole figure represents a probability density function defined over the two-dimensional unit
+sphere $\mathbb{S}^2$. Because the spherical metric differs fundamentally from Euclidean planar
+geometry, treating pole figures as planar images introduces systematic errors in normalization,
+averaging, and residual calculation.
 
-This note covers the scale on which pole densities are reported, the weights that make an average
-over measured data an integral, and what a difference of two pole figures is.
+This note formalizes the integral definition of the multiples of a random distribution (m.r.d.)
+scale, derives the solid-angle weighting required for equiangular diffractometer rasters, and
+distinguishes true pole densities from signed residual difference fields.
 
 ## m.r.d. Is Defined By An Integral
 
 Densities are reported in **multiples of a random distribution**: the value is 1 wherever the
-distribution is what a texture-free aggregate would give. The definition is a property of an
-integral,
+distribution equals that of a texture-free, macroscopically isotropic aggregate. The definition is
+governed by a spherical surface integral,
 
 $$
 \frac{1}{4\pi}\oint P_{hkl}(\mathbf{y}) \, \mathrm{d}\Omega = 1 ,
 $$ (eq-pf-mrd)
 
-and not of a maximum or of a sum. A figure normalised so its *peak* is 1, or so its samples *sum*
-to 1, is on neither scale and cannot be compared with a published texture strength. The identity
-that fixes it is that a uniform ODF sends poles uniformly over the sphere, so its pole figure is
-flat at exactly 1 m.r.d. in every direction and for every plane family — which is the check worth
-running whenever a normalisation is in doubt.
+and not by peak height or unweighted sample summation. A figure normalized so that its peak value
+equals 1, or so that discrete point samples sum to 1, does not satisfy the m.r.d. metric and cannot
+be directly compared with quantitative texture data. A uniform orientation distribution produces
+uniformly distributed poles on $\mathbb{S}^2$, yielding a constant value of exactly 1 m.r.d. in
+every direction and for every crystallographic plane family.
 
-## The Raster Trap: A 50% Error That Finer Sampling Does Not Fix
+## Geometric Bias in Equiangular Spherical Rasters
 
-A diffractometer samples a pole figure on a tilt/rotation raster: a regular grid in polar angle
-$\psi$ and azimuth. Such a grid is **not** uniform on the sphere. A ring at polar angle $\psi$ has
-circumference proportional to $\sin\psi$, so the same number of azimuthal points crowds into a
-vanishing ring near the pole and spreads over the full circle at the equator. Solid angle goes as
+A laboratory diffractometer typically samples a pole figure on an equiangular tilt/rotation grid:
+a regular lattice in polar angle $\psi$ (sample tilt) and azimuth $\varphi$. This grid is not
+areally uniform on the sphere. A latitude circle at polar angle $\psi$ has circumference
+proportional to $\sin\psi$. Consequently, maintaining a constant angular step $\Delta\varphi$
+crowds sampling points near the pole while dispersing them near the equator. The differential solid
+angle element is
 
 $$
 \mathrm{d}\Omega = \sin\psi \, \mathrm{d}\psi \, \mathrm{d}\varphi ,
@@ -91,18 +95,19 @@ approximation: density-estimating an already-smooth field broadens it by the ker
 time, while interpolating a pole cloud returns a spiky field that depends on where the samples fell.
 `PoleFigure.sampling` therefore carries the reading, and the resampling method follows from it.
 
-## The Normalisation That Is Two Orders Of Magnitude
+## Normalisation of Kernel Density Estimates to the m.r.d. Scale
 
-A kernel density estimate returns a *response*, not a density on the m.r.d. scale. Its size depends
-on the kernel bandwidth, so it is not a physical quantity at all. The conversion divides by the
-response a random texture produces,
+A raw kernel density estimate yields a smoothing response rather than a physical probability density
+on the m.r.d. scale. The magnitude of the response depends directly on kernel bandwidth $\psi_{1/2}$.
+To convert raw responses to normalized m.r.d., the estimate is divided by the response of a random
+distribution evaluated with the identical kernel:
 
 $$
 P_{hkl}(\mathbf{y}) = \frac{\hat{P}_{\mathrm{KDE}}(\mathbf{y})}{P_{\mathrm{rand}}},
 $$ (eq-pf-mrd-normalise)
 
-with $P_{\mathrm{rand}}$ from `random_pole_density(kernel)`. The factor is large and
-bandwidth-dependent:
+where $P_{\mathrm{rand}}$ is evaluated via `random_pole_density(kernel)`. The normalization factor
+varies substantially with kernel halfwidth:
 
 | Kernel halfwidth | $P_{\mathrm{rand}}$ |
 | ---: | ---: |
@@ -110,33 +115,36 @@ bandwidth-dependent:
 | $10^{\circ}$ | 16.88 |
 | $20^{\circ}$ | 8.39 |
 
-Skipping the division inflates every value by these factors — one to two orders of magnitude, not a
-rounding matter. Worse, because the factor depends on the halfwidth, **two un-normalised figures
-computed with different kernels are not comparable with each other**, and a single un-normalised
-figure is not comparable with itself at a different smoothing. Normalisation is what makes the
-number mean something outside the run that produced it.
+Omitting this division scales the recovered field by bandwidth-dependent factors of $10^1$ to $10^2$.
+Consequently, unnormalized distributions obtained with different kernel bandwidths cannot be
+directly compared. Normalization to the m.r.d. scale ensures cross-dataset consistency and physical
+comparability.
 
-## A Pole-Figure Difference Is Not A Pole Figure
+## Residual Pole Figures and Differential Densities
 
-Subtracting two pole figures on a shared support gives the signed field
+Subtracting two pole figures defined over a shared spherical support produces a signed difference field:
 
 $$
 \Delta P(\mathbf{y}) = P_{1}(\mathbf{y}) - P_{2}(\mathbf{y}) ,
 $$ (eq-pf-difference)
 
-and the sign is the whole point: it is where one texture exceeds the other. But a density is
-non-negative and integrates to 1 m.r.d., and $\Delta P$ does neither — by {eq}`eq-pf-mrd` its
-spherical mean is **zero**, not one. It is therefore not a pole figure and should not be handed to
-anything expecting one:
+where positive and negative excursions identify directions where $P_1$ exceeds or falls below $P_2$,
+respectively. While a physical pole density is strictly non-negative and integrates to $4\pi$ sr
+(normalized to 1 m.r.d.), the difference field $\Delta P$ satisfies:
 
-- an m.r.d. colour scale is wrong for it; a diverging scale centred on zero is right;
-- normalising it to unit mean is meaningless, since its mean is zero by construction;
-- it cannot be inverted to an ODF, because no ODF has negative pole density.
+$$
+\frac{1}{4\pi}\oint \Delta P(\mathbf{y})\,\mathrm{d}\Omega = 0 .
+$$
 
-The important special case is the **residual pole figure**: the difference between a measurement
-and the figure a fitted ODF recalculates for it. That is a goodness-of-fit check in spatial form,
-and reading it as a texture is the mistake the type distinction exists to prevent — structure in a
-residual is unmodelled texture or a systematic measurement error, never a physical density.
+Consequently, $\Delta P$ represents a signed residual field rather than a valid pole density:
+- It requires a divergent color scale centered at zero rather than a sequential m.r.d. colormap.
+- It cannot be normalized to unit mean.
+- It cannot serve as direct input to standard non-negative ODF inversion algorithms.
+
+A primary application of differential fields is the **residual pole figure**, defined as the difference
+between measured experimental intensities and back-calculated densities from a reconstructed ODF.
+Residual fields serve as spatial diagnostic metrics: systematic patterns indicate unmodeled texture
+components, sample misalignment, or instrument defocusing aberrations rather than random counting noise.
 
 ## Assumptions And Limits
 

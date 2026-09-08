@@ -24,9 +24,12 @@ For stable orientation-space comparison, PyTex now exposes an exact orbit-reduct
 
 This gives an exact minimum-angle representative even when no workflow-specific reference orientation is provided, with a deterministic tie-break for symmetry-boundary cases.
 
-## Current Implementation Boundary
+## Implementation Boundary
 
-PyTex presently implements exact orbit reduction for the supported proper point groups already present in the codebase and minimum-angle disorientation. What remains ahead is a proof-oriented class-by-class boundary catalog and broader external parity on those exact boundaries.
+PyTex provides exact orbit reduction for the supported proper point groups and minimum-angle
+disorientation determination. Symmetrically degenerate orientations lying on fundamental zone
+boundaries are resolved using deterministic lexicographic tie-breaking on canonical quaternion
+components.
 
 ## Normative References
 

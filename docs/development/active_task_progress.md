@@ -22,8 +22,8 @@ conventions, references, and API behavior.
 | 1 | Increment 1: Algorithm pages — Diffraction & TEM (`cbed`, `saed`, `composite_saed`, `tem_tilt`) | Complete |
 | 2 | Increment 2: Algorithm pages — Orientation Relationships & Microstructure (`or_det`, `variant`, `parent_recon`, `csl`, `ebsd_grains`, `kikuchi`, `misorientation`) | Complete |
 | 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | Complete |
-| 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | In progress |
-| 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | Pending |
+| 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | Complete |
+| 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | In progress |
 | 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | Pending |
 
 ### Increment 1 Technical Summary
@@ -54,6 +54,23 @@ conventions, references, and API behavior.
 - `docs/site/algorithms/precise_lattice_parameter_determination.md`: Refined Anscombe variance-stabilized wavelet peak finding, multi-pass re-indexing ($\Delta 2\theta = 2e\tan\theta$), generalized Cohen least squares, and whole-pattern Le Bail refinement.
 - `docs/site/algorithms/rietveld_refinement.md`: Refined whole-pattern profile forward model, Caglioti resolution parameters, trust-region parameter bounds, and diagnostic residual curve interpretation.
 - `docs/site/algorithms/index.md`: Updated computational core descriptions and crystallographic convention overviews.
+- Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
+
+### Increment 4 Technical Summary
+- `docs/site/theory/pole_figure_arithmetic_and_mrd.md`: Formulated spherical metric normalization, replaced sensationalized section titles with objective terminology ("Geometric Bias in Equiangular Spherical Rasters", "Normalisation of Kernel Density Estimates to the m.r.d. Scale", "Residual Pole Figures and Differential Densities").
+- `docs/site/theory/lattice_curvature_and_gnd_density.md`: Formalized scalar KAM-to-curvature equivalence for pure tilt boundaries and replaced conversational caveats with rigorous physical lower-bound and resolution-dependence formulations.
+- `docs/site/theory/ghost_problem_and_odd_harmonics.md`: Refined `even_degrees_only` rationale and antipodal forward operator symmetries.
+- `docs/site/theory/elastic_anisotropy_and_homogenization.md`: Clarified cubic hydrostatic invariance ($K_V = K_R$) and rigorous variational bounding intervals for polycrystalline aggregates.
+- `docs/site/theory/lattice_fit_and_solution_scoring.md`: Refined $N=2$ direct basis initialization and formal failure modes and mitigations heading.
+- `docs/site/theory/phase_identification_from_powder_patterns.md`: Upgraded ranking diagnostics (conclusiveness, decisiveness), failure mode interpretations, and operational scope boundaries with search-match databases and quantitative Rietveld analysis.
+- `docs/site/theory/precise_lattice_parameter_determination.md`: Refined introduction, systematic error propagation in single-peak averaging, and Le Bail intensity partition stability over Pawley ill-conditioning.
+- `docs/site/theory/dynamical_cbed_and_symmetry_determination.md`: Formalized strain metrology and high-tension accelerating voltage covariance; refined 2D ZOLZ projection symmetry limits for non-centrosymmetric point groups.
+- `docs/site/theory/discrete_odf_and_pole_figures.md`: Removed redundant limits header and refined discrete ODF representation and visualization descriptions.
+- `docs/site/theory/directional_statistics_and_mean_axes.md`: Refined spherical directional averaging and orientation tensor rationale.
+- `docs/site/theory/orientation_space_and_disorientation.md`: Clarified exact quaternion hemisphere orbit reduction and deterministic tie-breaking.
+- `docs/site/theory/kearns_parameter_and_basal_pole_texture.md`: Upgraded introduction to formal second-moment orientation tensor and multi-technique equivalence.
+- `docs/site/theory/schmid_and_taylor_plasticity.md`: Formalized complementary stress- and strain-controlled plastic formulations.
+- `docs/site/theory/orientation_relationship_determination.md`: Refined introduction to double-coset symmetry quotienting, Karcher Riemannian mean refinement, and rational parallelism recovery.
 - Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
 
 ## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)

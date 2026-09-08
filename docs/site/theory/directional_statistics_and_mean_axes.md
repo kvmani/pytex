@@ -1,10 +1,10 @@
 # Directional Statistics: Mean Axes And The Orientation Tensor
 
-Averaging directions looks like averaging vectors and is not. A crystal direction $[uvw]$ and its
-negative $[\bar{u}\bar{v}\bar{w}]$ are the *same physical axis*, and for data of that kind the
-arithmetic mean is not merely inaccurate — it is identically zero. This note gives the estimator
-that works, the eigenvalue test that says whether the answer means anything, and the closed forms
-that let both be checked.
+Directional averaging on the unit sphere requires statistics invariant under antipodal reflection.
+Because a crystallographic direction $[uvw]$ and its negative $[\bar{u}\bar{v}\bar{w}]$ represent the
+same physical axis, arithmetic vector summation can degenerate to near-zero resultant vectors.
+This note derives the second-moment orientation tensor, eigenvalue shape classification, and
+principal axis estimation implemented in `pytex.core.vector`.
 
 It covers `SphericalVectorSet.orientation_tensor` and `SphericalVectorSet.mean_direction`.
 

@@ -237,57 +237,60 @@ both directions: a few parts in a thousand is a statement about composition or t
 a value pinned at the edge of the search range means the candidate was stretched as far as it was
 permitted and still did not fit.
 
-## 5. Two qualifications on the winner
+## 5. Statistical Diagnostics: Conclusiveness and Decisiveness
 
-A ranking always has a winner. That is not the same as having an answer, so two further statements
-are made, and made separately because they fail for different reasons and have different remedies.
+A ranking algorithm inherently produces a top-scoring candidate. However, statistical ranking alone
+does not confirm physical phase identity. PyTex evaluates two explicit diagnostic criteria to
+prevent false-positive identification:
 
-**Conclusive** — the best score reaches an acceptance threshold (0.55 by default). Below it, the
-honest reading is that *none* of the candidates offered accounts for this pattern. The remedies are
-to widen the candidate list, to consider that the specimen is a mixture, or to check that the
-matching tolerance exceeds the instrument's uncorrected zero-point and displacement errors.
+**Conclusive identification** — the highest composite score must attain an established acceptance
+threshold (default 0.55). If the top score falls below this value, the physical indication is that
+*none* of the candidate phases in the active library accounts for the observed diffraction pattern.
+Remedial actions include expanding the candidate library, evaluating multiphase mixtures, or
+verifying that peak matching tolerances accommodate uncorrected diffractometer displacement errors.
 
-**Decisive** — the winner leads the runner-up by at least a margin (0.05 by default). Below it, the
-two are not distinguished *by this scan*, which is a statement about the measurement rather than
-about the candidates. The remedies are more measurement, not more computation: a longer count at
-high angle where the two candidates' calculated lines diverge fastest (by §4, the divergence grows
-as $\tan\theta$), a different wavelength, or independent chemistry.
+**Decisive discrimination** — the top candidate must lead the runner-up by a defined margin
+(default 0.05). If the margin falls below this cutoff, the candidate phases are not statistically
+distinguishable *from the current scan alone*. This condition reflects experimental resolution
+limits rather than algorithm deficiency. Appropriate physical remedies include collecting higher-angle
+data where candidate $2\theta$ lines diverge rapidly ($\Delta(2\theta) \propto \tan\theta$),
+employing alternative radiation wavelengths, or utilizing complementary chemical spectroscopy.
 
-Reporting only a ranked list would leave both of these for the reader to infer, and the second is
-easy to miss: a winner at 0.71 and a runner-up at 0.70 looks like a result.
+Reporting these diagnostic properties prevents premature identification when candidate scores are
+ambiguously close (e.g., scores of 0.71 versus 0.70).
 
-## 6. What the criteria diagnose
+## 6. Diagnostic Failure Modes
 
-The value of reporting the four separately is that the *pattern of failure* names the fault.
+Evaluating the four score components independently enables direct diagnosis of structural discrepancies:
 
-| Symptom | Reading |
+| Observed Score Profile | Physical Interpretation |
 | --- | --- |
-| High $P$, low $C$ | Right cell metric, wrong centring or basis — the classic fcc-offered-as-bcc |
-| High $C$ and $P$, low $E$ | The candidate is present, but so is something else: a second phase |
-| Low $P$, moderate everything else | Wrong cell dimensions, or a tolerance narrower than the instrument's aberrations |
-| High $E$, $C$, $P$, low $S$ | Right framework, wrong basis — or a textured specimen, so check §3 before concluding |
-| $s$ pinned at $\pm\delta$ | Stretched as far as permitted and still not fitting: read the candidate with suspicion |
-| Everything high for two candidates | Not distinguished by this scan; see §5 |
+| High $P$, low $C$ | Correct lattice metric, incorrect centering or atomic basis (e.g., FCC candidate evaluated against BCC pattern) |
+| High $C$ and $P$, low $E$ | Candidate phase is present in a multiphase mixture alongside unindexed reflections |
+| Low $P$, moderate $C, E, S$ | Inaccurate lattice parameters, or matching tolerance narrower than instrument aberrations |
+| High $E, C, P$, low $S$ | Correct lattice framework and centering, but preferred orientation or altered atomic coordinates |
+| Refined $s$ at boundary $\pm\delta$ | Lattice scale reached search limit without converging; indicates metric mismatch |
+| High scores for multiple candidates | Structural indistinguishability under current experimental resolution |
 
-## 7. What this deliberately is not
+## 7. Operational Scope and Boundaries
 
-**Not a database search.** Hanawalt, Rinn and Frevel's method indexes hundreds of thousands of
-reference patterns by their three strongest $d$ spacings so that candidates can be *retrieved* from
-an unknown pattern; every modern search-match system descends from it. Retrieval and ranking are
-separate problems, and the retrieval half requires a licensed reference database — the Powder
-Diffraction File or an equivalent — that this library does not ship. Here the candidates are
-already in hand because the user chose them, and only the ranking is performed. A consequence
-worth stating to users: a low best score is as likely to mean the right structure was never offered
-as that the scan is poor.
+**Boundary with database search-match.** The classical Hanawalt, Rinn, and Frevel method indexes
+reference patterns by their strongest reflections to retrieve candidates from vast registries.
+Candidate retrieval and candidate scoring represent distinct operational phases; retrieval requires
+comprehensive external databases (such as the ICDD PDF). PyTex performs rigorous, deterministic
+scoring and metric refinement against user-declared candidate libraries. A low composite score
+frequently signifies that the true phase was absent from the candidate pool.
 
-**Not quantitative phase analysis.** When several candidates each explain part of a pattern, the
-ranked list plus the unindexed peaks is the honest output. Apportioning the specimen between phases
-requires their scale factors refined jointly against the whole profile — a multi-phase Rietveld
-refinement, {doc}`../algorithms/rietveld_refinement` — not a larger score. The identification is
-what tells that refinement which phases to include.
+**Boundary with quantitative phase analysis.** When multiple candidate phases account for distinct
+subsets of the diffractogram, the candidate ranking alongside unassigned reflections constitutes the
+primary reporting surface. Apportioning phase volume or weight fractions requires whole-pattern profile
+refinement where phase scale factors are refined jointly against measured count intensities (e.g., via
+multiphase Rietveld refinement, {doc}`../algorithms/rietveld_refinement`). Phase identification
+provides the constituent phase selection for such structural refinements.
 
-**Not a structure determination.** Nothing here varies an atomic coordinate, a site occupancy or a
-thermal parameter. The candidates are taken as given and only compared.
+**Boundary with crystal structure determination.** Phase scoring treats candidate crystal structures
+as fixed models. It does not refine fractional atomic coordinates, occupancies, or anisotropic
+displacement parameters.
 
 ## 8. References
 

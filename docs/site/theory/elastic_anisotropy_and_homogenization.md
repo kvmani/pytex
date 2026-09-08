@@ -140,16 +140,17 @@ K_{V} = K_{R} = \frac{C_{11}+2C_{12}}{3},
 \mu_{R} = \frac{5}{4(S_{11}-S_{12}) + 3S_{44}} .
 $$ (eq-el-cubic-vrh)
 
-The first equality is the non-obvious one and it is exact, not approximate: **for cubic symmetry
-the Voigt and Reuss bulk moduli coincide**, verified here to $8.5\times10^{-14}$. A cubic crystal's
-response to hydrostatic pressure is isotropic — pressure produces the same dilatation whatever the
-orientation — so uniform-stress and uniform-strain assumptions cannot disagree about it. The whole
-Voigt–Reuss gap therefore lives in the shear modulus, and quoting a "Hill bulk modulus" for a cubic
-aggregate suggests an uncertainty that does not exist.
+The first equality is exact: **for cubic symmetry, the Voigt and Reuss bulk moduli coincide identically**
+($K_V = K_R$), verified in PyTex to machine precision ($8.5\times10^{-14}$). Because hydrostatic stress
+induces pure volumetric dilatation without shear coupling in cubic crystals, hydrostatic response is
+inherently isotropic regardless of crystal orientation. Consequently, uniform-strain (Voigt) and
+uniform-stress (Reuss) bounds yield identical volumetric stiffness. The entire Voigt–Reuss bound span
+is concentrated in the shear modulus $\mu$.
 
-For copper the gap is large: $\mu_{V} = 54.64$, $\mu_{R} = 40.03$ GPa, a spread of 14.6 GPa or
-about 31% of the Hill value $47.34$ GPa. That is the honest uncertainty on a randomly textured
-copper shear modulus from texture information alone.
+For copper, this shear bounding span is substantial: $\mu_{V} = 54.64$ GPa, $\mu_{R} = 40.03$ GPa,
+a difference of $14.6$ GPa or approximately 31% of the arithmetic Hill average $47.34$ GPa. This
+interval defines the rigorous variational bounds for an untextured polycrystalline copper aggregate
+in the absence of grain morphology or spatial correlation data.
 
 ### Agreement with the numerical route
 

@@ -1,10 +1,12 @@
 # Schmid Factors And The Taylor Factor
 
-Two numbers describe how hard a crystal is to deform: the Schmid factor, which says how much of an
-applied stress reaches a slip system, and the Taylor factor, which says how much slip an imposed
-strain costs. The first has a closed-form maximum with a one-line proof. The second is a
-constrained optimisation whose classical solution is combinatorial and whose implementation here is
-not — and whose answer is unique even though the slip pattern producing it usually is not.
+Crystallographic plastic deformation is governed by complementary stress- and strain-controlled
+formulations: the Schmid factor resolves applied stress onto individual slip systems under static
+equilibrium, whereas the Taylor factor determines the minimum plastic work and cumulative shear
+required to accommodate an imposed macroscopic strain tensor under kinematic compatibility. This
+note derives the mathematical properties of both formulations, provides the Bessel inequality bound
+$m \le 1/2$, and formalizes the linear programming solution to the Taylor full-constraints model
+implemented in `pytex.properties`.
 
 This note covers `pytex.properties.slip` and `pytex.properties.taylor`.
 

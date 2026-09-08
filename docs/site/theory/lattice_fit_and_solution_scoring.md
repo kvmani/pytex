@@ -66,13 +66,13 @@ that; `PlanarLatticeFit.centre_refined` records what was done. Every design
 matrix is rank-checked before `lstsq` sees it, and a deficient one is a dead
 trial rather than a silent answer.
 
-$N = 2$ then has an exact treatment: the two offsets from the held centre *are*
-the basis, one vector each, and the fit returns them without Gauss reduction so
-that $\mathbf{a}$ still points at the spot picked first. It is honest about being
-a restatement: with two picks nothing can disagree with anything, so the overlay
-tests nothing until a third spot arrives.
+$N = 2$ admits an exact initialization: the two vector offsets from the fixed beam center
+directly define the trial basis vectors without Gauss reduction, preserving the directional
+correspondence with the primary selected spot. Because two picks completely determine a 2D basis
+without degrees of freedom for residual evaluation, validation occurs only when additional spots
+are introduced.
 
-### Three failure modes, and what answers them
+### Failure Modes and Algorithmic Mitigations
 
 **Seeding from the centre subdivides the cell.** The trial basis must come from
 *differences between spots*, never from offsets to the picked centre. A

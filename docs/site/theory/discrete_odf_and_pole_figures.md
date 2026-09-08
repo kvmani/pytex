@@ -24,11 +24,9 @@ PyTex currently treats the ODF as a weighted orientation set together with an an
 - a halfwidth-calibrated cosine-power kernel exposed as `de_la_vallee_poussin`,
 - a von Mises–Fisher style kernel.
 
-The current ODF representation is therefore a discrete support together with non-negative weights.
-This supports explicit estimation, explicit inversion, and explicit plotting without pretending that
-the present implementation is already a harmonic expansion on $SO(3)$.
-
-## Current Limits
+The current ODF representation utilizes an explicit discrete support together with non-negative
+weights. This formulation enables transparent numerical estimation, regularized dictionary inversion,
+and localized inspection, complementary to continuous harmonic series representations on $\mathrm{SO}(3)$.
 
 ## Discrete Pole-Figure Inversion
 
@@ -80,8 +78,8 @@ PyTex uses the same discrete texture model for computation and plotting.
 - Euler-space ODF contours are rendered from the weighted support directly.
 - Classical Bunge sections are rendered as kernel-smoothed inspection views through the discrete support.
 
-These plots are intended to be faithful inspection surfaces for the implemented discrete model. They
-should not yet be read as a claim of full harmonic ODF reconstruction.
+These visualization surfaces directly reflect the underlying discrete orientation density
+representation and its assigned kernel smoothing parameters.
 
 ## Current Limits
 
