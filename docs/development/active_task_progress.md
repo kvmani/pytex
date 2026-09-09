@@ -351,6 +351,64 @@ tests, and both were mine.
 Four browser tests now cover the bar, and all four pass locally along with the layout test that
 caught the regression.
 
+### Release — PyTex 0.9.0 and suite 1.6.0 (2026-09-10)
+
+**PyTex v0.9.0 is tagged at `233f638` (tag object `cf6e6a8`) and pushed.**
+
+Gates of record, all against the exact released sources:
+
+| Gate | Result |
+| --- | --- |
+| Full unit suite | green; coverage **91.5180669597191%** against a floor of 91.41497091000195% |
+| Browser lane | **67 of 67, first attempt, no retries** |
+| Ruff, strict mypy | clean over 172 source files |
+| Sphinx | zero warnings |
+| CI on `233f638` | green on **all eight jobs** — browser, and base on ubuntu 3.11/3.12/3.13, macOS 3.11/3.12/3.13, windows 3.11 |
+
+Worth recording: `loads every scientific workspace without browser errors` and the
+Kearns timing sensitivity noted in earlier increments both passed first time in the
+clean local run, with nothing else competing for the machine. That supports the
+earlier reading that they were contention, not defects.
+
+**Suite v1.6.0 is tagged in `ml_server_deploy` and pushed**, which triggers the bundle
+build. It moves two components:
+
+- **PyTex v0.8.1 to v0.9.0** — the progress bar and the working HRTEM workspace.
+- **ml_server v1.1.0 to v1.2.0** — a password-protected operations console at `/admin/`.
+
+The console is the one thing needing a human step on the server, and it was
+deliberately not automated: its credential is read from
+`ML_SERVER_ADMIN_PASSWORD_HASH` in the service environment, and putting that in the
+manifest would put a password in git, in CI and in every release archive. With
+nothing configured the console refuses every login rather than falling open, so a
+rollout that skips the step is safe and simply has no console. The RUNBOOK — which
+ships inside the archive — gained a section giving the exact invocation, which was
+checked against the component rather than assumed: the portal's code runs from
+source over `PYTHONPATH` rather than being installed, so the console script
+`ml-server` does not exist in the venv and the module is invoked directly.
+
+Deployment gates: 61 manifest tests, manifest validation, text hygiene, and **28 of
+28 rehearsal scenarios** on Ubuntu 24.04 under WSL with real `systemd --user` units
+and GitHub unreachable.
+
+**Carried forward for the office rollout.** The mirror still needs the seven
+documentation wheels — `sphinx`, `furo`, `myst-nb`, `myst-parser`, `sphinx-design`,
+`sphinx-copybutton`, `sphinxcontrib-bibtex` — for `/docs` to be built on the server.
+Without them the rollout still succeeds and `/docs` stays as it is today.
+
+## Status: the review goal is complete.
+
+Four increments landed and pushed, each green on its own gates: the azimuthal CTF
+core (`cf58418`), the workbench integration and panel repair (`35492ee`), the
+progress bar (`a7dae19`), and the layout correction CI demanded (`233f638`).
+
+**Not attempted, and deliberately so.** Cancelling a running job — it needs a job
+registry and a cooperative cancellation point in every instrumented loop, which is a
+larger piece of work than showing progress. Instrumenting every remaining operation
+— the mechanism is in place and an operation becomes measurable by instrumenting its
+own loop, so this grows as loops are found rather than needing a sweep. And measured
+per-slice progress from the abTEM backend, which exposes no callback for it.
+
 ## HREM Simulation Module for Double-Corrected TEM with abTEM Integration — COMPLETE (2026-09-08)
 
 **Objective.** Implement a state-of-the-art High-Resolution Electron Microscopy (HREM / HRTEM) simulation module in PyTex, integrated with `abtem` via a clean adapter layer. The module supports double-corrected TEM optics up to 5th order aberrations, partial coherence damping envelopes, simulation snapshots for crystalline, defect (vacancies, dislocations), and amorphous materials, a CLI command (`pytex hrem`), an interactive GUI submodule in TEM Analysis (`tem_hrem` service and `hrem.js`), canonical theory documentation (`docs/site/theory/hrem_multislice_and_ctf.md`), executable worked examples (`worked_examples/examples/hrem_simulation.py`), and a tutorial notebook (`docs/site/tutorials/notebooks/35_hrem_simulation.ipynb`).
