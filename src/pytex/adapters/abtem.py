@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from pytex.core.progress import report
 from pytex.diffraction.hrem import (
     AtomicSnapshot,
     HREMSimulationResult,
@@ -193,6 +194,23 @@ def simulate_hrem_multislice(
 
     import abtem
 
+    # What this backend can honestly report. abTEM builds a lazy graph and does
+    # the work inside ``compute()``, exposing no per-slice callback, so there is
+    # no slice count to report a fraction of. What is countable is the sequence
+    # of stages this function itself performs, and each is named so the fraction
+    # is read as "three of five stages done" rather than as a share of the time.
+    # The stages are not equal in cost -- the propagation dominates -- which is
+    # why the stage name carries the meaning and the bar merely shows movement.
+    stages = (
+        "Building the projected potential",
+        "Propagating the wave through the specimen",
+        "Applying the objective lens transfer function",
+        "Measuring the image intensity",
+        "Computing the power spectrum",
+    )
+    total_stages = len(stages)
+
+    report(0.0, stage=stages[0])
     atoms = snapshot.to_ase()
 
     # Ensure cell has finite thickness along z for multislice slicing
@@ -210,11 +228,16 @@ def simulate_hrem_multislice(
     energy_ev = float(aberrations.energy_kev * 1000.0)
     plane_wave = abtem.PlaneWave(energy=energy_ev)
 
+    report(1.0 / total_stages, stage=stages[1])
     exit_wave_calc = plane_wave.multislice(potential)
+
+    report(2.0 / total_stages, stage=stages[2])
     ctf_filter = to_abtem_ctf(aberrations)
     image_wave = exit_wave_calc.apply_ctf(ctf_filter)
 
-    # Compute arrays
+    # Compute arrays. This is where the lazy graph above actually runs, and so
+    # where most of the wall-clock time of this call is spent.
+    report(3.0 / total_stages, stage=stages[3])
     intensity_raw = image_wave.intensity().compute().array
     exit_wave_raw = exit_wave_calc.compute().array
 
@@ -233,6 +256,7 @@ def simulate_hrem_multislice(
     pixel_size = float(extent_x / nx)
 
     # 2D power spectrum (log-scaled Thon rings)
+    report(4.0 / total_stages, stage=stages[4])
     diff = intensity_2d - np.mean(intensity_2d)
     fft_val = np.fft.fftshift(np.fft.fft2(diff))
     power_spectrum = np.log10(1.0 + np.abs(fft_val) ** 2)

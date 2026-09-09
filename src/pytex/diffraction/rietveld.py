@@ -75,6 +75,7 @@ from scipy.optimize import least_squares
 from pytex.core._arrays import as_float_array
 from pytex.core.lattice import Phase
 from pytex.core.miller import MillerPlane
+from pytex.core.progress import report
 from pytex.diffraction.preferred_orientation import MarchDollaseModel
 from pytex.diffraction.xrd import (
     PowderPattern,
@@ -906,8 +907,28 @@ def refine_rietveld(
             "parameters. Widen the window or refine fewer parameters."
         )
 
+    # What a refinement can honestly report. The number of iterations a
+    # trust-region solve will need is not known before it converges, so there is
+    # no fraction of "the refinement" to measure. What is measurable is how much
+    # of the evaluation budget has been spent, and that is what is reported: the
+    # bar is an upper bound that completes early when the fit converges, and the
+    # stage text says so rather than letting it read as a fraction of the work.
+    evaluations = 0
+
+    def counted_residual(vector: np.ndarray) -> np.ndarray:
+        nonlocal evaluations
+        evaluations += 1
+        report(
+            min(evaluations / max(int(max_function_evaluations), 1), 1.0),
+            stage=(
+                f"Refining: evaluation {evaluations} of at most "
+                f"{int(max_function_evaluations)}"
+            ),
+        )
+        return residual(vector)
+
     solution = least_squares(
-        residual,
+        counted_residual,
         initial_vector,
         bounds=(lower_bounds, upper_bounds),
         max_nfev=max_function_evaluations,

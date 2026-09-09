@@ -234,8 +234,99 @@ multiplicity alone with a tolerance of one degree, the azimuthal grid spacing.
 
 12 new app tests, 13 core tests, 2 CLI tests, 1 browser test, 2 worked examples.
 
+**3f in progress — release 0.9.0.**
+
+- Commits landed and pushed: `cf58418` (core azimuthal CTF and the CLI) and `35492ee` (the
+  workbench integration, the panel repair, theory, worked examples and the browser test).
+- **CI on `cf58418` failed on two base jobs, and the cause was mine.** `AzimuthalCTF` is a new
+  public dataclass, so the introspected class-model figures and the atlas counts went stale:
+  `class_hierarchy.svg`, `class_model_architecture.svg` and `class_model_diffraction.svg` differ
+  from the committed assets, and the atlas prose still said 315 classes / 297 dataclasses. This is
+  a known cost of any new public class and is now regenerated: **316 classes, 298 dataclasses, 6
+  inheritance relations**, with the atlas page edited to match. `test_class_model_atlas` and
+  `test_figure_markers` pass. The run on `35492ee` was started before the fix and will show the
+  same three assets; the release commit carries the correction.
+- Sphinx: **zero warnings** after correcting one equation reference in the new theory section
+  (`eq-hrem-scherzer-resolution` does not exist; the label is `eq-hrem-scherzer-res`). The first
+  build caught it, which is what that gate is for.
+- Version bumped to **0.9.0** in `_version.py` and `CITATION.cff`; the changelog's Unreleased
+  section was cut as `[0.9.0] - 2026-09-09`. `test_release_metadata.py` passes (190 tests).
+- Full unit suite with coverage is running against frozen sources. The comparison floor carried
+  forward from increment 1 is **91.41497091000195%**. The browser lane is deliberately run after
+  it rather than beside it, per the qualification in `repository_review_2026_09.md` that a browser
+  run sharing the machine with CPU-heavy scientific checks is a timing measurement rather than a
+  clean result.
+
+**Known, pre-existing, not a regression.** The browser test `loads every scientific workspace
+without browser errors` is timing-marginal on this machine against a cold server; it was verified
+against an earlier tree in a previous increment and is recorded there.
+
 **Constraint carried forward.** `tests/test_data/` is untracked and predates this task: preserve it,
 never stage it. Stage by explicit path.
+
+### Increment 4 (opened 2026-09-09) — a progress bar for every long job — LANDED
+
+**Asked for.** "For any long running job, I want the progress shown as a progress bar with % job
+finished as the filled part of the bar, with time already spent and time remaining (or ETA) clearly.
+This is really important for the web-app users or they will be in the lurch not knowing how long to
+wait."
+
+**The tension, and how it is resolved.** A real percentage is a statement about work completed, and
+only the code doing the work can make it. Most operations are one pass of NumPy with no loop to
+count. Inventing a percentage for those would be exactly the slop this task forbids — a bar that
+advances smoothly and then stalls at 99% claims a measurement nobody took. So the bar has three
+states and draws them differently:
+
+| State | Basis | Shown |
+| --- | --- | --- |
+| Measured | The operation counted its own work. | Solid bar, its own stage names, a real percentage, ETA extrapolated from the rate observed in this run. |
+| Estimated | It reported nothing but has run here before. | Striped bar against the median of previous runs, worded "about", naming how many runs it learned from. |
+| Unknown | First run of something that cannot count itself. | Elapsed time only; no percentage, because none is known. |
+
+**What was already there.** The logbook has carried a `progress` record type with a fraction and an
+`eta_seconds` since long before this task, records reach the shared buffer immediately under lock,
+and the shell already polls `/api/log?since=` on a threaded server. The channel existed and nothing
+used it. This increment supplies the two missing halves and the presentation.
+
+**Layering.** The mechanism is `pytex.core.progress`, not an app module: a `ProgressSink` protocol
+of one method, a context variable, and `report()` / `tracking()` helpers that are no-ops when no sink
+is installed. Scientific code must not import a user interface to say "one of eight done", and
+instrumented code has to stay callable from a test, the CLI or a notebook with no guard at the call
+site. `pytex.app.progress.ProgressReporter` is the workbench sink, adding what a person waiting needs
+and a scientific module has no business computing: elapsed time, the extrapolated remaining time, and
+a rate limit so a tight loop cannot flood a bounded buffer. `contracts.execute` installs one per
+call, so an operation becomes measurable by instrumenting its own loop with nothing to wire up in the
+panel that launched it.
+
+**Instrumented.** Phase identification reports the fraction of candidates scored. Rietveld reports
+the share of its evaluation budget spent — a trust-region solve cannot know its iteration count in
+advance, so the bar is an upper bound that completes early, and the stage text says "evaluation N of
+at most M" rather than letting it read as a fraction of the fit. HRTEM reports the fraction of atoms
+placed on the pure-Python path, and a sequence of five named stages on the abTEM multislice path,
+which builds a lazy graph and exposes no per-slice callback; that limitation is stated in the code
+and in the documentation rather than papered over.
+
+**Two defects found by driving it.** A progress tick replayed from the buffer after a *previous* run
+of the same operation was applied to the new run, opening its bar at the percentage the last one
+ended on; ticks older than the current run's start are now rejected. And the log poll ran at a fixed
+2.5 s, at which a bar advances in visible jumps and reads as stalled between them; it now polls at
+700 ms while a call is in flight and 2.5 s when idle, rescheduling after each poll rather than on a
+fixed interval.
+
+**Verification.** 18 new unit tests covering the contract rather than recorded outputs: the bar never
+runs backwards, no rate is quoted before any work is measured or at completion, a 1000-iteration loop
+emits one record under a 10 s rate limit, a change of stage always emits, `finish()` closes a bar left
+at 97% but claims nothing for an operation that counted nothing, and a real dispatch of phase
+identification produces monotonic ticks ending at exactly 1.0 while `calc.catalog` produces none.
+Two browser tests drive the whole chain in Chromium — operation to sink to record to buffer to poll
+to bar — and check that the measured state carries the operation's own stage names, a percentage and
+a remaining time, that the reported percentages are monotonic, that the bar disappears when the work
+does, and that the unknown and estimated states say what they should. Both pass. Ruff and strict mypy
+clean over 172 source files.
+
+**Not attempted.** Cancelling a running job. It needs a job registry and a cooperative cancellation
+point in every instrumented loop, and is a larger piece of work than showing progress; the bar makes
+the wait legible, it does not make it interruptible.
 
 ## HREM Simulation Module for Double-Corrected TEM with abTEM Integration — COMPLETE (2026-09-08)
 

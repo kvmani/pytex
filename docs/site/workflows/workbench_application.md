@@ -777,11 +777,45 @@ saves the current line/filled appearance through the same saver used by both app
 
 Every Python service call narrates itself into the message console described above: one record when
 it starts, one when it finishes with its elapsed time, and an error record quoting the same sentence
-shown beside the offending control when it fails. While work is in flight the collapsed bar names
-the operation and shows an indeterminate indicator.
+shown beside the offending control when it fails.
 
-The console is an interface aid, not a scientific record. Reproducible parameters and provenance
-remain in result exports and reports; the log is bounded and is discarded when the process ends.
+While a call is in flight a **progress bar spans the window** immediately above the message bar. It
+names what is being waited for, states how long the call has taken so far, and — when it can — how
+much longer it is likely to take. There is one bar for the whole application rather than one per
+panel: somebody waiting for a refinement should not have to know which panel they are in to find out
+how long is left.
+
+The bar has three states, and they are drawn differently on purpose.
+
+| State | What it means | What it shows |
+| --- | --- | --- |
+| **Measured** | The operation counted its own work and reported the fraction done. | A solid bar, the operation's own stage names, a real percentage, and a remaining time extrapolated from the rate observed during *this* run. |
+| **Estimated** | The operation reported nothing, but it has run here before. | A striped bar filled against the median of the previous runs, worded with "about", and stating how many runs the estimate came from. |
+| **Unknown** | A first run of something that cannot count its own work. | Elapsed time only, and a striped bar carrying no position. |
+
+The distinction is not cosmetic. A measured percentage is a statement about work completed; an
+estimated one is an extrapolation from timings on this machine, and a reader who cannot tell them
+apart has been told a guess is a measurement. That is why the estimated bar is striped and says
+"about", why the unknown bar refuses to show a percentage at all rather than inventing one, and why
+an estimate is offered only after two previous runs — a single run is a sample, and the first run of
+anything is usually the slowest, because it is the one that imports the scientific stack.
+
+An estimated bar is also held just short of full while it overruns, rather than sitting at 100% while
+the work continues. The learned timings live in this browser's local storage, which is the right
+scope: an estimate learned on a workstation is wrong on a laptop, and both are wrong for the next
+person on a shared intranet server.
+
+**Which operations report a measured fraction.** An operation reports by instrumenting its own loop,
+so this list grows as loops are instrumented rather than by a setting: phase identification reports
+the fraction of candidate phases scored; Rietveld refinement reports the share of its evaluation
+budget spent, with the stage naming the evaluation number so the bar reads as an upper bound rather
+than a fraction of the fit; HRTEM simulation reports the fraction of atoms placed in the pure-Python
+path, and the sequence of named stages in the abTEM multislice path, which exposes no per-slice
+callback. Everything else shows elapsed time and, after a couple of runs, an estimate.
+
+The console and the bar are interface aids, not a scientific record. Reproducible parameters and
+provenance remain in result exports and reports; the log is bounded and is discarded when the
+process ends.
 
 ### Browser verification
 

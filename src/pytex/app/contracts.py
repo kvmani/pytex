@@ -37,7 +37,9 @@ import numpy as np
 
 from pytex.app.errors import ServiceError
 from pytex.app.logbook import APP_LOG, LogRecord, collecting
+from pytex.app.progress import ProgressReporter
 from pytex.app.registry import REGISTRY, ServiceRegistry
+from pytex.core.progress import reporting
 
 __all__ = [
     "APP_ENVELOPE_SCHEMA",
@@ -186,7 +188,15 @@ def execute(
     with collecting() as records:
         APP_LOG.info(f"{title} started.", source=operation)
         try:
-            result = active.call(operation, request)
+            # Installed for every operation, not only the ones known to be slow:
+            # an operation is instrumented by reporting from inside its own
+            # loops, and one that reports nothing costs nothing here. The
+            # reporter is closed by the context manager, so a bar left part-way
+            # is completed rather than abandoned even when the call raises.
+            reporter = ProgressReporter(operation, title)
+            with reporting(reporter):
+                result = active.call(operation, request)
+            reporter.finish()
         except ServiceError as error:
             # A ServiceError is a message already written for the user, so the
             # log repeats it verbatim rather than paraphrasing: the console and

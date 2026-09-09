@@ -99,19 +99,20 @@
   <text x="512.4" y="380.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ReciprocalConvention</text>
   <text x="512.4" y="400.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ReconstructionMode</text>
   <text x="512.4" y="420.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">RepresentationKind</text>
-  <rect x="783.8" y="110.0" width="206.7" height="123.0" rx="8" fill="#f4f6fa" stroke="#40506f" stroke-width="1.2"/>
+  <rect x="783.8" y="110.0" width="206.7" height="143.0" rx="8" fill="#f4f6fa" stroke="#40506f" stroke-width="1.2"/>
   <rect x="784.8" y="111.0" width="204.7" height="4" rx="2" fill="#40506f" opacity="0.85"/>
   <text x="798.8" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Structural protocols</text>
   <text x="798.8" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">typing.Protocol</text>
-  <text x="798.8" y="174.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">«2 protocols»</text>
+  <text x="798.8" y="174.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">«3 protocols»</text>
   <line x1="784.8" y1="178.0" x2="989.5" y2="178.0" stroke="#40506f" stroke-width="1" opacity="0.35"/>
   <text x="798.8" y="200.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">PreferredOrientationModel</text>
-  <text x="798.8" y="220.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">StageModel</text>
+  <text x="798.8" y="220.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ProgressSink</text>
+  <text x="798.8" y="240.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">StageModel</text>
   <rect x="40.0" y="730.0" width="504.8" height="137.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
   <text x="56.0" y="756.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
   <line x1="58.0" y1="778.0" x2="98.0" y2="778.0" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <text x="116.0" y="782.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">inheritance - the triangle touches the base class</text>
-  <text x="56.0" y="809.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">315 public classes: 297 dataclasses (296 frozen), and 6 inheritance relations.</text>
+  <text x="56.0" y="809.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">317 public classes: 298 dataclasses (297 frozen), and 6 inheritance relations.</text>
   <text x="56.0" y="827.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Subclassing is used where alternatives share one interface, not to share code.</text>
   <text x="56.0" y="845.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">The object-model diagrams show the composition that carries the real structure.</text>
 </svg>

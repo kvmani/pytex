@@ -35,6 +35,7 @@
  */
 
 import { clear, el } from './dom.js';
+import { expectedDuration, recordDuration, SLOW_ENOUGH_TO_REPORT_MS } from './estimates.js';
 
 /** Severity order, lowest first. Mirrors `pytex.app.logbook.LogLevel`. */
 export const LEVELS = {
@@ -67,8 +68,20 @@ const THRESHOLDS = [
  */
 const CAPACITY = 1000;
 
-/** Milliseconds between polls of `/api/log`. */
+/** Milliseconds between polls of `/api/log` while nothing is running. */
 const POLL_INTERVAL_MS = 2500;
+
+/**
+ * Milliseconds between polls while a call is in flight.
+ *
+ * The idle rate is set by how soon a background message should appear, which is
+ * "within a couple of seconds". A progress bar has a stricter requirement: at
+ * 2.5 seconds a bar advances in visible jumps and reads as stalled between
+ * them. The endpoint returns a few hundred bytes and only the records since the
+ * last cursor, so the faster rate costs little and only while someone is
+ * actually waiting on it.
+ */
+const BUSY_POLL_INTERVAL_MS = 700;
 
 const state = {
   entries: [],
@@ -85,6 +98,17 @@ const state = {
   unseen: { warning: 0, error: 0 },
   /** Calls currently in flight, keyed by call id. */
   busy: new Map(),
+  /**
+   * The run currently being shown on the bar, or `null` between runs.
+   *
+   * `fraction` is null until the operation reports one. That distinction is the
+   * whole design: a measured fraction and a fraction inferred from how long
+   * this operation took last time are drawn and worded differently, because a
+   * reader who cannot tell them apart has been told a guess is a measurement.
+   */
+  run: null,
+  /** Ticks the elapsed time while a run is in flight. */
+  ticker: null,
   dom: null,
   poller: null,
 };
@@ -99,15 +123,146 @@ const state = {
  * @param {string|number} id - Any value unique to this call.
  * @param {string} label - What to call it on screen.
  */
-export function beginCall(id, label) {
+export function beginCall(id, label, operation = null) {
   state.busy.set(id, label);
+  state.run = {
+    id,
+    label,
+    operation,
+    startedAt: Date.now(),
+    fraction: null,
+    stage: null,
+    etaSeconds: null,
+    // What this operation has taken here before, so a bar exists from the first
+    // second even for work that cannot count itself. Null on a first run, which
+    // is the honest answer rather than a made-up duration.
+    expected: operation ? expectedDuration(operation) : null,
+  };
+  startTicking();
   render();
 }
 
 /** Note that a call has returned, whatever its outcome. */
 export function endCall(id) {
   state.busy.delete(id);
+  if (state.run?.id === id) {
+    const elapsed = Date.now() - state.run.startedAt;
+    // Only calls slow enough to have needed a bar teach the estimate. A
+    // sub-second call's duration is mostly transport, and letting it into the
+    // history would drag the median for the runs that actually make a user wait.
+    if (state.run.operation && elapsed >= SLOW_ENOUGH_TO_REPORT_MS) {
+      recordDuration(state.run.operation, elapsed);
+    }
+    state.run = null;
+  }
+  if (state.busy.size === 0) stopTicking();
   render();
+}
+
+/* ------------------------------------------------------------ the progress bar */
+
+/**
+ * Keep elapsed time and the countdown moving between records.
+ *
+ * Server ticks arrive at most every few hundred milliseconds and are polled at
+ * a slower rate still, so without this the elapsed time would advance in visible
+ * jumps and read as a stall between them.
+ */
+function startTicking() {
+  if (state.ticker) return;
+  state.ticker = setInterval(() => renderProgress(), 250);
+}
+
+function stopTicking() {
+  if (state.ticker) clearInterval(state.ticker);
+  state.ticker = null;
+}
+
+/**
+ * What the bar should currently show.
+ *
+ * Three cases, and they are deliberately distinguishable on screen:
+ *
+ * - **measured** — the operation reported a fraction of its own work. The
+ *   percentage is real and the remaining time is extrapolated from the rate
+ *   observed during this run.
+ * - **estimated** — it reported nothing, but this operation has run here before.
+ *   The bar shows elapsed against the median of those runs, worded as an
+ *   estimate, and stops short of full when it overruns rather than sitting at
+ *   100% while the work continues.
+ * - **unknown** — a first run of something that cannot count itself. Elapsed
+ *   time only, and an indeterminate track: there is nothing else true to say.
+ */
+export function progressView(now = Date.now()) {
+  const run = state.run;
+  if (!run) return null;
+  const elapsedS = Math.max((now - run.startedAt) / 1000, 0);
+  if (run.fraction !== null) {
+    return {
+      kind: 'measured',
+      fraction: run.fraction,
+      elapsedS,
+      remainingS: run.etaSeconds,
+      label: run.stage ?? run.label,
+    };
+  }
+  if (run.expected) {
+    const expectedS = run.expected.ms / 1000;
+    const raw = expectedS > 0 ? elapsedS / expectedS : 0;
+    // Held below full while it overruns: a bar that reaches 100% and then keeps
+    // going is the exact thing that makes people distrust progress bars.
+    const fraction = Math.min(raw, 0.98);
+    return {
+      kind: 'estimated',
+      fraction,
+      elapsedS,
+      remainingS: raw < 1 ? Math.max(expectedS - elapsedS, 0) : null,
+      samples: run.expected.samples,
+      label: run.label,
+    };
+  }
+  return { kind: 'unknown', fraction: null, elapsedS, remainingS: null, label: run.label };
+}
+
+function renderProgress() {
+  if (!state.dom?.progress) return;
+  const { progress, progressFill, progressLabel, progressTimes } = state.dom;
+  const view = progressView();
+  if (!view) {
+    progress.hidden = true;
+    return;
+  }
+  progress.hidden = false;
+  progress.dataset.kind = view.kind;
+  const percent = view.fraction === null ? null : Math.round(view.fraction * 100);
+  progressFill.style.width = view.fraction === null ? '100%' : `${percent}%`;
+  progress.setAttribute('aria-valuenow', percent === null ? '' : String(percent));
+  progress.setAttribute(
+    'aria-valuetext',
+    percent === null
+      ? `${view.label}, ${formatDuration(view.elapsedS)} elapsed, remaining time unknown`
+      : `${view.label}, ${percent}% ${view.kind === 'estimated' ? 'estimated' : 'complete'}`,
+  );
+
+  progressLabel.textContent =
+    percent === null
+      ? view.label
+      : view.kind === 'estimated'
+        ? `${view.label} — about ${percent}%`
+        : `${view.label} — ${percent}%`;
+
+  const parts = [`${formatDuration(view.elapsedS)} elapsed`];
+  if (view.remainingS !== null && view.remainingS !== undefined) {
+    parts.push(`about ${formatDuration(view.remainingS)} left`);
+  } else if (view.kind === 'measured') {
+    parts.push('finishing');
+  } else {
+    parts.push('time remaining unknown');
+  }
+  if (view.kind === 'estimated') {
+    parts.push(`estimated from ${view.samples} previous run${view.samples === 1 ? '' : 's'}`);
+  }
+  progressTimes.textContent = parts.join(' · ');
 }
 
 /* ------------------------------------------------------------------ emitting */
@@ -200,6 +355,24 @@ export function progress(task, fraction, options = {}) {
  */
 export function ingest(records) {
   for (const wire of records ?? []) {
+    // A progress tick from the operation now running is the measured half of
+    // the bar. Ticks for anything else are still logged; they simply do not
+    // move a bar that is reporting a different run.
+    if (
+      state.run &&
+      wire.level === 'progress' &&
+      typeof wire.progress === 'number' &&
+      // A tick emitted before this run began belongs to a previous run of the
+      // same operation, replayed from the buffer. Applying it would open a new
+      // run at the percentage the last one ended on.
+      (typeof wire.time !== 'number' || wire.time * 1000 >= state.run.startedAt - 1000) &&
+      (wire.task === state.run.operation || wire.task === null || wire.task === undefined)
+    ) {
+      state.run.fraction = Math.min(Math.max(wire.progress, 0), 1);
+      state.run.stage = wire.detail?.stage ?? state.run.stage;
+      state.run.etaSeconds =
+        typeof wire.eta_seconds === 'number' ? wire.eta_seconds : null;
+    }
     if (typeof wire.sequence === 'number') {
       if (wire.sequence <= state.serverSequence) continue;
       state.serverSequence = wire.sequence;
@@ -291,6 +464,28 @@ export function asText() {
  * @returns {{open: Function, close: Function}}
  */
 export function mountConsole(root) {
+  // The bar lives above the message-log toggle and spans the window, because a
+  // person waiting should not have to know which panel they are in to find out
+  // how long is left. It is the one place in the shell every operation reports
+  // to, which is why it is here and not in each panel.
+  const progressFill = el('div.progress__fill');
+  const progressLabel = el('span.progress__label', { text: '' });
+  const progressTimes = el('span.progress__times', { text: '' });
+  const progress = el(
+    'div.progress',
+    {
+      hidden: true,
+      role: 'progressbar',
+      'aria-valuemin': '0',
+      'aria-valuemax': '100',
+      'aria-label': 'Progress of the running calculation',
+    },
+    [
+      el('div.progress__track', {}, [progressFill]),
+      el('div.progress__text', {}, [progressLabel, progressTimes]),
+    ],
+  );
+
   const summary = el('span.console__summary', { text: 'Ready', role: 'status', 'aria-live': 'polite' });
   const counts = el('span.console__counts', { text: 'No messages yet' });
   const indicator = el('span.console__indicator', { 'aria-hidden': 'true' });
@@ -382,8 +577,21 @@ export function mountConsole(root) {
   ]);
 
   clear(root);
-  root.append(toggle, panel);
-  state.dom = { root, summary, counts, indicator, stream, empty, panel, toggle };
+  root.append(progress, toggle, panel);
+  state.dom = {
+    root,
+    summary,
+    counts,
+    indicator,
+    stream,
+    empty,
+    panel,
+    toggle,
+    progress,
+    progressFill,
+    progressLabel,
+    progressTimes,
+  };
   render();
   startPolling();
   return { open: () => setOpen(true), close: () => setOpen(false) };
@@ -411,6 +619,7 @@ function visible() {
 function render() {
   if (!state.dom) return;
   const { summary, counts, indicator, stream, empty } = state.dom;
+  renderProgress();
 
   const latest = state.entries[state.entries.length - 1];
   const running = state.busy.size > 0;
@@ -518,13 +727,21 @@ function startPolling() {
       // their work rather than about log transport.
     }
   };
-  state.poller = setInterval(tick, POLL_INTERVAL_MS);
+  // Rescheduled after each poll rather than fixed, so the rate can follow
+  // whether anything is running without tearing down the cursor.
+  const schedule = () => {
+    state.poller = setTimeout(async () => {
+      await tick();
+      schedule();
+    }, state.busy.size > 0 ? BUSY_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
+  };
+  schedule();
   tick();
 }
 
 /** Stop polling. Used by tests; the running app polls for its whole life. */
 export function stopPolling() {
-  if (state.poller) clearInterval(state.poller);
+  if (state.poller) clearTimeout(state.poller);
   state.poller = null;
 }
 

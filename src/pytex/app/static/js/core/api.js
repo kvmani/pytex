@@ -154,7 +154,7 @@ export function shell() {
  */
 export async function call(operation, params = {}) {
   const callId = ++CALL_SEQUENCE;
-  log.beginCall(callId, OPERATION_TITLES.get(operation) ?? operation);
+  log.beginCall(callId, OPERATION_TITLES.get(operation) ?? operation, operation);
   try {
     return await invoke(operation, params);
   } finally {

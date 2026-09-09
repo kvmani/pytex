@@ -124,6 +124,7 @@ from typing import Any
 import numpy as np
 
 from pytex.core.lattice import Phase
+from pytex.core.progress import tracking
 from pytex.diffraction.rietveld import _scaled_phase
 from pytex.diffraction.xrd import RadiationSpec, generate_powder_reflections
 from pytex.diffraction.xrd_indexing import PeakIndexing, index_peaks
@@ -1076,7 +1077,9 @@ def identify_phase(
             strongest_measured_intensity=strongest_intensity,
             cell_scale_range=float(cell_scale_range),
         )
-        for phase_name, phase in pairs
+        # Each candidate is scored independently and they take comparable time,
+        # so the fraction of candidates done is a fair measure of the work done.
+        for phase_name, phase in tracking(pairs, stage="Scoring candidate phases")
     )
 
     return PhaseIdentification(

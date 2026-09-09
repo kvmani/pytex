@@ -113,6 +113,20 @@
   <text x="574.5" y="300.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">holz_orders: ndarray</text>
   <text x="574.5" y="320.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">holz_radii_mm: ndarray</text>
   <text x="574.5" y="340.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 4 more</text>
+  <rect x="1851.7" y="453.0" width="226.9" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="1852.7" y="454.0" width="224.9" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="1866.7" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">MicroscopeAberrations</text>
+  <text x="1866.7" y="499.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">diffraction.hrem</text>
+  <text x="1866.7" y="517.0" font-size="13" font-family="Arial" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="1852.7" y1="521.0" x2="2077.6" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="1866.7" y="543.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">energy_kev: float</text>
+  <text x="1866.7" y="563.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">defocus_angstrom: float</text>
+  <text x="1866.7" y="583.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">cs_mm: float</text>
+  <text x="1866.7" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">c5_mm: float</text>
+  <text x="1866.7" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">astigmatism_angstrom: float</text>
+  <text x="1866.7" y="643.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">astigmatism_angle_deg: float</text>
+  <text x="1866.7" y="663.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">trefoil_angstrom: float</text>
+  <text x="1866.7" y="683.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 7 more</text>
   <rect x="580.9" y="453.0" width="277.6" height="223.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
   <rect x="581.9" y="454.0" width="275.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
   <text x="595.9" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">KinematicSimulation</text>
@@ -178,20 +192,6 @@
   <text x="2009.0" y="300.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">power_spectrum: ndarray</text>
   <text x="2009.0" y="320.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ctf: CTF1D</text>
   <text x="2009.0" y="340.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 1 more</text>
-  <rect x="1851.7" y="453.0" width="226.9" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="1852.7" y="454.0" width="224.9" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="1866.7" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">MicroscopeAberrations</text>
-  <text x="1866.7" y="499.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">diffraction.hrem</text>
-  <text x="1866.7" y="517.0" font-size="13" font-family="Arial" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="1852.7" y1="521.0" x2="2077.6" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="1866.7" y="543.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">energy_kev: float</text>
-  <text x="1866.7" y="563.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">defocus_angstrom: float</text>
-  <text x="1866.7" y="583.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">cs_mm: float</text>
-  <text x="1866.7" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">c5_mm: float</text>
-  <text x="1866.7" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">astigmatism_angstrom: float</text>
-  <text x="1866.7" y="643.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">astigmatism_angle_deg: float</text>
-  <text x="1866.7" y="663.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">trefoil_angstrom: float</text>
-  <text x="1866.7" y="683.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 7 more</text>
   <rect x="616.0" y="1139.0" width="251.8" height="243.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
   <rect x="617.0" y="1140.0" width="249.8" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
   <text x="631.0" y="1168.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Phase</text>

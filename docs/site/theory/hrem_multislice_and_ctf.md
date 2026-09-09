@@ -104,7 +104,7 @@ displacing image detail asymmetrically rather than merely blurring it.
 
 **Correction moves the problem rather than removing it.** A corrector drives $C_{s}$ toward zero,
 which is what extends the passband past the Scherzer boundary
-({eq}`eq-hrem-scherzer-resolution` and the NCSI discussion below). What then limits the instrument
+({eq}`eq-hrem-scherzer-res` and the NCSI discussion below). What then limits the instrument
 is the residual it leaves: the non-round terms, and $C_{5}$. Quoting a point resolution from one
 radial cut of such a lens states the resolution of one direction and says nothing about the others,
 which is why PyTex reports the **range of point resolution over azimuth** and its spread — the

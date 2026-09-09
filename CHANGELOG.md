@@ -11,8 +11,32 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-09
+
 ### Added
 
+- **Progress reporting across the workbench.** A bar spans the window above the message
+  bar whenever a call is in flight, naming what is being waited for, how long it has taken,
+  and how much longer it is likely to take. One bar for the whole application: a person
+  waiting for a refinement should not have to know which panel they are in to find out how
+  long is left.
+
+  It has three states and draws them differently, because a measured percentage and an
+  extrapolation are not the same claim. **Measured** — the operation counted its own work,
+  so the percentage is real and the remaining time comes from the rate observed during this
+  run. **Estimated** — it reported nothing but has run here before, so the bar is striped,
+  filled against the median of those runs, and says "about" and how many runs it learned
+  from. **Unknown** — a first run of something that cannot count itself, so elapsed time
+  only and no percentage at all.
+- `pytex.core.progress` is the mechanism: a one-method sink protocol installed for the
+  duration of a call, with `report()` and `tracking()` helpers that are no-ops when nothing
+  is listening, so instrumented scientific code stays callable from a test, a script or a
+  notebook without a guard and without importing a user interface. `pytex.app.progress`
+  is the workbench sink, adding elapsed time, an extrapolated ETA and a rate limit.
+- Instrumented so far: phase identification reports the fraction of candidates scored,
+  Rietveld refinement the share of its evaluation budget spent, and HRTEM simulation the
+  fraction of atoms placed (pure-Python path) or the sequence of named stages (abTEM
+  multislice, which exposes no per-slice callback).
 - Azimuth-resolved contrast transfer. `MicroscopeAberrations.evaluate_ctf_1d` takes an
   azimuth, and the new `evaluate_ctf_azimuthal` returns an `AzimuthalCTF` carrying the
   transfer on an (azimuth, q) grid, the best/worst transfer band, per-azimuth first zeros,

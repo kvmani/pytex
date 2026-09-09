@@ -46,6 +46,7 @@ import numpy as np
 
 from pytex.core._arrays import as_float_array
 from pytex.core.lattice import Phase
+from pytex.core.progress import report, tracking
 
 if TYPE_CHECKING:
     import ase
@@ -1592,7 +1593,14 @@ def pure_python_phase_object_simulation(
         "Au": 79,
     }
 
-    for s, p in zip(snapshot.species, snapshot.positions, strict=True):
+    # The projected potential is accumulated atom by atom and dominates the cost
+    # of this simulation, so the fraction of atoms placed is a fair measure of
+    # the work done. The remaining Fourier optics is a handful of transforms on
+    # one grid and is reported as a single closing stage.
+    for s, p in tracking(
+        list(zip(snapshot.species, snapshot.positions, strict=True)),
+        stage="Projecting the atomic potential",
+    ):
         z_num = atomic_z.get(s, 14)
         peak_v = 40.0 * (z_num**0.7)  # in Volt*Angstrom
         width2 = 0.35**2  # radius squared in Angstrom^2
@@ -1605,6 +1613,8 @@ def pure_python_phase_object_simulation(
         r2 = rx**2 + ry**2
         mask = r2 < (3.0 * 0.35) ** 2
         v_proj[mask] += peak_v * np.exp(-r2[mask] / (2.0 * width2))
+
+    report(1.0, stage="Transferring the exit wave through the lens")
 
     # Phase object approximation: psi_exit = exp(i * sigma * V_proj)
     sigma = relativistic_interaction_parameter_inv_v_angstrom(aberrations.energy_kev)

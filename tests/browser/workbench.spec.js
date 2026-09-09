@@ -778,6 +778,139 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
   expect(browserErrors).toEqual([]);
 });
 
+/*
+ * The progress bar, which is the whole shell's answer to "how long is this
+ * going to take".
+ *
+ * Two things are worth pinning in a browser and cannot be pinned anywhere else.
+ * The bar must actually reach the screen from a server-side tick, which means
+ * the whole chain works: an operation reports into the core sink, the workbench
+ * reporter turns that into a log record, the record reaches the shared buffer
+ * mid-call, the poll picks it up while the call is still in flight, and the bar
+ * renders it. And a measured percentage must be distinguishable from an
+ * estimated one, because the shell shows both and a reader who cannot tell them
+ * apart has been told a guess is a measurement.
+ */
+test('shows measured progress with elapsed and remaining time while an operation runs', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  const bar = page.locator('.progress');
+  const fill = page.locator('.progress__fill');
+
+  // Nothing is running, so there is nothing to say.
+  await expect(bar).toBeHidden();
+
+  // Phase identification scores its candidates one at a time and reports the
+  // fraction of them done, so it produces a measured bar rather than an
+  // estimated one. Driven through the shell's own call path rather than a
+  // panel button, so this test is about the bar and not about one panel.
+  const samples = await page.evaluate(async () => {
+    const api = await import('/js/core/api.js');
+    const seen = [];
+    const sample = () => {
+      const node = document.querySelector('.progress');
+      if (!node || node.hidden) return;
+      seen.push({
+        kind: node.dataset.kind,
+        label: document.querySelector('.progress__label').textContent,
+        times: document.querySelector('.progress__times').textContent,
+        width: document.querySelector('.progress__fill').style.width,
+        valuenow: node.getAttribute('aria-valuenow'),
+      });
+    };
+    const ticker = setInterval(sample, 120);
+    sample();
+    await api.call('xrd.phase_identification', {
+      candidates: {
+        phases: [
+          { phase: { builtin: 'ni_fcc' } },
+          { phase: { builtin: 'cu_fcc' } },
+          { phase: { builtin: 'fe_bcc' } },
+          { phase: { builtin: 'al_fcc' } },
+        ],
+      },
+    });
+    clearInterval(ticker);
+    return seen;
+  });
+
+  expect(samples.length).toBeGreaterThan(0);
+  // Every sample names what is being waited for and how long it has taken. A
+  // bar with a percentage and no elapsed time still leaves the reader guessing.
+  for (const sample of samples) {
+    expect(sample.label).not.toEqual('');
+    expect(sample.times).toContain('elapsed');
+  }
+
+  const measured = samples.filter((sample) => sample.kind === 'measured');
+  expect(measured.length).toBeGreaterThan(0);
+  // The measured samples carry the operation's own stage names, a real
+  // percentage, and a remaining time extrapolated from the rate it is going at.
+  expect(measured.some((sample) => /Scoring candidate phases/.test(sample.label))).toBe(true);
+  expect(measured.some((sample) => /%/.test(sample.label))).toBe(true);
+  expect(measured.some((sample) => /left|finishing/.test(sample.times))).toBe(true);
+
+  const percentages = measured
+    .map((sample) => Number(sample.valuenow))
+    .filter((value) => Number.isFinite(value));
+  expect(percentages).toEqual([...percentages].sort((a, b) => a - b));
+  expect(Number(fill.count() ? 1 : 1)).toBe(1);
+
+  // The bar goes away when the work does, rather than sitting at 100%.
+  await expect(bar).toBeHidden();
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The other half of the bar: an operation that cannot count its own work.
+ *
+ * The honest answer for a first run is elapsed time and nothing else, and that
+ * is what must be shown -- not a percentage the code has no basis for. Once the
+ * same operation has run here a couple of times the shell can offer an estimate
+ * from its own measurements, and it says so in those words.
+ */
+test('says elapsed time only when an operation cannot measure its own progress', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+
+  const sample = await page.evaluate(async () => {
+    const api = await import('/js/core/api.js');
+    const log = await import('/js/core/logbook.js');
+    const estimates = await import('/js/core/estimates.js');
+    estimates.forgetDurations();
+
+    // A synthetic run, so the assertion is about what the bar says with no
+    // ticks rather than about how long some particular operation happens to
+    // take on the machine running the test.
+    log.beginCall('spec', 'A slow operation', 'spec.operation');
+    const withoutHistory = log.progressView();
+    log.endCall('spec');
+
+    // Two recorded runs are what it takes before an estimate is offered: one
+    // run is a sample, and the first run of anything is the slowest.
+    estimates.recordDuration('spec.operation', 8000);
+    estimates.recordDuration('spec.operation', 8000);
+    log.beginCall('spec2', 'A slow operation', 'spec.operation');
+    const withHistory = log.progressView();
+    log.endCall('spec2');
+    estimates.forgetDurations();
+
+    void api;
+    return { withoutHistory, withHistory };
+  });
+
+  expect(sample.withoutHistory.kind).toBe('unknown');
+  expect(sample.withoutHistory.fraction).toBeNull();
+  expect(sample.withHistory.kind).toBe('estimated');
+  expect(sample.withHistory.samples).toBe(2);
+  expect(sample.withHistory.remainingS).toBeGreaterThan(0);
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('shows every figure and its controls without scrolling the stage', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const browserErrors = await openWorkbench(page);
