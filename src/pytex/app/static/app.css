@@ -4495,70 +4495,69 @@ dl.detail dd {
   gap: 0.35rem;
 }
 
-
 /*
- * The progress bar, above the message-log bar and across the whole window.
+ * The progress bar: a line across the top edge of the message bar, and two
+ * readings in the message bar's own row.
  *
- * One bar for the whole application rather than one per panel. A person waiting
- * for a refinement should not have to know which panel they are in to find out
- * how much longer it will take, and a shell-wide bar means an operation becomes
- * measurable by reporting from its own loop, with nothing to wire up in the
- * panel that launched it.
+ * It costs no layout height on purpose. An earlier version was a row of its own
+ * above the message bar, and that row took its height from the stage -- the
+ * crystal viewer's orientation dock stopped fitting beside the structure, which
+ * the browser lane caught. The stage is the one thing on this page that is
+ * allowed to claim space, so anything the shell adds around it has to be free.
+ *
+ * There is one bar for the whole application rather than one per panel: someone
+ * waiting for a refinement should not have to know which panel they are in to
+ * find out how long is left, and an operation becomes measurable by reporting
+ * from its own loop with nothing to wire up in the panel that launched it.
  *
  * A measured bar and an estimated one are drawn differently on purpose. The
- * estimated one is striped and dimmer, and its text says "about" and names how
- * many previous runs it was learned from. A reader who cannot tell a
- * measurement from an extrapolation has been misled about which number to
- * trust, and on a scientific instrument that is not a cosmetic distinction.
+ * estimated one is striped, and its text says "about" and how many previous
+ * runs it was learned from. A reader who cannot tell a measurement from an
+ * extrapolation has been misled about which number to trust, and on a
+ * scientific instrument that is not a cosmetic distinction.
  */
 .progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.4rem 1rem 0.15rem;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-raised) 92%, var(--accent-soft));
-}
-
-.progress__track {
-  height: 0.5rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
   overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  pointer-events: none;
 }
 
 .progress__fill {
   height: 100%;
   width: 0;
-  border-radius: inherit;
   background: var(--accent);
   transition: width 220ms linear;
 }
 
 /*
- * An estimate is striped, and the stripes move, so it reads as "working" rather
- * than as a measured position. A run that reports nothing and has no history
- * gets the same treatment across the full width: the bar then says only that
- * something is happening, which is all that is known.
+ * An estimate is striped, and the stripes move, so it reads as "working"
+ * rather than as a measured position. A run that reports nothing and has no
+ * history gets the same treatment across the full width: the bar then says only
+ * that something is happening, which is all that is known.
  */
 .progress[data-kind='estimated'] .progress__fill,
 .progress[data-kind='unknown'] .progress__fill {
   background-image: repeating-linear-gradient(
     45deg,
-    color-mix(in srgb, var(--accent) 80%, transparent) 0 0.5rem,
-    color-mix(in srgb, var(--accent) 45%, transparent) 0.5rem 1rem
+    color-mix(in srgb, var(--accent) 85%, transparent) 0 0.4rem,
+    color-mix(in srgb, var(--accent) 40%, transparent) 0.4rem 0.8rem
   );
-  background-size: 1.415rem 1.415rem;
+  background-size: 1.132rem 1.132rem;
   animation: progress-stripes 900ms linear infinite;
 }
 
 .progress[data-kind='unknown'] .progress__fill {
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 @keyframes progress-stripes {
   from { background-position: 0 0; }
-  to { background-position: 1.415rem 0; }
+  to { background-position: 1.132rem 0; }
 }
 
 /* Respecting a reader who has asked the system for less motion: the bar still
@@ -4570,20 +4569,24 @@ dl.detail dd {
   }
 }
 
-.progress__text {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-}
-
 .progress__label {
-  font-weight: 600;
+  font-weight: 650;
   color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .progress__times {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+
+/* On a phone the row has no room for both readings; the percentage is the one
+ * worth keeping, because the elapsed time is also counting in the label. */
+@media (max-width: 40rem) {
+  .progress__times {
+    display: none;
+  }
 }

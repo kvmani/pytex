@@ -328,6 +328,29 @@ clean over 172 source files.
 point in every instrumented loop, and is a larger piece of work than showing progress; the bar makes
 the wait legible, it does not make it interruptible.
 
+**Increment 4, correction after CI (2026-09-10).** The browser job on `a7dae19` failed on two
+tests, and both were mine.
+
+1. **The bar took height from the stage.** It was a row above the message bar, and that row's
+   height came out of the stage: `keeps the structure and both orientation figures on screen
+   together` failed because the crystal viewer's orientation dock no longer fitted beside the
+   structure. This is exactly the regression the figure-layout rule exists to prevent, and exactly
+   the class of thing the unit lane structurally cannot see. The bar is now a three-pixel line
+   across the top edge of the message bar — `position: absolute`, out of flow — with the label and
+   the two times in the message bar's own row, which was already saying "Running X". It costs the
+   stage nothing, and a new test pins that: the stage's height is unchanged while a call is in
+   flight, and the bar's own box is drawn but under eight pixels tall.
+2. **My own test raced the clock.** It sampled the bar every 120 ms during a real operation and
+   asserted it had caught a measured tick. That passed here and failed on CI, and it deserved to:
+   whether a sampler sees the bar depends on whether the operation happens to outlast the poll
+   interval on that runner, which is a property of the machine rather than of the software. The
+   chain is now checked in two decidable halves — a real operation's ticks arrive at the client
+   (the reporting path), and an injected tick renders as a measured percentage with both times
+   (the presentation) — plus the stale-tick rejection and the disappearance of the bar at the end.
+
+Four browser tests now cover the bar, and all four pass locally along with the layout test that
+caught the regression.
+
 ## HREM Simulation Module for Double-Corrected TEM with abTEM Integration — COMPLETE (2026-09-08)
 
 **Objective.** Implement a state-of-the-art High-Resolution Electron Microscopy (HREM / HRTEM) simulation module in PyTex, integrated with `abtem` via a clean adapter layer. The module supports double-corrected TEM optics up to 5th order aberrations, partial coherence damping envelopes, simulation snapshots for crystalline, defect (vacancies, dislocations), and amorphous materials, a CLI command (`pytex hrem`), an interactive GUI submodule in TEM Analysis (`tem_hrem` service and `hrem.js`), canonical theory documentation (`docs/site/theory/hrem_multislice_and_ctf.md`), executable worked examples (`worked_examples/examples/hrem_simulation.py`), and a tutorial notebook (`docs/site/tutorials/notebooks/35_hrem_simulation.ipynb`).

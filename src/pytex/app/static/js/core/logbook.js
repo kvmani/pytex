@@ -230,9 +230,13 @@ function renderProgress() {
   const view = progressView();
   if (!view) {
     progress.hidden = true;
+    progressLabel.hidden = true;
+    progressTimes.hidden = true;
     return;
   }
   progress.hidden = false;
+  progressLabel.hidden = false;
+  progressTimes.hidden = false;
   progress.dataset.kind = view.kind;
   const percent = view.fraction === null ? null : Math.round(view.fraction * 100);
   progressFill.style.width = view.fraction === null ? '100%' : `${percent}%`;
@@ -464,13 +468,16 @@ export function asText() {
  * @returns {{open: Function, close: Function}}
  */
 export function mountConsole(root) {
-  // The bar lives above the message-log toggle and spans the window, because a
-  // person waiting should not have to know which panel they are in to find out
-  // how long is left. It is the one place in the shell every operation reports
-  // to, which is why it is here and not in each panel.
+  // The bar is a line across the top edge of the console rather than a row of
+  // its own. A row would take its height from the stage, and it did: the
+  // orientation dock stopped fitting beside the structure until this was moved.
+  // The two readings go in the console's own row, which was already saying
+  // "Running X" and now says how far along and how much longer.
+  //
+  // It is still one bar for the whole shell. Somebody waiting for a refinement
+  // should not have to know which panel they are in to find out how long is
+  // left, which is why this is here and not in each panel.
   const progressFill = el('div.progress__fill');
-  const progressLabel = el('span.progress__label', { text: '' });
-  const progressTimes = el('span.progress__times', { text: '' });
   const progress = el(
     'div.progress',
     {
@@ -480,11 +487,10 @@ export function mountConsole(root) {
       'aria-valuemax': '100',
       'aria-label': 'Progress of the running calculation',
     },
-    [
-      el('div.progress__track', {}, [progressFill]),
-      el('div.progress__text', {}, [progressLabel, progressTimes]),
-    ],
+    [progressFill],
   );
+  const progressLabel = el('span.progress__label', { text: '', hidden: true });
+  const progressTimes = el('span.progress__times', { text: '', hidden: true });
 
   const summary = el('span.console__summary', { text: 'Ready', role: 'status', 'aria-live': 'polite' });
   const counts = el('span.console__counts', { text: 'No messages yet' });
@@ -502,7 +508,14 @@ export function mountConsole(root) {
       'aria-label': 'Open the message log',
       onclick: () => setOpen(!state.open),
     },
-    [indicator, summary, counts, el('span.console__chevron', { text: '⌃', 'aria-hidden': 'true' })],
+    [
+      indicator,
+      summary,
+      progressLabel,
+      progressTimes,
+      counts,
+      el('span.console__chevron', { text: '⌃', 'aria-hidden': 'true' }),
+    ],
   );
 
   const thresholdSelect = el(

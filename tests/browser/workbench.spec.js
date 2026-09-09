@@ -782,45 +782,18 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
  * The progress bar, which is the whole shell's answer to "how long is this
  * going to take".
  *
- * Two things are worth pinning in a browser and cannot be pinned anywhere else.
- * The bar must actually reach the screen from a server-side tick, which means
- * the whole chain works: an operation reports into the core sink, the workbench
- * reporter turns that into a log record, the record reaches the shared buffer
- * mid-call, the poll picks it up while the call is still in flight, and the bar
- * renders it. And a measured percentage must be distinguishable from an
- * estimated one, because the shell shows both and a reader who cannot tell them
- * apart has been told a guess is a measurement.
+ * Checked in two halves, because the interesting chain crosses the wire and a
+ * test that samples a bar mid-run is really measuring how fast the runner is.
+ * First: a real operation emits progress ticks that arrive at the client, which
+ * proves the reporting path from the loop through the sink, the log record and
+ * the envelope. Second: a tick renders as a measured percentage with both
+ * times, which proves the presentation. Neither depends on the clock.
  */
-test('shows measured progress with elapsed and remaining time while an operation runs', async ({
-  page,
-}) => {
+test('a long operation reports progress that reaches the browser', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  const bar = page.locator('.progress');
-  const fill = page.locator('.progress__fill');
 
-  // Nothing is running, so there is nothing to say.
-  await expect(bar).toBeHidden();
-
-  // Phase identification scores its candidates one at a time and reports the
-  // fraction of them done, so it produces a measured bar rather than an
-  // estimated one. Driven through the shell's own call path rather than a
-  // panel button, so this test is about the bar and not about one panel.
-  const samples = await page.evaluate(async () => {
+  const ticks = await page.evaluate(async () => {
     const api = await import('/js/core/api.js');
-    const seen = [];
-    const sample = () => {
-      const node = document.querySelector('.progress');
-      if (!node || node.hidden) return;
-      seen.push({
-        kind: node.dataset.kind,
-        label: document.querySelector('.progress__label').textContent,
-        times: document.querySelector('.progress__times').textContent,
-        width: document.querySelector('.progress__fill').style.width,
-        valuenow: node.getAttribute('aria-valuenow'),
-      });
-    };
-    const ticker = setInterval(sample, 120);
-    sample();
     await api.call('xrd.phase_identification', {
       candidates: {
         phases: [
@@ -831,84 +804,146 @@ test('shows measured progress with elapsed and remaining time while an operation
         ],
       },
     });
-    clearInterval(ticker);
-    return seen;
+    const log = await import('/js/core/logbook.js');
+    return log
+      .entries()
+      .filter((entry) => entry.level === 'progress' && entry.source === 'xrd.phase_identification')
+      .map((entry) => ({ progress: entry.progress, message: entry.message }));
   });
 
-  expect(samples.length).toBeGreaterThan(0);
-  // Every sample names what is being waited for and how long it has taken. A
-  // bar with a percentage and no elapsed time still leaves the reader guessing.
-  for (const sample of samples) {
-    expect(sample.label).not.toEqual('');
-    expect(sample.times).toContain('elapsed');
-  }
+  // The console collapses the ticks of one task onto one entry, so what is
+  // asserted here is that the operation reported at all, and that what arrived
+  // is a real fraction with the stage the operation named.
+  expect(ticks.length).toBeGreaterThan(0);
+  expect(ticks[ticks.length - 1].progress).toBeCloseTo(1, 6);
+  expect(ticks.some((tick) => /Scoring candidate phases/.test(tick.message))).toBe(true);
 
-  const measured = samples.filter((sample) => sample.kind === 'measured');
-  expect(measured.length).toBeGreaterThan(0);
-  // The measured samples carry the operation's own stage names, a real
-  // percentage, and a remaining time extrapolated from the rate it is going at.
-  expect(measured.some((sample) => /Scoring candidate phases/.test(sample.label))).toBe(true);
-  expect(measured.some((sample) => /%/.test(sample.label))).toBe(true);
-  expect(measured.some((sample) => /left|finishing/.test(sample.times))).toBe(true);
+  expect(browserErrors).toEqual([]);
+});
 
-  const percentages = measured
-    .map((sample) => Number(sample.valuenow))
-    .filter((value) => Number.isFinite(value));
-  expect(percentages).toEqual([...percentages].sort((a, b) => a - b));
-  expect(Number(fill.count() ? 1 : 1)).toBe(1);
+test('the bar states the percentage, the time spent and the time left', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const bar = page.locator('.progress');
+
+  // Nothing is running, so there is nothing to say.
+  await expect(bar).toBeHidden();
+
+  const shown = await page.evaluate(async () => {
+    const log = await import('/js/core/logbook.js');
+    const estimates = await import('/js/core/estimates.js');
+    estimates.forgetDurations();
+    const read = () => ({
+      hidden: document.querySelector('.progress').hidden,
+      kind: document.querySelector('.progress').dataset.kind,
+      valuenow: document.querySelector('.progress').getAttribute('aria-valuenow'),
+      width: document.querySelector('.progress__fill').style.width,
+      label: document.querySelector('.progress__label').textContent,
+      times: document.querySelector('.progress__times').textContent,
+    });
+
+    // A first run of something that cannot count its own work: elapsed time
+    // only, and no percentage, because none is known.
+    log.beginCall('spec', 'A slow operation', 'spec.operation');
+    const unknown = read();
+
+    // The same run once it reports a measured fraction of its own work.
+    log.ingest([
+      {
+        sequence: 900001,
+        time: Date.now() / 1000,
+        level: 'progress',
+        message: 'Scoring candidate phases: 40% complete.',
+        source: 'spec.operation',
+        task: 'spec.operation',
+        progress: 0.4,
+        eta_seconds: 18,
+        detail: { stage: 'Scoring candidate phases' },
+      },
+    ]);
+    const measured = read();
+
+    // A tick replayed from the buffer after an earlier run of the same
+    // operation must not move this run's bar to where that one ended.
+    log.ingest([
+      {
+        sequence: 900002,
+        time: Date.now() / 1000 - 600,
+        level: 'progress',
+        message: 'stale',
+        source: 'spec.operation',
+        task: 'spec.operation',
+        progress: 0.99,
+        detail: { stage: 'stale' },
+      },
+    ]);
+    const afterStale = read();
+    log.endCall('spec');
+    const afterEnd = read();
+
+    // And the third state: no ticks, but this operation has run here before.
+    estimates.recordDuration('spec.operation', 8000);
+    estimates.recordDuration('spec.operation', 8000);
+    log.beginCall('spec2', 'A slow operation', 'spec.operation');
+    const estimated = read();
+    log.endCall('spec2');
+    estimates.forgetDurations();
+
+    return { unknown, measured, afterStale, afterEnd, estimated };
+  });
+
+  expect(shown.unknown.hidden).toBe(false);
+  expect(shown.unknown.kind).toBe('unknown');
+  expect(shown.unknown.valuenow).toBe('');
+  expect(shown.unknown.times).toContain('elapsed');
+  expect(shown.unknown.times).toContain('unknown');
+
+  expect(shown.measured.kind).toBe('measured');
+  expect(shown.measured.valuenow).toBe('40');
+  expect(shown.measured.width).toBe('40%');
+  expect(shown.measured.label).toContain('Scoring candidate phases');
+  expect(shown.measured.label).toContain('40%');
+  expect(shown.measured.times).toContain('elapsed');
+  expect(shown.measured.times).toContain('left');
+
+  // The stale tick left the bar exactly where the live one put it.
+  expect(shown.afterStale.valuenow).toBe('40');
 
   // The bar goes away when the work does, rather than sitting at 100%.
-  await expect(bar).toBeHidden();
+  expect(shown.afterEnd.hidden).toBe(true);
+
+  expect(shown.estimated.kind).toBe('estimated');
+  expect(shown.estimated.label).toContain('about');
+  expect(shown.estimated.times).toContain('estimated from 2 previous runs');
 
   expect(browserErrors).toEqual([]);
 });
 
 /*
- * The other half of the bar: an operation that cannot count its own work.
+ * The bar must not cost the stage any height.
  *
- * The honest answer for a first run is elapsed time and nothing else, and that
- * is what must be shown -- not a percentage the code has no basis for. Once the
- * same operation has run here a couple of times the shell can offer an estimate
- * from its own measurements, and it says so in those words.
+ * The first version of it was a row above the message bar, and that row took
+ * its height from the stage: the crystal viewer's orientation dock stopped
+ * fitting beside the structure. The stage is the one thing on this page allowed
+ * to claim space, so this pins the bar's own cost at zero.
  */
-test('says elapsed time only when an operation cannot measure its own progress', async ({
-  page,
-}) => {
-  const browserErrors = await openWorkbench(page);
+test('the progress bar takes no height from the stage', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openWorkbench(page);
 
-  const sample = await page.evaluate(async () => {
-    const api = await import('/js/core/api.js');
+  const heights = await page.evaluate(async () => {
+    const stageBefore = document.getElementById('stage').getBoundingClientRect().height;
     const log = await import('/js/core/logbook.js');
-    const estimates = await import('/js/core/estimates.js');
-    estimates.forgetDurations();
-
-    // A synthetic run, so the assertion is about what the bar says with no
-    // ticks rather than about how long some particular operation happens to
-    // take on the machine running the test.
     log.beginCall('spec', 'A slow operation', 'spec.operation');
-    const withoutHistory = log.progressView();
+    const stageDuring = document.getElementById('stage').getBoundingClientRect().height;
+    const barHeight = document.querySelector('.progress').getBoundingClientRect().height;
     log.endCall('spec');
-
-    // Two recorded runs are what it takes before an estimate is offered: one
-    // run is a sample, and the first run of anything is the slowest.
-    estimates.recordDuration('spec.operation', 8000);
-    estimates.recordDuration('spec.operation', 8000);
-    log.beginCall('spec2', 'A slow operation', 'spec.operation');
-    const withHistory = log.progressView();
-    log.endCall('spec2');
-    estimates.forgetDurations();
-
-    void api;
-    return { withoutHistory, withHistory };
+    return { stageBefore, stageDuring, barHeight };
   });
 
-  expect(sample.withoutHistory.kind).toBe('unknown');
-  expect(sample.withoutHistory.fraction).toBeNull();
-  expect(sample.withHistory.kind).toBe('estimated');
-  expect(sample.withHistory.samples).toBe(2);
-  expect(sample.withHistory.remainingS).toBeGreaterThan(0);
-
-  expect(browserErrors).toEqual([]);
+  expect(heights.stageDuring).toBeCloseTo(heights.stageBefore, 1);
+  // Drawn, but out of flow: it overlays the edge of the message bar.
+  expect(heights.barHeight).toBeGreaterThan(0);
+  expect(heights.barHeight).toBeLessThan(8);
 });
 
 test('shows every figure and its controls without scrolling the stage', async ({ page }) => {
