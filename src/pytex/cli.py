@@ -206,11 +206,18 @@ def _cmd_hrem_ctf(args: argparse.Namespace) -> int:
         energy_kev=args.voltage,
         defocus_angstrom=args.defocus,
         cs_mm=cs_mm,
+        c5_mm=args.c5,
+        astigmatism_angstrom=args.astigmatism,
+        astigmatism_angle_deg=args.astigmatism_angle,
+        coma_angstrom=args.coma,
+        coma_angle_deg=args.coma_angle,
+        trefoil_angstrom=args.trefoil,
+        trefoil_angle_deg=args.trefoil_angle,
         focal_spread_angstrom=args.focal_spread,
         aperture_cutoff_mrad=args.aperture,
         mode=mode,
     )
-    ctf = aberr.evaluate_ctf_1d()
+    ctf = aberr.evaluate_ctf_1d(azimuth_deg=args.azimuth)
     print("Contrast Transfer Function (CTF) Diagnostics:")
     print(f"  Voltage: {aberr.energy_kev:.1f} kV (lambda = {aberr.wavelength_angstrom:.5f} A)")
     print(f"  Mode: {aberr.mode.value}")
@@ -223,8 +230,19 @@ def _cmd_hrem_ctf(args: argparse.Namespace) -> int:
     info_d = ctf.information_limit_d_spacing_angstrom
     print(f"  First zero crossing: {first_z:.3f} A^-1 (d = {first_d:.2f} A)")
     print(f"  Information limit (1/e^2): {info_q:.3f} A^-1 (d = {info_d:.2f} A)")
+    if aberr.has_azimuthal_aberrations:
+        band = aberr.evaluate_ctf_azimuthal()
+        best, worst = band.point_resolution_range_angstrom
+        print(f"  Cut azimuth: {ctf.azimuth_deg:.1f} deg (transfer is not isotropic)")
+        print(
+            f"  Point resolution over azimuth: {best:.2f} - {worst:.2f} A "
+            f"(anisotropy {band.resolution_anisotropy_angstrom:.2f} A, "
+            f"worst at {band.worst_azimuth_deg:.1f} deg)"
+        )
     if getattr(args, "report", False):
         print("\nExplainable Diagnostics:\n" + ctf.describe())
+        if aberr.has_azimuthal_aberrations:
+            print("\n" + aberr.evaluate_ctf_azimuthal().describe())
     return 0
 
 
@@ -476,7 +494,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     hrem_ctf_parser = hrem_subparsers.add_parser(
         "ctf",
-        help="Evaluate 1D Contrast Transfer Function and damping envelopes.",
+        help=(
+            "Evaluate the contrast transfer function along one azimuth, with damping "
+            "envelopes and the azimuthal resolution spread of a non-round lens."
+        ),
     )
     hrem_ctf_parser.add_argument(
         "--voltage",
@@ -507,6 +528,57 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=10.0,
         help="Focal spread Delta in Angstrom.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--c5",
+        type=float,
+        default=0.0,
+        help="Fifth-order spherical aberration C5 in millimetres.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--astigmatism",
+        type=float,
+        default=0.0,
+        help="Two-fold astigmatism amplitude C12 in Angstrom.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--astigmatism-angle",
+        type=float,
+        default=0.0,
+        help="Azimuth phi12 of two-fold astigmatism in degrees.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--coma",
+        type=float,
+        default=0.0,
+        help="Axial coma amplitude C21 in Angstrom.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--coma-angle",
+        type=float,
+        default=0.0,
+        help="Azimuth phi21 of axial coma in degrees.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--trefoil",
+        type=float,
+        default=0.0,
+        help="Three-fold astigmatism (trefoil) amplitude C23 in Angstrom.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--trefoil-angle",
+        type=float,
+        default=0.0,
+        help="Azimuth phi23 of trefoil in degrees.",
+    )
+    hrem_ctf_parser.add_argument(
+        "--azimuth",
+        type=float,
+        default=0.0,
+        help=(
+            "Azimuth in degrees of the radial cut through the back focal plane. "
+            "Only a lens with a non-round aberration transfers differently by azimuth."
+        ),
     )
     hrem_ctf_parser.add_argument(
         "--aperture",

@@ -71,6 +71,7 @@ from pytex.diffraction.holz import (
 from pytex.diffraction.hrem import (
     CTF1D,
     AtomicSnapshot,
+    AzimuthalCTF,
     DoubleCorrectionMode,
     HREMSimulationResult,
     MicroscopeAberrations,
@@ -350,6 +351,7 @@ __all__ = [
     "AbsorptionModel",
     "AngleDeviation",
     "AtomicSnapshot",
+    "AzimuthalCTF",
     "BeamSet",
     "BlochWaveSolution",
     "CBEDDisc",

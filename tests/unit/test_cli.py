@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from pytex.cli import build_parser
 
 
@@ -24,6 +26,55 @@ def test_cli_docs_build_supports_clean_flag() -> None:
     parser = build_parser()
     args = parser.parse_args(["docs", "build", "--clean"])
     assert args.clean is True
+
+
+def test_cli_hrem_ctf_accepts_residual_aberrations(capsys: pytest.CaptureFixture[str]) -> None:
+    """The CLI reaches every non-round term and reports the azimuthal spread they cause."""
+    parser = build_parser()
+    args = parser.parse_args([
+        "hrem",
+        "ctf",
+        "--voltage",
+        "300",
+        "--defocus",
+        "-50",
+        "--cs",
+        "1.0",
+        "--astigmatism",
+        "20",
+        "--astigmatism-angle",
+        "30",
+        "--coma",
+        "5",
+        "--trefoil",
+        "8",
+        "--c5",
+        "0.5",
+        "--azimuth",
+        "30",
+    ])
+    assert args.astigmatism == 20.0
+    assert args.astigmatism_angle == 30.0
+    assert args.coma == 5.0
+    assert args.trefoil == 8.0
+    assert args.c5 == 0.5
+    assert args.azimuth == 30.0
+
+    assert args.func(args) == 0
+    printed = capsys.readouterr().out
+    assert "Cut azimuth: 30.0 deg" in printed
+    assert "Point resolution over azimuth" in printed
+
+
+def test_cli_hrem_ctf_stays_silent_about_azimuth_for_a_round_lens(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    parser = build_parser()
+    args = parser.parse_args(["hrem", "ctf", "--voltage", "200", "--defocus", "-50", "--cs", "1.0"])
+
+    assert args.func(args) == 0
+    printed = capsys.readouterr().out
+    assert "Cut azimuth" not in printed
 
 
 def test_cli_hrem_commands() -> None:

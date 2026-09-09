@@ -40,7 +40,7 @@ scientific validation boundaries are in `repository_review_2026_09.md`.
 - Local ignored evidence: `outputs/review_increment_full.log`, `review_increment_coverage.json`,
   `review_final_browser.log`, `review_docs.log`, `review_final_weighted_focused.log`.
 
-### Increment 2 — corrected and ready for durable commit; release gates pending
+### Increment 2 — committed and pushed: 1daf262; release gates pending
 
 - Moved the existing candidate-scoring implementation intact to private `core._parent_scoring`;
   stable core no longer imports experimental modules. The experimental facade retains its class,
@@ -77,6 +77,8 @@ It is active in session **37957**. The corrected source is frozen for this run. 
 tests pass (60), Ruff/mypy pass, and final Sphinx build passes with zero warnings. The corrected
 increment is being committed/pushed now to repair the known CI failures and obtain cross-platform
 verification in parallel; the full suite remains an explicit release gate, not a claimed pass.
+Commit **1daf262** is pushed. Its CI run is **34360263335**; browser passed, Python jobs
+remain active. Preparation worktree `outputs/review-scoring` was removed after its work landed.
 
 ### Exact next actions
 
@@ -86,6 +88,14 @@ the exact second-increment diff/new files, and only then version/CITATION/change
 release checks write `outputs/review_release_metadata.log`. Main's version remains 0.8.1 until
 its full suite passes. After increment 2 lands, compare package source trees and copy only the
 three release metadata files from the candidate; the prepared wheel must match the final sources.
+The final bundle build passed (551 files, 57.8 MB). The wheel and sdist built successfully into
+ignored `outputs/release-0.9.0/`. All package source files match main except the intended version
+literal; generated docs are excluded from that source comparison. An isolated `--no-deps` wheel
+installation into `outputs/review-installed` passed weighted OR, XYZ import, core dependency
+isolation and bundled offline docs checks (`outputs/review_release_smoke.log`). Release metadata
+and repository-integrity checks passed in the candidate. Logs: `review_release_build.log`,
+`review_release_bundle_final.log`, `review_release_metadata.log`. These are prepared artifacts,
+not a released version: main still says 0.8.1 until final gates pass.
 
 1. Commit/push the corrected increment, then inspect final full-suite outcome, skips and exact coverage.
    Fix any failures and rerun affected
@@ -103,6 +113,77 @@ three release metadata files from the candidate; the prepared wheel must match t
    files have landed. Its absolute resolved path is within this workspace; preserve all other work.
 6. Record completion and remaining external-validation limits in this ledger; commit/push the
    closing record. Confirm main/upstream and tag, then mark the goal complete.
+
+### Increment 3 (opened 2026-09-09) — the aberrations the GUI cannot reach
+
+**What the review of the last two days found.** Commit `1daf262` made the abTEM adapter forward
+axial coma and trefoil amplitudes and azimuths, and pinned four optical phase-transfer cases
+against installed abTEM. `MicroscopeAberrations` has carried C5, two-fold astigmatism, coma and
+trefoil since `60ffbff`, and the image-forming path uses them correctly: the pure-Python
+transmission model builds an azimuth grid and calls `wave_aberration(q, theta)`
+(`hrem.py:1279-1282`), and the adapter now hands the same coefficients to abTEM. Two surfaces are
+blind to them, and both are the surfaces a user actually touches:
+
+1. `MicroscopeAberrations.evaluate_ctf_1d` calls `wave_aberration(q)` with `theta=None`, so every
+   non-round term is silently discarded. A user who sets astigmatism and asks for the CTF gets the
+   round-lens curve back with no indication that the answer ignores the input. Silent, not wrong-by-
+   approximation: nothing in the result records the omission.
+2. The workbench exposes only defocus and Cs. For a double-corrected instrument that is precisely
+   the wrong pair to stop at — correction drives Cs toward zero, and the residual non-round terms
+   are what then limits the image. The simulation service additionally hard-codes focal spread by
+   mode (5 Å or 25 Å) and never exposes convergence semi-angle or aperture, while the CTF service
+   next to it exposes all three. The same physics, two different control sets.
+
+`describe()` reports defocus, Cs, focal spread, convergence and aperture, and never mentions a
+nonzero residual term — so the explainable-results surface omits the coefficients that changed
+the image.
+
+**Objective.** Make the residual aberrations reachable, honest and explained: an azimuth-resolved
+CTF in core, the full aberration set in both workbench operations with declared widths and
+registered symbols, the HRTEM panel carried onto the shell's own view-tab strip, and the theory,
+worked-example and test coverage the rules require. Then cut 0.9.0.
+
+**Plan.**
+
+| Step | Scope | State |
+|---|---|---|
+| 3a | Core: azimuth-resolved CTF (`azimuth_deg` on `evaluate_ctf_1d`, an azimuthal band surface, `has_azimuthal_aberrations`), `describe()` reporting residual terms, analytic tests | Landed |
+| 3b | Registry: symbols for C5, C12/φ12, C21/φ21, C23/φ23 and the CTF azimuth, in `core.symbols` and the terminology registry | Planned |
+| 3c | GUI service: residual aberrations plus coherence controls on both operations, azimuth control and band data on the CTF, residuals in tables/summary/describe | Planned |
+| 3d | Panel: shell view-tab strip via `context.setViews`, azimuthal band and legend on the CTF chart, aberration state visible | Planned |
+| 3e | Docs: theory section on residual aberrations and the azimuthal CTF, algorithm/workflow updates, a worked example with independent provenance | Planned |
+| 3f | Verification, version 0.9.0, changelog, commit and push | Planned |
+
+**3a landed.** `evaluate_ctf_1d` takes `azimuth_deg` and evaluates the non-round terms there, so a
+radial cut is now a cut at a stated direction rather than a silent omission. New
+`MicroscopeAberrations.evaluate_ctf_azimuthal` returns `AzimuthalCTF`: chi and transfer on a
+`(azimuth, q)` grid, the best/worst transfer band, per-azimuth first zeros, the point-resolution
+range and its anisotropy. `has_azimuthal_aberrations` and `residual_aberration_terms()` let a
+caller ask whether one cut is the whole lens; both `describe()` surfaces now say so when it is not.
+
+Two defects found while doing it, neither reachable from the old 1D-only path:
+
+- `wave_aberration` accumulated the non-round terms with `+=` onto an array shaped by `q` alone, so
+  any 2D `(azimuth, q)` evaluation raised a broadcast error. Now accumulated out of place.
+- A round lens returns chi shaped `(1, num_radial)` because theta is unused; the azimuthal grid
+  broadcasts it back so the result shape never depends on which coefficients happen to be set.
+
+The first-zero search was extracted to `_first_zero_crossing` and is now shared by both paths
+rather than duplicated.
+
+Provenance of the tests is algebraic, not a recorded output. Two-fold astigmatism enters chi as
+pi*lambda*q^2*C12*cos(2(theta - phi12)), so a cut at phi12 must reproduce a round lens at defocus
+Df + C12 and a cut at phi12 + 90 deg one at Df - C12; both hold to `rel=1e-12`. The azimuthal
+period of each term follows from its multiplicity alone (C12 180 deg, C21 360 deg, C23 120 deg) and
+is checked against chi directly. The band is checked to bound every individually computed cut, and
+a perfectly corrected lens at zero defocus is checked to report NaN rather than a resolution.
+
+CLI `pytex hrem ctf` gained `--c5`, `--astigmatism[-angle]`, `--coma[-angle]`,
+`--trefoil[-angle]` and `--azimuth`, and prints the azimuthal resolution range when the lens is
+non-round. 13 new tests; the HREM, abTEM-parity and CLI groups pass; Ruff and strict mypy clean.
+
+**Constraint carried forward.** `tests/test_data/` is untracked and predates this task: preserve it,
+never stage it. Stage by explicit path.
 
 ## HREM Simulation Module for Double-Corrected TEM with abTEM Integration — COMPLETE (2026-09-08)
 

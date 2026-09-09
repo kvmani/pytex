@@ -211,6 +211,50 @@ class MicroscopeAberrations:
         return self.c5_mm * 1e7
 
     @property
+    def has_azimuthal_aberrations(self) -> bool:
+        """Whether any non-round (azimuth-dependent) aberration coefficient is nonzero.
+
+        Round aberrations — defocus, Cs, C5 — shift the wave aberration by the same
+        amount at every azimuth, so a single radial cut of the transfer function
+        describes the lens completely. Two-fold astigmatism, axial coma and trefoil
+        do not: chi becomes a function of azimuth, and a radial cut describes one
+        direction in the image only. This predicate is what tells a caller whether
+        :meth:`evaluate_ctf_1d` is the whole story or one section through it.
+        """
+        return (
+            self.astigmatism_angstrom != 0.0
+            or self.coma_angstrom != 0.0
+            or self.trefoil_angstrom != 0.0
+        )
+
+    def residual_aberration_terms(self) -> tuple[tuple[str, str, float, float], ...]:
+        """Nonzero non-round aberrations as ``(key, symbol, amplitude_A, azimuth_deg)``.
+
+        Purpose
+        -------
+        Report the aberrations that a corrected instrument is actually limited by,
+        in the order of the Krivanek coefficient naming used by aberration
+        correctors, so that a result object can state which terms shaped it.
+
+        Returns
+        -------
+        tuple
+            One entry per nonzero non-round term: its registry key, its Krivanek
+            label, its amplitude in Angstrom and its azimuth in degrees. Empty when
+            the lens is round, in which case :meth:`evaluate_ctf_1d` is complete.
+        """
+        terms: list[tuple[str, str, float, float]] = []
+        if self.astigmatism_angstrom != 0.0:
+            terms.append(
+                ("astigmatism_2fold", "C12", self.astigmatism_angstrom, self.astigmatism_angle_deg)
+            )
+        if self.coma_angstrom != 0.0:
+            terms.append(("axial_coma", "C21", self.coma_angstrom, self.coma_angle_deg))
+        if self.trefoil_angstrom != 0.0:
+            terms.append(("trefoil", "C23", self.trefoil_angstrom, self.trefoil_angle_deg))
+        return tuple(terms)
+
+    @property
     def scherzer_defocus_angstrom(self) -> float:
         """Scherzer defocus Delta f_Sch = -1.2 * sqrt(Cs * lambda) in Angstrom."""
         if self.cs_mm <= 0.0:
@@ -341,7 +385,7 @@ class MicroscopeAberrations:
         if theta is not None:
             if self.astigmatism_angstrom != 0.0:
                 phi12 = math.radians(self.astigmatism_angle_deg)
-                chi += (
+                chi = chi + (
                     math.pi
                     * self.astigmatism_angstrom
                     * lam
@@ -350,7 +394,7 @@ class MicroscopeAberrations:
                 )
             if self.trefoil_angstrom != 0.0:
                 phi23 = math.radians(self.trefoil_angle_deg)
-                chi += (
+                chi = chi + (
                     (2.0 / 3.0)
                     * math.pi
                     * self.trefoil_angstrom
@@ -360,7 +404,7 @@ class MicroscopeAberrations:
                 )
             if self.coma_angstrom != 0.0:
                 phi21 = math.radians(self.coma_angle_deg)
-                chi += (
+                chi = chi + (
                     (2.0 / 3.0)
                     * math.pi
                     * self.coma_angstrom
@@ -400,10 +444,51 @@ class MicroscopeAberrations:
         q_cutoff = (self.aperture_cutoff_mrad * 1e-3) / self.wavelength_angstrom
         return (q <= q_cutoff).astype(np.float64)
 
-    def evaluate_ctf_1d(self, max_q_inv_angstrom: float = 2.0, num_points: int = 500) -> CTF1D:
-        """Compute 1D Contrast Transfer Function and damping envelopes."""
+    def evaluate_ctf_1d(
+        self,
+        max_q_inv_angstrom: float = 2.0,
+        num_points: int = 500,
+        azimuth_deg: float = 0.0,
+    ) -> CTF1D:
+        """Compute the Contrast Transfer Function along one azimuth of the back focal plane.
+
+        Purpose
+        -------
+        Evaluate the damped transfer function T(q) = E(q) sin(chi(q, theta)) along a
+        radial cut at a stated azimuth, together with the coherence envelopes, the
+        first zero crossing and the information limit.
+
+        When to use
+        -----------
+        For a round lens — defocus, Cs and C5 only — the cut is azimuth-independent
+        and describes the instrument completely. When
+        :attr:`has_azimuthal_aberrations` is true this is one section through an
+        anisotropic transfer function, and :meth:`evaluate_ctf_azimuthal` gives the
+        spread across azimuth that a single cut cannot show.
+
+        Parameters
+        ----------
+        max_q_inv_angstrom : float
+            Upper spatial frequency of the radial grid, in 1/Angstrom.
+        num_points : int
+            Number of radial samples.
+        azimuth_deg : float
+            Azimuth theta of the cut, in degrees, measured in the back focal plane
+            from the same reference as the aberration azimuths phi12, phi21 and
+            phi23. The non-round terms are evaluated at this azimuth.
+
+        Returns
+        -------
+        CTF1D
+            The transfer profile, its envelopes, and the azimuth it was cut at.
+
+        See Also
+        --------
+        evaluate_ctf_azimuthal : the transfer function over the full azimuth range.
+        """
         q = np.linspace(0.0, max_q_inv_angstrom, num_points)
-        chi = self.wave_aberration(q)
+        theta = np.full_like(q, math.radians(azimuth_deg))
+        chi = self.wave_aberration(q, theta)
         sin_chi = np.sin(chi)
         ec = self.temporal_envelope(q)
         es = self.spatial_envelope(q)
@@ -411,17 +496,7 @@ class MicroscopeAberrations:
         total_env = ec * es * ap
         transfer = total_env * sin_chi
 
-        # Find first zero crossing of sin(chi)
-        first_zero = float("nan")
-        sign_changes = np.where(np.diff(np.sign(sin_chi)))[0]
-        # Ignore zero at q=0
-        nonzero_crossings = [idx for idx in sign_changes if q[idx] > 0.05]
-        if nonzero_crossings:
-            idx = nonzero_crossings[0]
-            # Linear interpolation for zero
-            q1, q2 = q[idx], q[idx + 1]
-            y1, y2 = sin_chi[idx], sin_chi[idx + 1]
-            first_zero = float(q1 - y1 * (q2 - q1) / (y2 - y1))
+        first_zero = _first_zero_crossing(q, sin_chi)
 
         # Information limit where total envelope drops to 1/e^2 ~ 0.135
         info_limit_q = float("nan")
@@ -445,6 +520,78 @@ class MicroscopeAberrations:
             transfer_function=transfer,
             first_zero_q_inv_angstrom=first_zero,
             information_limit_q_inv_angstrom=info_limit_q,
+            aberrations=self,
+            azimuth_deg=float(azimuth_deg),
+        )
+
+    def evaluate_ctf_azimuthal(
+        self,
+        max_q_inv_angstrom: float = 2.0,
+        num_radial: int = 500,
+        num_azimuthal: int = 72,
+    ) -> AzimuthalCTF:
+        """Compute the transfer function over the full azimuth range of the back focal plane.
+
+        Purpose
+        -------
+        Resolve the anisotropy that two-fold astigmatism, axial coma and trefoil
+        impose on phase transfer. Each is evaluated on the same radial grid at
+        ``num_azimuthal`` azimuths, and the result carries both the per-azimuth
+        profiles and the envelope of best and worst transfer across azimuth.
+
+        When to use
+        -----------
+        Whenever a residual non-round aberration is nonzero, which for a corrected
+        instrument is the normal case: correction drives Cs toward zero and the
+        residual terms then set the achievable resolution, differently in different
+        directions. For a round lens the band collapses onto the single radial cut
+        and this adds nothing over :meth:`evaluate_ctf_1d`.
+
+        Parameters
+        ----------
+        max_q_inv_angstrom : float
+            Upper spatial frequency of the radial grid, in 1/Angstrom.
+        num_radial : int
+            Number of radial samples per azimuth.
+        num_azimuthal : int
+            Number of azimuths sampled uniformly over [0, 2*pi).
+
+        Returns
+        -------
+        AzimuthalCTF
+            Per-azimuth transfer, the best/worst transfer band, and the range of
+            point resolution over azimuth.
+
+        Notes
+        -----
+        The coherence envelopes are Frank's isotropic forms, which are derived for a
+        round lens: the spatial envelope uses the radial derivative of the round part
+        of chi. The anisotropy reported here is therefore the anisotropy of the
+        transfer oscillation, not of the damping.
+        """
+        if num_azimuthal < 1:
+            raise ValueError(f"num_azimuthal must be at least 1, got {num_azimuthal}")
+        q = np.linspace(0.0, max_q_inv_angstrom, num_radial)
+        azimuths = np.linspace(0.0, 2.0 * math.pi, num_azimuthal, endpoint=False)
+        # A round lens ignores theta entirely, so broadcast the radial profile back
+        # onto the azimuth axis: the grid shape must not depend on which terms are set.
+        chi = np.broadcast_to(
+            self.wave_aberration(q[None, :], azimuths[:, None]), (azimuths.size, q.size)
+        ).copy()
+        sin_chi = np.sin(chi)
+        envelope = self.temporal_envelope(q) * self.spatial_envelope(q) * self.aperture_mask(q)
+        transfer = envelope[None, :] * sin_chi
+
+        first_zeros = np.array(
+            [_first_zero_crossing(q, sin_chi[index]) for index in range(azimuths.size)]
+        )
+        return AzimuthalCTF(
+            spatial_frequencies_inv_angstrom=q,
+            azimuths_rad=azimuths,
+            phase_shift_rad=chi,
+            transfer_function=transfer,
+            total_envelope=envelope,
+            first_zero_q_inv_angstrom=first_zeros,
             aberrations=self,
         )
 
@@ -473,6 +620,22 @@ class MicroscopeAberrations:
                 f"Negative Cs Imaging (NCSI) condition: Cs = {self.cs_um:.1f} µm (< 0) "
                 f"with overfocus Δf = +{self.defocus_angstrom:.1f} Å, producing bright atom "
                 "columns on a dark background with maximum contrast and minimal Fresnel fringing."
+            )
+        if self.c5_mm != 0.0:
+            lines.append(
+                f"Fifth-order spherical aberration C5 = {self.c5_mm:.4f} mm is retained; it is "
+                "round, so it shifts phase transfer equally at every azimuth."
+            )
+        residual = self.residual_aberration_terms()
+        if residual:
+            written = ", ".join(
+                f"{symbol} = {amplitude:.1f} Å at azimuth {angle:.1f}°"
+                for _, symbol, amplitude, angle in residual
+            )
+            lines.append(
+                f"Residual non-round aberrations are present: {written}. Phase transfer therefore "
+                "depends on azimuth, and a single radial cut of the transfer function describes "
+                "one direction rather than the lens."
             )
         if self.focal_spread_angstrom > 0.0:
             lines.append(
@@ -512,6 +675,10 @@ class CTF1D:
         Spatial frequency where damping reaches exp(-2) ~ 0.135.
     aberrations : MicroscopeAberrations
         Associated lens parameters.
+    azimuth_deg : float
+        Azimuth of the radial cut, in degrees. Meaningful only when the lens
+        carries a non-round aberration; for a round lens every azimuth gives the
+        same profile.
     """
 
     spatial_frequencies_inv_angstrom: np.ndarray
@@ -524,6 +691,7 @@ class CTF1D:
     first_zero_q_inv_angstrom: float
     information_limit_q_inv_angstrom: float
     aberrations: MicroscopeAberrations
+    azimuth_deg: float = 0.0
 
     @property
     def q_inv_angstrom(self) -> np.ndarray:
@@ -591,6 +759,178 @@ class CTF1D:
                 f"(d_info = {self.information_limit_angstrom:.3f} Å), governed by the focal "
                 f"spread of {self.aberrations.focal_spread_angstrom:.1f} Å."
             )
+        residual = self.aberrations.residual_aberration_terms()
+        if residual:
+            written = ", ".join(
+                f"{symbol} = {amplitude:.1f} Å at {angle:.1f}°"
+                for _, symbol, amplitude, angle in residual
+            )
+            lines.append(
+                f"This profile is the cut at azimuth θ = {self.azimuth_deg:.1f}°, not the whole "
+                f"lens: the non-round residual aberrations {written} make phase transfer depend on "
+                "azimuth, so the point resolution above applies to this direction alone."
+            )
+        return " ".join(lines)
+
+
+def _first_zero_crossing(q: np.ndarray, sin_chi: np.ndarray) -> float:
+    """Locate the first zero of sin(chi) above q = 0.05 1/Angstrom by linear interpolation.
+
+    The trivial zero at the origin is excluded: chi(0) = 0 for every lens, and it
+    carries no information about resolution. Returns NaN when the profile does not
+    cross zero inside the sampled range, which is the non-oscillating regime of a
+    well-corrected lens rather than a failure.
+    """
+    sign_changes = np.where(np.diff(np.sign(sin_chi)))[0]
+    for idx in sign_changes:
+        if q[idx] <= 0.05:
+            continue
+        q1, q2 = float(q[idx]), float(q[idx + 1])
+        y1, y2 = float(sin_chi[idx]), float(sin_chi[idx + 1])
+        if y2 == y1:
+            return q1
+        return q1 - y1 * (q2 - q1) / (y2 - y1)
+    return float("nan")
+
+
+@dataclass(frozen=True, slots=True)
+class AzimuthalCTF:
+    """Contrast transfer resolved over azimuth for a lens with non-round aberrations.
+
+    Purpose
+    -------
+    A radial cut of the transfer function describes a round lens completely. Once
+    two-fold astigmatism, axial coma or trefoil is present, chi depends on azimuth
+    and the achievable resolution differs by direction — which is what an operator
+    tuning a corrector is looking at when they judge the symmetry of a Thon-ring
+    pattern. This object holds the transfer at each sampled azimuth together with
+    the band it sweeps out.
+
+    Attributes
+    ----------
+    spatial_frequencies_inv_angstrom : np.ndarray
+        Radial grid q in 1/Angstrom, shape ``(num_radial,)``.
+    azimuths_rad : np.ndarray
+        Sampled azimuths in radians over [0, 2*pi), shape ``(num_azimuthal,)``.
+    phase_shift_rad : np.ndarray
+        Wave aberration chi(q, theta) in radians, shape ``(num_azimuthal, num_radial)``.
+    transfer_function : np.ndarray
+        Damped transfer at each azimuth, shape ``(num_azimuthal, num_radial)``.
+    total_envelope : np.ndarray
+        Coherence and aperture envelope, shape ``(num_radial,)``. Frank's envelopes
+        are isotropic, so one radial profile applies at every azimuth.
+    first_zero_q_inv_angstrom : np.ndarray
+        First zero crossing per azimuth in 1/Angstrom, shape ``(num_azimuthal,)``.
+        NaN where the cut does not cross zero within the sampled range.
+    aberrations : MicroscopeAberrations
+        The lens state these profiles were computed from.
+    """
+
+    spatial_frequencies_inv_angstrom: np.ndarray
+    azimuths_rad: np.ndarray
+    phase_shift_rad: np.ndarray
+    transfer_function: np.ndarray
+    total_envelope: np.ndarray
+    first_zero_q_inv_angstrom: np.ndarray
+    aberrations: MicroscopeAberrations
+
+    @property
+    def azimuths_deg(self) -> np.ndarray:
+        """Sampled azimuths in degrees."""
+        return np.asarray(np.degrees(self.azimuths_rad), dtype=np.float64)
+
+    @property
+    def transfer_min(self) -> np.ndarray:
+        """Lowest transfer over azimuth at each spatial frequency."""
+        return np.asarray(np.min(self.transfer_function, axis=0), dtype=np.float64)
+
+    @property
+    def transfer_max(self) -> np.ndarray:
+        """Highest transfer over azimuth at each spatial frequency."""
+        return np.asarray(np.max(self.transfer_function, axis=0), dtype=np.float64)
+
+    @property
+    def point_resolution_angstrom(self) -> np.ndarray:
+        """Point resolution per azimuth, 1/q_first_zero, in Angstrom."""
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.where(
+                self.first_zero_q_inv_angstrom > 0.0,
+                1.0 / self.first_zero_q_inv_angstrom,
+                np.nan,
+            )
+
+    @property
+    def point_resolution_range_angstrom(self) -> tuple[float, float]:
+        """Best and worst point resolution over azimuth, in Angstrom.
+
+        Both entries are NaN when no azimuth produces a zero crossing inside the
+        sampled range.
+        """
+        values = self.point_resolution_angstrom
+        finite = values[np.isfinite(values)]
+        if finite.size == 0:
+            return (float("nan"), float("nan"))
+        return (float(np.min(finite)), float(np.max(finite)))
+
+    @property
+    def resolution_anisotropy_angstrom(self) -> float:
+        """Spread between the best and worst point resolution over azimuth, in Angstrom.
+
+        Zero for a round lens. It is the single number that says how much the
+        residual non-round aberrations cost, and in a corrected instrument it is
+        usually the quantity worth minimising.
+        """
+        best, worst = self.point_resolution_range_angstrom
+        if math.isnan(best):
+            return float("nan")
+        return worst - best
+
+    @property
+    def worst_azimuth_deg(self) -> float:
+        """Azimuth of the coarsest point resolution, in degrees; NaN if none resolves."""
+        values = self.point_resolution_angstrom
+        if not np.any(np.isfinite(values)):
+            return float("nan")
+        return float(self.azimuths_deg[int(np.nanargmax(values))])
+
+    def describe(self) -> str:
+        """Scientific prose description of the azimuthal transfer behaviour."""
+        residual = self.aberrations.residual_aberration_terms()
+        best, worst = self.point_resolution_range_angstrom
+        if not residual:
+            return (
+                "The lens carries no non-round aberration, so phase transfer is isotropic: every "
+                "azimuth gives the same profile and the point resolution of "
+                f"{best:.3f} Å applies in all directions."
+                if not math.isnan(best)
+                else (
+                    "The lens carries no non-round aberration, so phase transfer is isotropic. No "
+                    "zero crossing occurs within the sampled passband."
+                )
+            )
+        written = ", ".join(
+            f"{symbol} = {amplitude:.1f} Å at {angle:.1f}°"
+            for _, symbol, amplitude, angle in residual
+        )
+        lines = [
+            f"Phase transfer is anisotropic: the residual aberrations {written} make the wave "
+            f"aberration depend on azimuth, evaluated here at {self.azimuths_rad.size} azimuths."
+        ]
+        if math.isnan(best):
+            lines.append(
+                "No azimuth produces a zero crossing inside the sampled passband, so no "
+                "directional point resolution can be quoted over this range."
+            )
+        else:
+            lines.append(
+                f"Point resolution ranges from {best:.3f} Å at best to {worst:.3f} Å at worst "
+                f"(azimuth {self.worst_azimuth_deg:.1f}°), an anisotropy of "
+                f"{self.resolution_anisotropy_angstrom:.3f} Å."
+            )
+        lines.append(
+            "The coherence envelopes are Frank's isotropic forms, so this anisotropy is that of "
+            "the transfer oscillation, not of the damping."
+        )
         return " ".join(lines)
 
 
