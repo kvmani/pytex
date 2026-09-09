@@ -4,7 +4,7 @@
 
 # HRTEM simulation and contrast transfer function optics
 
-Optics and contrast transfer of high-resolution transmission electron microscopy: relativistic electron wavelength, Scherzer defocus and resolution, analytical zero-crossing of the CTF, chromatic aberration damping reduction in double-corrected TEM, and phase contrast sign inversion in Negative Cs Imaging (NCSI).
+Optics and contrast transfer of high-resolution transmission electron microscopy: relativistic electron wavelength, Scherzer defocus and resolution, analytical zero-crossing of the CTF, chromatic aberration damping reduction in double-corrected TEM, phase contrast sign inversion in Negative Cs Imaging (NCSI), and the directional splitting of point resolution that a residual two-fold astigmatism imposes on a corrected lens.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -213,5 +213,118 @@ result = [scherzer_dark, ncsi_bright]
 **Why this value**: Physical principle of NCSI: phase contrast sign reversal between conventional underfocus HRTEM (dark atoms) and NCSI (bright atoms).
 
 **Citation**: Jia, C. L., Lentzen, M. & Urban, K. (2003). Atomic-resolution imaging of oxygen in perovskite ceramics. Science 299, 870-873; Urban, K. W. (2008). Studying microstructure with aberration-corrected transmission electron microscopy. Science 321, 506-510.
+
+**See also**: {doc}`HRTEM multislice and CTF theory <../../theory/hrem_multislice_and_ctf>`, {doc}`Diffraction API <../../api/index>`
+
+## Two-fold astigmatism acts as a defocus offset along its own azimuth
+
+Two-fold astigmatism enters the wave aberration as pi lambda q^2 C_12 cos(2(theta - phi_12)). Along its own azimuth, theta = phi_12, the cosine equals +1 and the term is algebraically indistinguishable from adding C_12 to the defocus; ninety degrees away the cosine equals -1 and it subtracts the same amount. For a 300 kV lens at Delta f = -50 Å with Cs = 1 um and C_12 = 20 Å at phi_12 = 30 degrees, the point resolution of the cut along phi_12 must therefore equal that of a round lens at Delta f = -30 Å, and the cut across it that of a round lens at Delta f = -70 Å. Compute the difference between each cut and its equivalent round lens.
+
+**Symbols**
+
+- $C_{12}$ &mdash; Two-fold astigmatism amplitude of the objective lens.
+- $\varphi_{12}$ &mdash; Azimuth of the two-fold astigmatism axis in the back focal plane.
+- $\theta_{q}$ &mdash; Azimuth in the back focal plane at which a transfer profile is cut.
+- $\Delta f$ &mdash; Defocus of the objective lens; negative values correspond to underfocus.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex.diffraction.hrem import (
+    AtomicSnapshot,
+    DoubleCorrectionMode,
+    MicroscopeAberrations,
+    pure_python_phase_object_simulation,
+    relativistic_wavelength_angstrom,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+astigmatic = MicroscopeAberrations(
+    energy_kev=300.0,
+    defocus_angstrom=-50.0,
+    cs_mm=0.001,
+    astigmatism_angstrom=20.0,
+    astigmatism_angle_deg=30.0,
+)
+def round_lens(defocus):
+    return MicroscopeAberrations(energy_kev=300.0, defocus_angstrom=defocus, cs_mm=0.001)
+def d0(lens, azimuth=0.0):
+    return lens.evaluate_ctf_1d(2.5, 4000, azimuth_deg=azimuth).point_resolution_angstrom
+result = [
+    abs(d0(astigmatic, 30.0) - d0(round_lens(-30.0))),
+    abs(d0(astigmatic, 120.0) - d0(round_lens(-70.0))),
+]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `hrem-astigmatism-equivalent-defocus` | [0.00e+00, 0.00e+00] | [0.00e+00, 0.00e+00] | Å | < 1e-12 | 1e-12 | ✅ pass |
+
+**Why this value**: An exact algebraic identity of the wave aberration function: at theta = phi_12 the C_12 term reduces to pi lambda q^2 C_12, which is the defocus term with Delta f -> Delta f + C_12, so the two lenses have identical chi and hence identical zero crossings.
+
+**Citation**: Krivanek, O. L., Dellby, N. & Lupini, A. R. (1999). Towards sub-A electron beams. Ultramicroscopy 78, 1-11; Kirkland, E. J. Advanced Computing in Electron Microscopy, 2nd ed. (Springer, 2010), Chapter 3.
+
+**See also**: {doc}`HRTEM multislice and CTF theory <../../theory/hrem_multislice_and_ctf>`, {doc}`Diffraction API <../../api/index>`
+
+## Orthogonal split of point resolution under two-fold astigmatism
+
+Because the C_12 term varies as cos(2 theta), its period in azimuth is 180 degrees and its two extremes lie 90 degrees apart. A lens is therefore resolved best along one direction and worst along the perpendicular one, and the separation between those two directions is fixed by the multiplicity of the aberration rather than by its size. Sample the transfer function of the same 300 kV lens over 180 azimuths and report the angular separation, modulo 180 degrees, between the finest and the coarsest point resolution.
+
+**Symbols**
+
+- $C_{12}$ &mdash; Two-fold astigmatism amplitude of the objective lens.
+- $\varphi_{12}$ &mdash; Azimuth of the two-fold astigmatism axis in the back focal plane.
+- $\theta_{q}$ &mdash; Azimuth in the back focal plane at which a transfer profile is cut.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex.diffraction.hrem import (
+    AtomicSnapshot,
+    DoubleCorrectionMode,
+    MicroscopeAberrations,
+    pure_python_phase_object_simulation,
+    relativistic_wavelength_angstrom,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+lens = MicroscopeAberrations(
+    energy_kev=300.0,
+    defocus_angstrom=-50.0,
+    cs_mm=0.001,
+    astigmatism_angstrom=20.0,
+    astigmatism_angle_deg=30.0,
+)
+band = lens.evaluate_ctf_azimuthal(2.5, 4000, 180)
+resolutions = band.point_resolution_angstrom
+best = float(band.azimuths_deg[int(np.nanargmin(resolutions))])
+result = float(abs(band.worst_azimuth_deg - best) % 180.0)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `hrem-astigmatic-resolution-split` | 90.0 | 90.0 | deg | < 1e-02 | 1e+00 | ✅ pass |
+
+**Why this value**: The azimuthal multiplicity of two-fold astigmatism: cos(2 theta) has period 180 degrees, so its maximum and minimum are separated by exactly 90 degrees. The tolerance is one degree, the spacing of the 180-point azimuthal grid.
+
+**Citation**: Krivanek, O. L., Dellby, N. & Lupini, A. R. (1999). Towards sub-A electron beams. Ultramicroscopy 78, 1-11.
 
 **See also**: {doc}`HRTEM multislice and CTF theory <../../theory/hrem_multislice_and_ctf>`, {doc}`Diffraction API <../../api/index>`

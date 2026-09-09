@@ -152,6 +152,60 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
                 r"\alpha_{\mathrm{obj}}",
                 "Objective aperture semiangle cutoff in HRTEM.",
             ),
+            _entry(
+                "focal_spread",
+                "Δ",
+                r"\Delta",
+                "Focal spread of the illumination, the width of the temporal coherence envelope.",
+            ),
+            _entry(
+                "spherical_aberration_5th",
+                "C₅",
+                "C_{5}",
+                "Fifth-order spherical aberration coefficient of the objective lens.",
+            ),
+            _entry(
+                "astigmatism_2fold",
+                "C₁₂",
+                "C_{12}",
+                "Two-fold astigmatism amplitude of the objective lens.",
+            ),
+            _entry(
+                "astigmatism_2fold_azimuth",
+                "φ₁₂",
+                r"\varphi_{12}",
+                "Azimuth of the two-fold astigmatism axis in the back focal plane.",
+            ),
+            _entry(
+                "axial_coma",
+                "C₂₁",
+                "C_{21}",
+                "Axial coma amplitude of the objective lens.",
+            ),
+            _entry(
+                "axial_coma_azimuth",
+                "φ₂₁",
+                r"\varphi_{21}",
+                "Azimuth of the axial coma axis in the back focal plane.",
+            ),
+            _entry(
+                "trefoil",
+                "C₂₃",
+                "C_{23}",
+                "Three-fold astigmatism (trefoil) amplitude of the objective lens.",
+            ),
+            _entry(
+                "trefoil_azimuth",
+                "φ₂₃",
+                r"\varphi_{23}",
+                "Azimuth of the trefoil axis in the back focal plane.",
+            ),
+            _entry(
+                "ctf_azimuth",
+                "θ",
+                r"\theta_{q}",
+                "Azimuth in the back focal plane at which a transfer profile is cut.",
+            ),
             # -- stage and detector -------------------------------------------
             _entry(
                 "alpha_tilt", "α", r"\alpha", "Primary (α) holder tilt of a double-tilt TEM stage."

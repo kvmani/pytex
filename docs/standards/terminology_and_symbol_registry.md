@@ -320,6 +320,23 @@ ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ 
 | $C_{s}$ | Spherical aberration coefficient of the objective lens. |
 | $C_{c}$ | Chromatic aberration coefficient of the objective lens. |
 | $\alpha_{\mathrm{obj}}$ | Objective aperture semiangle cutoff in high-resolution transmission electron microscopy. |
+| $\Delta$ | Focal spread of the illumination: the width of the temporal coherence envelope, set by the chromatic coefficient $C_{c}$ together with the energy and lens-current spreads. Distinct from $C_{c}$ itself, which it is often mislabelled as: $\Delta$ has units of length at the specimen, $C_{c}$ of lens length.
+| $C_{5}$ | Fifth-order spherical aberration coefficient of the objective lens. Round, like $C_{s}$: it shifts the wave aberration equally at every azimuth. |
+| $C_{12}$ | Two-fold astigmatism amplitude of the objective lens, in the Krivanek aberration numbering $C_{nm}$ (order $n$, azimuthal multiplicity $m$) used by aberration correctors. Distinct from the elastic stiffness components $C_{ij}$, which carry Voigt indices and units of stress. It enters the wave aberration as $\pi\lambda q^{2}C_{12}\cos 2(\theta_{q}-\varphi_{12})$, so along $\varphi_{12}$ it is algebraically a defocus offset of $+C_{12}$ and across it one of $-C_{12}$. |
+| $\varphi_{12}$ | Azimuth of the two-fold astigmatism axis in the back focal plane. |
+| $C_{21}$ | Axial coma amplitude, entering the wave aberration as $\tfrac{2}{3}\pi\lambda^{2}q^{3}C_{21}\cos(\theta_{q}-\varphi_{21})$. Its single-fold symmetry makes phase transfer differ between opposite azimuths. |
+| $\varphi_{21}$ | Azimuth of the axial coma axis in the back focal plane. |
+| $C_{23}$ | Three-fold astigmatism (trefoil) amplitude, entering the wave aberration as $\tfrac{2}{3}\pi\lambda^{2}q^{3}C_{23}\cos 3(\theta_{q}-\varphi_{23})$. |
+| $\varphi_{23}$ | Azimuth of the trefoil axis in the back focal plane. |
+| $\theta_{q}$ | Azimuth in the back focal plane at which a transfer profile is cut. For a round lens every cut is identical; once $C_{12}$, $C_{21}$ or $C_{23}$ is nonzero a single cut describes one direction rather than the lens. |
+| $C_{5}$ | Fifth-order spherical aberration coefficient of the objective lens. Round, like $C_{s}$: it shifts the wave aberration equally at every azimuth. |
+| $C_{12}$ | Two-fold astigmatism amplitude of the objective lens, in the Krivanek aberration numbering $C_{nm}$ (order $n$, azimuthal multiplicity $m$) used by aberration correctors. Distinct from the elastic stiffness components $C_{ij}$, which carry Voigt indices and units of stress. It enters the wave aberration as $\pi\lambda q^{2}C_{12}\cos 2(\theta_{q}-\varphi_{12})$, so along $\varphi_{12}$ it is algebraically a defocus offset of $+C_{12}$ and across it one of $-C_{12}$. |
+| $\varphi_{12}$ | Azimuth of the two-fold astigmatism axis in the back focal plane. |
+| $C_{21}$ | Axial coma amplitude, entering the wave aberration as $\tfrac{2}{3}\pi\lambda^{2}q^{3}C_{21}\cos(\theta_{q}-\varphi_{21})$. Its single-fold symmetry makes phase transfer differ between opposite azimuths. |
+| $\varphi_{21}$ | Azimuth of the axial coma axis in the back focal plane. |
+| $C_{23}$ | Three-fold astigmatism (trefoil) amplitude, entering the wave aberration as $\tfrac{2}{3}\pi\lambda^{2}q^{3}C_{23}\cos 3(\theta_{q}-\varphi_{23})$. |
+| $\varphi_{23}$ | Azimuth of the trefoil axis in the back focal plane. |
+| $\theta_{q}$ | Azimuth in the back focal plane at which a transfer profile is cut. For a round lens every cut is identical; once $C_{12}$, $C_{21}$ or $C_{23}$ is nonzero a single cut describes one direction rather than the lens. |
 
 ## References
 

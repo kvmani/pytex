@@ -13,6 +13,24 @@ downstream analyses depend on them.
 
 ### Added
 
+- Azimuth-resolved contrast transfer. `MicroscopeAberrations.evaluate_ctf_1d` takes an
+  azimuth, and the new `evaluate_ctf_azimuthal` returns an `AzimuthalCTF` carrying the
+  transfer on an (azimuth, q) grid, the best/worst transfer band, per-azimuth first zeros,
+  the point-resolution range over azimuth and its anisotropy. `has_azimuthal_aberrations`
+  and `residual_aberration_terms()` report whether one radial cut describes the lens.
+- The HRTEM workbench operations expose the full residual aberration set — C5, two-fold
+  astigmatism, axial coma and trefoil with their azimuths — and report in the result table,
+  the summary and `describe()` which of them shaped a result. The simulation operation no
+  longer hard-codes partial coherence: focal spread, convergence semi-angle and objective
+  aperture are controls, as they already were on the CTF operation beside it. The CTF
+  operation gains a cut azimuth and a frequency range, and draws the azimuthal transfer
+  band whenever a non-round term is present.
+- `pytex hrem ctf` accepts `--c5`, `--astigmatism`, `--coma` and `--trefoil` with their
+  azimuths and `--azimuth`, and reports the azimuthal resolution range for a non-round lens.
+- Two worked examples with algebraic provenance: two-fold astigmatism as a defocus offset
+  along its own azimuth, exact to 1e-12, and the 90-degree separation of the resolution
+  extremes that its cos(2 theta) period requires.
+
 - HREM simulation with microscope aberration models, phase-object propagation and optional
   abTEM multislice integration, exposed through the library, CLI and TEM workbench, with
   theory, computed examples and a tutorial.
@@ -29,6 +47,24 @@ downstream analyses depend on them.
   guidance explain evidence selection, the objective and the limits of interpretation.
 
 ### Fixed
+
+- **Scientific correctness.** `evaluate_ctf_1d` evaluated the wave aberration with no
+  azimuth, so two-fold astigmatism, axial coma and trefoil were silently discarded from
+  every transfer profile, first zero and information limit. A lens carrying them returned
+  the round-lens answer with nothing recording the omission. Radial cuts are now taken at a
+  stated azimuth and include every term; results for a round lens are unchanged.
+- `MicroscopeAberrations.wave_aberration` accumulated the non-round terms in place onto an
+  array shaped by the radial grid alone, so any two-dimensional (azimuth, q) evaluation
+  raised a broadcast error.
+- The HRTEM workbench panel could not run at all: it called `form.read()`, `form.fill()`
+  and `context.spin()`, none of which exist, invoked `renderResult` with the wrong
+  signature, and created its chart through a class shorthand the SVG helper does not
+  support, producing an element no browser renders. Its result card was also drawn inside
+  the figure stage, over the figures it describes. The browser lane did not list the panel
+  and so never opened it; it does now, and drives both views.
+- The focal spread was labelled with the chromatic aberration symbol Cc in both HRTEM
+  operations. The focal spread is a length at the specimen set by Cc together with the
+  energy and lens-current spreads, and is not Cc; it now carries its own registered symbol.
 
 - XYZ snapshot import distinguishes multiline content from paths on all platforms,
   preserves blank comments, and rejects inconsistent atom counts and nonfinite coordinates.

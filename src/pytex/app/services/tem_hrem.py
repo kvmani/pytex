@@ -25,6 +25,69 @@ from pytex.diffraction.hrem import (
 )
 
 
+def _aberrations_from_request(
+    request: dict[str, Any],
+    voltage: float,
+    defocus: float,
+    cs_um: float,
+    mode: DoubleCorrectionMode,
+) -> MicroscopeAberrations:
+    """Build the lens state from a workbench request.
+
+    Both HRTEM operations declare the same aberration controls, so both read them
+    the same way: a residual term the user leaves at zero simply does not enter the
+    wave aberration. The coherence defaults preserve the behaviour the simulation
+    operation had before those terms were exposed — a tighter focal spread under
+    double correction — so an existing request without them is unchanged.
+    """
+    default_focal_spread = 5.0 if mode == DoubleCorrectionMode.DOUBLE_CORRECTED else 25.0
+    aperture = float(request.get("aperture_cutoff_mrad", 0.0) or 0.0)
+    return MicroscopeAberrations(
+        energy_kev=voltage,
+        defocus_angstrom=defocus,
+        cs_mm=cs_um * 1e-3,
+        c5_mm=float(request.get("c5_mm", 0.0)),
+        astigmatism_angstrom=float(request.get("astigmatism_angstrom", 0.0)),
+        astigmatism_angle_deg=float(request.get("astigmatism_angle_deg", 0.0)),
+        coma_angstrom=float(request.get("coma_angstrom", 0.0)),
+        coma_angle_deg=float(request.get("coma_angle_deg", 0.0)),
+        trefoil_angstrom=float(request.get("trefoil_angstrom", 0.0)),
+        trefoil_angle_deg=float(request.get("trefoil_angle_deg", 0.0)),
+        focal_spread_angstrom=float(
+            request.get("focal_spread_angstrom", default_focal_spread) or default_focal_spread
+        ),
+        convergence_semiangle_mrad=float(request.get("convergence_semiangle_mrad", 0.2)),
+        aperture_cutoff_mrad=aperture if aperture > 0.0 else None,
+        mode=mode,
+    )
+
+
+def _residual_rows(aberrations: MicroscopeAberrations) -> tuple[dict[str, str], ...]:
+    """Result-table rows for the aberrations that actually shaped this result.
+
+    A term the user left at zero is omitted rather than printed as a zero: the table
+    should say what limited the image, not recite the whole coefficient list.
+    """
+    rows: list[dict[str, str]] = []
+    if aberrations.c5_mm != 0.0:
+        rows.append(
+            {
+                "metric": "Fifth-order spherical aberration C₅",
+                "value": f"{aberrations.c5_mm:.4f}",
+                "units": "mm",
+            }
+        )
+    labels = {
+        "astigmatism_2fold": "Two-fold astigmatism C₁₂",
+        "axial_coma": "Axial coma C₂₁",
+        "trefoil": "Trefoil C₂₃",
+    }
+    for key, _symbol, amplitude, angle in aberrations.residual_aberration_terms():
+        rows.append({"metric": labels[key], "value": f"{amplitude:.1f}", "units": "Å"})
+        rows.append({"metric": f"{labels[key]} azimuth", "value": f"{angle:.1f}", "units": "°"})
+    return tuple(rows)
+
+
 @REGISTRY.operation(
     "tem.simulate_hrem",
     title="HRTEM simulation",
@@ -136,6 +199,143 @@ from pytex.diffraction.hrem import (
             help_text="Spherical aberration coefficient Cs in micrometers.",
         ),
         NumberParameter(
+            name="c5_mm",
+            label="Fifth-order spherical aberration",
+            default=0.0,
+            units="mm",
+            symbol="spherical_aberration_5th",
+            row="aberrations",
+            field_width="short",
+            help_text=(
+                "Fifth-order spherical aberration C5 in millimetres. Round, so it shifts phase "
+                "transfer equally at every azimuth; it is what limits a Cs-corrected lens once "
+                "the third-order term is tuned out."
+            ),
+        ),
+        NumberParameter(
+            name="astigmatism_angstrom",
+            label="Two-fold astigmatism",
+            default=0.0,
+            minimum=0.0,
+            units="Å",
+            symbol="astigmatism_2fold",
+            row="astigmatism",
+            field_width="short",
+            help_text=(
+                "Two-fold astigmatism amplitude C12 in Angstrom. Along its own azimuth it acts "
+                "as a defocus offset of +C12 and across it as -C12, so it splits the point "
+                "resolution between two orthogonal directions."
+            ),
+        ),
+        NumberParameter(
+            name="astigmatism_angle_deg",
+            label="Astigmatism azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=180.0,
+            units="°",
+            symbol="astigmatism_2fold_azimuth",
+            row="astigmatism",
+            field_width="short",
+            help_text=(
+                "Azimuth phi12 of the two-fold astigmatism axis in the back focal plane. "
+                "The term has period 180°, so azimuths beyond that repeat."
+            ),
+        ),
+        NumberParameter(
+            name="coma_angstrom",
+            label="Axial coma",
+            default=0.0,
+            minimum=0.0,
+            units="Å",
+            symbol="axial_coma",
+            row="coma",
+            field_width="short",
+            help_text=(
+                "Axial coma amplitude C21 in Angstrom. Single-fold, so it transfers differently "
+                "in opposite directions and shifts image detail asymmetrically."
+            ),
+        ),
+        NumberParameter(
+            name="coma_angle_deg",
+            label="Coma azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=360.0,
+            units="°",
+            symbol="axial_coma_azimuth",
+            row="coma",
+            field_width="short",
+            help_text="Azimuth phi21 of the axial coma axis in the back focal plane.",
+        ),
+        NumberParameter(
+            name="trefoil_angstrom",
+            label="Trefoil",
+            default=0.0,
+            minimum=0.0,
+            units="Å",
+            symbol="trefoil",
+            row="trefoil",
+            field_width="short",
+            help_text=(
+                "Three-fold astigmatism (trefoil) amplitude C23 in Angstrom. The dominant "
+                "residual of many hexapole correctors."
+            ),
+        ),
+        NumberParameter(
+            name="trefoil_angle_deg",
+            label="Trefoil azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=120.0,
+            units="°",
+            symbol="trefoil_azimuth",
+            row="trefoil",
+            field_width="short",
+            help_text=(
+                "Azimuth phi23 of the trefoil axis in the back focal plane. "
+                "The term has period 120°, so azimuths beyond that repeat."
+            ),
+        ),
+        NumberParameter(
+            name="focal_spread_angstrom",
+            label="Chromatic focal spread",
+            default=10.0,
+            minimum=0.0,
+            maximum=100.0,
+            units="Å",
+            symbol="focal_spread",
+            row="coherence",
+            field_width="short",
+            help_text="Temporal coherence 1/e focal spread in Angstrom.",
+        ),
+        NumberParameter(
+            name="convergence_semiangle_mrad",
+            label="Convergence semi-angle",
+            default=0.2,
+            minimum=0.0,
+            maximum=5.0,
+            units="mrad",
+            row="coherence",
+            field_width="short",
+            help_text="Illumination convergence semi-angle in mrad.",
+        ),
+        NumberParameter(
+            name="aperture_cutoff_mrad",
+            label="Objective aperture cutoff",
+            default=0.0,
+            minimum=0.0,
+            maximum=100.0,
+            units="mrad",
+            symbol="semiangle_cutoff",
+            row="coherence",
+            field_width="short",
+            help_text=(
+                "Objective aperture cutoff semi-angle in mrad. Zero means no aperture is "
+                "inserted and transfer is limited by coherence alone."
+            ),
+        ),
+        NumberParameter(
             name="sampling_angstrom",
             label="Pixel sampling pitch",
             default=0.2,
@@ -187,13 +387,7 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
         )
 
     mode = DoubleCorrectionMode(mode_str)
-    aberr = MicroscopeAberrations(
-        energy_kev=voltage,
-        defocus_angstrom=defocus,
-        cs_mm=cs_um * 1e-3,
-        focal_spread_angstrom=5.0 if mode == DoubleCorrectionMode.DOUBLE_CORRECTED else 25.0,
-        mode=mode,
-    )
+    aberr = _aberrations_from_request(request, voltage, defocus, cs_um, mode)
 
     result = simulate_hrem(snap, aberr, sampling_angstrom=sampling)
 
@@ -216,6 +410,7 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
                 "units": "Å",
             },
             {"metric": "Spherical aberration Cs", "value": f"{aberr.cs_um:.2f}", "units": "µm"},
+            *_residual_rows(aberr),
             {
                 "metric": "First zero point resolution",
                 "value": f"{result.point_resolution_angstrom:.3f}",
@@ -273,6 +468,16 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
         f"Michelson contrast of {result.michelson_contrast * 100.0:.1f}% across a field of view of "
         f"{result.extent_angstrom[0]:.1f} × {result.extent_angstrom[1]:.1f} Å."
     )
+    if aberr.has_azimuthal_aberrations:
+        residual_written = ", ".join(
+            f"{symbol} = {amplitude:.1f} Å at {angle:.1f}°"
+            for _key, symbol, amplitude, angle in aberr.residual_aberration_terms()
+        )
+        summary_text += (
+            f" Residual non-round aberrations {residual_written} entered the wave aberration, so "
+            "the image is not resolved equally in every direction; the CTF view reports the "
+            "azimuthal spread."
+        )
 
     app_res = AppResult(
         title=f"HRTEM Simulation: {snap.label}",
@@ -289,6 +494,16 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             "extent_angstrom": list(result.extent_angstrom),
             "natoms": snap.natoms,
             "sample_label": snap.label,
+            "has_azimuthal_aberrations": aberr.has_azimuthal_aberrations,
+            "residual_aberrations": [
+                {
+                    "key": key,
+                    "symbol": symbol,
+                    "amplitude_angstrom": amplitude,
+                    "azimuth_deg": angle,
+                }
+                for key, symbol, amplitude, angle in aberr.residual_aberration_terms()
+            ],
             "description": result.describe(),
         },
         inputs=dict(request),
@@ -366,13 +581,112 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             help_text="Spherical aberration coefficient Cs in micrometers.",
         ),
         NumberParameter(
+            name="c5_mm",
+            label="Fifth-order spherical aberration",
+            default=0.0,
+            units="mm",
+            symbol="spherical_aberration_5th",
+            row="aberrations",
+            field_width="short",
+            help_text=(
+                "Fifth-order spherical aberration C5 in millimetres. Round, so it shifts phase "
+                "transfer equally at every azimuth; it is what limits a Cs-corrected lens once "
+                "the third-order term is tuned out."
+            ),
+        ),
+        NumberParameter(
+            name="astigmatism_angstrom",
+            label="Two-fold astigmatism",
+            default=0.0,
+            minimum=0.0,
+            units="Å",
+            symbol="astigmatism_2fold",
+            row="astigmatism",
+            field_width="short",
+            help_text=(
+                "Two-fold astigmatism amplitude C12 in Angstrom. Along its own azimuth it acts "
+                "as a defocus offset of +C12 and across it as -C12, so it splits the point "
+                "resolution between two orthogonal directions."
+            ),
+        ),
+        NumberParameter(
+            name="astigmatism_angle_deg",
+            label="Astigmatism azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=180.0,
+            units="°",
+            symbol="astigmatism_2fold_azimuth",
+            row="astigmatism",
+            field_width="short",
+            help_text=(
+                "Azimuth phi12 of the two-fold astigmatism axis in the back focal plane. "
+                "The term has period 180°, so azimuths beyond that repeat."
+            ),
+        ),
+        NumberParameter(
+            name="coma_angstrom",
+            label="Axial coma",
+            default=0.0,
+            minimum=0.0,
+            units="Å",
+            symbol="axial_coma",
+            row="coma",
+            field_width="short",
+            help_text=(
+                "Axial coma amplitude C21 in Angstrom. Single-fold, so it transfers differently "
+                "in opposite directions and shifts image detail asymmetrically."
+            ),
+        ),
+        NumberParameter(
+            name="coma_angle_deg",
+            label="Coma azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=360.0,
+            units="°",
+            symbol="axial_coma_azimuth",
+            row="coma",
+            field_width="short",
+            help_text="Azimuth phi21 of the axial coma axis in the back focal plane.",
+        ),
+        NumberParameter(
+            name="trefoil_angstrom",
+            label="Trefoil",
+            default=0.0,
+            minimum=0.0,
+            units="Å",
+            symbol="trefoil",
+            row="trefoil",
+            field_width="short",
+            help_text=(
+                "Three-fold astigmatism (trefoil) amplitude C23 in Angstrom. The dominant "
+                "residual of many hexapole correctors."
+            ),
+        ),
+        NumberParameter(
+            name="trefoil_angle_deg",
+            label="Trefoil azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=120.0,
+            units="°",
+            symbol="trefoil_azimuth",
+            row="trefoil",
+            field_width="short",
+            help_text=(
+                "Azimuth phi23 of the trefoil axis in the back focal plane. "
+                "The term has period 120°, so azimuths beyond that repeat."
+            ),
+        ),
+        NumberParameter(
             name="focal_spread_angstrom",
             label="Chromatic focal spread",
             default=10.0,
             minimum=0.0,
             maximum=100.0,
             units="Å",
-            symbol="chromatic_aberration",
+            symbol="focal_spread",
             row="coherence",
             field_width="short",
             help_text="Temporal coherence 1/e focal spread in Angstrom.",
@@ -396,8 +710,39 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             maximum=100.0,
             units="mrad",
             symbol="semiangle_cutoff",
+            row="coherence",
             field_width="short",
             help_text="Objective aperture cutoff semi-angle in mrad.",
+        ),
+        NumberParameter(
+            name="max_q_inv_angstrom",
+            label="Frequency range",
+            default=2.5,
+            minimum=0.5,
+            maximum=10.0,
+            units="Å⁻¹",
+            row="cut",
+            field_width="short",
+            help_text=(
+                "Upper spatial frequency of the profile. A corrected instrument transfers well "
+                "beyond the 2.5 Å⁻¹ that suits an uncorrected one."
+            ),
+        ),
+        NumberParameter(
+            name="azimuth_deg",
+            label="Cut azimuth",
+            default=0.0,
+            minimum=0.0,
+            maximum=360.0,
+            units="°",
+            symbol="ctf_azimuth",
+            row="cut",
+            field_width="short",
+            help_text=(
+                "Azimuth of the radial cut through the back focal plane. A round lens transfers "
+                "identically at every azimuth; once a residual term is nonzero this selects one "
+                "direction, and the azimuthal band shows the spread across all of them."
+            ),
         ),
     ),
 )
@@ -406,22 +751,22 @@ def _calculate_ctf(request: dict[str, Any]) -> dict[str, Any]:
     mode_str = str(request.get("mode", "double_corrected"))
     defocus = float(request.get("defocus_angstrom", -30.0))
     cs_um = float(request.get("cs_um", 0.0))
-    focal_spread = float(request.get("focal_spread_angstrom", 10.0))
-    alpha_s = float(request.get("convergence_semiangle_mrad", 0.2))
-    aperture = float(request.get("aperture_cutoff_mrad", 25.0))
+    azimuth = float(request.get("azimuth_deg", 0.0))
 
     mode = DoubleCorrectionMode(mode_str)
-    aberr = MicroscopeAberrations(
-        energy_kev=voltage,
-        defocus_angstrom=defocus,
-        cs_mm=cs_um * 1e-3,
-        focal_spread_angstrom=focal_spread,
-        convergence_semiangle_mrad=alpha_s,
-        aperture_cutoff_mrad=aperture,
-        mode=mode,
+    aberr = _aberrations_from_request(
+        {"focal_spread_angstrom": 10.0, "aperture_cutoff_mrad": 25.0, **request},
+        voltage,
+        defocus,
+        cs_um,
+        mode,
     )
 
-    ctf = aberr.evaluate_ctf_1d(max_q_inv_angstrom=2.5, num_points=500)
+    max_q = float(request.get("max_q_inv_angstrom", 2.5))
+    ctf = aberr.evaluate_ctf_1d(max_q_inv_angstrom=max_q, num_points=500, azimuth_deg=azimuth)
+    band = aberr.evaluate_ctf_azimuthal(
+        max_q_inv_angstrom=max_q, num_radial=500, num_azimuthal=72
+    )
 
     first_zero_str = (
         f"{ctf.point_resolution_angstrom:.3f}"
@@ -433,6 +778,7 @@ def _calculate_ctf(request: dict[str, Any]) -> dict[str, Any]:
         if not math.isnan(ctf.information_limit_angstrom)
         else "N/A"
     )
+    best_over_azimuth, worst_over_azimuth = band.point_resolution_range_angstrom
 
     table = ResultTable(
         columns=(
@@ -484,6 +830,36 @@ def _calculate_ctf(request: dict[str, Any]) -> dict[str, Any]:
                 "value": f"{aberr.scherzer_resolution_angstrom:.2f}",
                 "units": "Å",
             },
+            *(
+                {"parameter": row["metric"], "value": row["value"], "units": row["units"]}
+                for row in _residual_rows(aberr)
+            ),
+            *(
+                (
+                    {
+                        "parameter": "Cut azimuth θ",
+                        "value": f"{ctf.azimuth_deg:.1f}",
+                        "units": "°",
+                    },
+                    {
+                        "parameter": "Point resolution over azimuth",
+                        "value": f"{best_over_azimuth:.3f} – {worst_over_azimuth:.3f}",
+                        "units": "Å",
+                    },
+                    {
+                        "parameter": "Resolution anisotropy",
+                        "value": f"{band.resolution_anisotropy_angstrom:.3f}",
+                        "units": "Å",
+                    },
+                    {
+                        "parameter": "Coarsest transfer azimuth",
+                        "value": f"{band.worst_azimuth_deg:.1f}",
+                        "units": "°",
+                    },
+                )
+                if aberr.has_azimuthal_aberrations and not math.isnan(best_over_azimuth)
+                else ()
+            ),
         ),
         caption="Objective lens Contrast Transfer Function optical properties",
     )
@@ -503,6 +879,23 @@ def _calculate_ctf(request: dict[str, Any]) -> dict[str, Any]:
         f"produce a point resolution of {first_zero_str} Å and an information limit "
         f"of {info_limit_str} Å."
     )
+    if aberr.has_azimuthal_aberrations:
+        residual_written = ", ".join(
+            f"{symbol} = {amplitude:.1f} Å at {angle:.1f}°"
+            for _key, symbol, amplitude, angle in aberr.residual_aberration_terms()
+        )
+        summary_text += (
+            f" That figure is the cut at azimuth θ = {ctf.azimuth_deg:.1f}°, not the whole lens: "
+            f"the residual non-round aberrations {residual_written} make phase transfer depend on "
+            "direction."
+        )
+        if not math.isnan(best_over_azimuth):
+            summary_text += (
+                f" Across azimuth the point resolution runs from {best_over_azimuth:.2f} Å to "
+                f"{worst_over_azimuth:.2f} Å, an anisotropy of "
+                f"{band.resolution_anisotropy_angstrom:.2f} Å, coarsest at "
+                f"{band.worst_azimuth_deg:.1f}°."
+            )
 
     app_res = AppResult(
         title=f"CTF: {aberr.energy_kev:.0f} kV ({mode_label})",
@@ -517,12 +910,39 @@ def _calculate_ctf(request: dict[str, Any]) -> dict[str, Any]:
             "spatial_envelope": ctf.spatial_envelope.tolist(),
             "point_resolution_angstrom": ctf.point_resolution_angstrom,
             "information_limit_angstrom": ctf.information_limit_angstrom,
+            "azimuth_deg": ctf.azimuth_deg,
+            "has_azimuthal_aberrations": aberr.has_azimuthal_aberrations,
+            "azimuthal_transfer_min": band.transfer_min.tolist(),
+            "azimuthal_transfer_max": band.transfer_max.tolist(),
+            "azimuthal_point_resolution_best_angstrom": best_over_azimuth,
+            "azimuthal_point_resolution_worst_angstrom": worst_over_azimuth,
+            "resolution_anisotropy_angstrom": band.resolution_anisotropy_angstrom,
+            "worst_azimuth_deg": band.worst_azimuth_deg,
+            "azimuths_deg": band.azimuths_deg.tolist(),
+            "azimuthal_point_resolution_angstrom": [
+                None if math.isnan(value) else float(value)
+                for value in band.point_resolution_angstrom
+            ],
+            "residual_aberrations": [
+                {
+                    "key": key,
+                    "symbol": symbol,
+                    "amplitude_angstrom": amplitude,
+                    "azimuth_deg": angle,
+                }
+                for key, symbol, amplitude, angle in aberr.residual_aberration_terms()
+            ],
             "description": ctf.describe(),
+            "azimuthal_description": band.describe(),
         },
         inputs=dict(request),
         notes=(
             "Temporal coherence envelope modelled via Frank's Gaussian focal spread approximation.",
             "Spatial coherence envelope modelled via convergence angle illumination integration.",
+            (
+                "Frank's envelopes are isotropic, so the azimuthal spread reported here is that "
+                "of the transfer oscillation, not of the coherence damping."
+            ),
         ),
         citations=(
             "Frank (1973), An envelope for the transfer function, Optik 38, 519-536.",
@@ -639,6 +1059,40 @@ REGISTRY.add_examples(
                 "focal_spread_angstrom": 5.0,
                 "convergence_semiangle_mrad": 0.1,
                 "aperture_cutoff_mrad": 35.0,
+            },
+        ),
+        ExampleScenario(
+            id="hrem.example.ctf_residual_astigmatism",
+            title="Residual two-fold astigmatism after correction",
+            panel="tem_hrem",
+            summary=(
+                "A corrected 300 kV lens carrying 20 Å of residual two-fold astigmatism, "
+                "showing how phase transfer then depends on direction."
+            ),
+            teaches=(
+                "Notice that the transfer curve is now one cut through a lens that transfers "
+                "differently in different directions, and that the shaded band spans every "
+                "azimuth. Two-fold astigmatism enters the wave aberration as a cosine of twice "
+                "the azimuth, so along its own axis it acts as a defocus offset of +C₁₂ and "
+                "across it as −C₁₂: the point resolution splits between two orthogonal "
+                "directions 90° apart. This is why correcting Cs alone does not settle the "
+                "resolution of a corrected instrument — once the round terms are tuned out, the "
+                "residual non-round terms are what remains, and the anisotropy is the quantity "
+                "worth minimising."
+            ),
+            operation="tem.ctf_calculator",
+            request={
+                "beam_energy_kev": 300.0,
+                "mode": "double_corrected",
+                "defocus_angstrom": -50.0,
+                "cs_um": 1.0,
+                "astigmatism_angstrom": 20.0,
+                "astigmatism_angle_deg": 30.0,
+                "focal_spread_angstrom": 8.0,
+                "convergence_semiangle_mrad": 0.1,
+                "aperture_cutoff_mrad": 0.0,
+                "max_q_inv_angstrom": 2.5,
+                "azimuth_deg": 30.0,
             },
         ),
     )

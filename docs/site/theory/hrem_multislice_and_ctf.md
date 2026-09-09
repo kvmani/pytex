@@ -66,14 +66,55 @@ where:
   $C_s$-corrected instruments),
 - $C_5 \equiv C_{50}$ is the fifth-order spherical aberration coefficient.
 
-When astigmatism is present, the wave aberration acquires an azimuthal dependence:
+### Non-round aberrations, and why a single radial cut is not the lens
+
+Equation {eq}`eq-hrem-chi` describes a *round* lens. Its three terms depend on $q$ alone, so a
+single radial cut of $\chi$ describes the instrument completely and every direction in the image is
+resolved equally. Real objective lenses are not round. In the Krivanek numbering $C_{nm}$, where
+$n$ is the order in $q$ and $m$ the azimuthal multiplicity, the terms with $m > 0$ carry an
+azimuthal dependence:
 
 $$
-\chi(q, \theta) = \pi \left[\Delta f + C_{12} \cos(2(\theta - \phi_{12}))\right] \lambda q^2
-                  + \tfrac{1}{2} \pi C_s \lambda^3 q^4
-$$ (eq-hrem-chi-astig)
+\chi(q, \theta) = \underbrace{\pi \Delta f \lambda q^{2}
+  + \tfrac{1}{2}\pi C_{s}\lambda^{3}q^{4}
+  + \tfrac{1}{3}\pi C_{5}\lambda^{5}q^{6}}_{\text{round}}
+  + \underbrace{\pi C_{12}\lambda q^{2}\cos 2(\theta - \varphi_{12})
+  + \tfrac{2}{3}\pi C_{21}\lambda^{2}q^{3}\cos(\theta - \varphi_{21})
+  + \tfrac{2}{3}\pi C_{23}\lambda^{2}q^{3}\cos 3(\theta - \varphi_{23})}_{\text{non-round}}
+$$ (eq-hrem-chi-azimuthal)
 
-where $C_{12}$ is the 2-fold astigmatism magnitude and $\phi_{12}$ is its azimuthal orientation.
+with $C_{12}$ the two-fold astigmatism, $C_{21}$ the axial coma and $C_{23}$ the three-fold
+astigmatism (trefoil), each at its own azimuth $\varphi_{nm}$.
+
+Three consequences follow, and the third is why the workbench reports what it does.
+
+**Two-fold astigmatism is a directional defocus.** Setting $\theta = \varphi_{12}$ in
+{eq}`eq-hrem-chi-azimuthal` collapses its cosine to $+1$, and the $C_{12}$ term becomes
+$\pi C_{12} \lambda q^{2}$ — algebraically indistinguishable from adding $C_{12}$ to the defocus.
+At $\theta = \varphi_{12} + 90^{\circ}$ the cosine is $-1$ and the same term subtracts it. A lens
+carrying $C_{12}$ therefore behaves as two different round lenses, at defocus $\Delta f + C_{12}$
+and $\Delta f - C_{12}$, along two orthogonal directions. This identity is what
+`tests/unit/test_hrem_azimuthal_ctf.py` pins, to a relative tolerance of $10^{-12}$, and it is the
+provenance of the worked example: no recorded output is involved.
+
+**Each term has a period fixed by its multiplicity.** $\chi$ repeats every $180^{\circ}$ in
+$\theta$ for $C_{12}$, every $360^{\circ}$ for $C_{21}$ and every $120^{\circ}$ for $C_{23}$.
+The single-fold period of coma is the reason it transfers differently in opposite directions,
+displacing image detail asymmetrically rather than merely blurring it.
+
+**Correction moves the problem rather than removing it.** A corrector drives $C_{s}$ toward zero,
+which is what extends the passband past the Scherzer boundary
+({eq}`eq-hrem-scherzer-resolution` and the NCSI discussion below). What then limits the instrument
+is the residual it leaves: the non-round terms, and $C_{5}$. Quoting a point resolution from one
+radial cut of such a lens states the resolution of one direction and says nothing about the others,
+which is why PyTex reports the **range of point resolution over azimuth** and its spread — the
+resolution anisotropy — alongside any cut, and why both `describe()` surfaces name the residual
+terms that are present.
+
+The coherence envelopes of the next section are Frank's isotropic forms, derived for a round lens:
+the spatial envelope uses the radial derivative of the round part of $\chi$. The anisotropy PyTex
+reports is therefore that of the transfer oscillation $\sin\chi$, not of the damping. This is a
+stated limitation, not an approximation whose error is quantified here.
 
 ### Classical Scherzer Imaging
 

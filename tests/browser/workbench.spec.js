@@ -33,6 +33,7 @@ const PANEL_PATH = {
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
   CBED: ['TEM Analysis', 'CBED'],
+  'HRTEM Simulation': ['TEM Analysis', 'HRTEM Simulation'],
   'Composite SAED': ['TEM Analysis', 'Composite SAED'],
 };
 
@@ -691,6 +692,92 @@ test('the console narrates a session and filters it by severity', async ({ page 
  * of the window and the first thing a user does on every panel is scroll. It
  * looks fine in a screenshot of the top of the page, which is why it survived.
  */
+/*
+ * The HRTEM workspace, which the browser lane did not reach until now.
+ *
+ * Two things are checked that no unit test can. The panel must actually run:
+ * it was written against a mount context it does not have -- `form.read`,
+ * `context.spin`, a two-argument `renderResult` -- so every button on it threw,
+ * and a manifest test cannot see that. And a lens carrying a residual non-round
+ * aberration must say so on the figure: a reader who is shown one radial cut of
+ * an astigmatic lens, with nothing marking it as one direction out of many,
+ * will read a directional number as the resolution of the instrument.
+ */
+test('the HRTEM workspace images a crystal and shows what a residual aberration costs', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'HRTEM Simulation');
+
+  const view = (id) => page.locator(`#subtabs .viewtab[data-view="${id}"]`).click();
+
+  // Both views must be reachable from the shell's strip: a view without a tab
+  // is a view no user can open.
+  await expect(page.locator('#subtabs .viewtab')).toHaveCount(2);
+  await expect(page.locator('#subtabs .viewtab[aria-selected="true"]')).toHaveText('Micrograph');
+
+  // The micrograph arrives as a raster, so the drawing to wait for is an image
+  // rather than an SVG. Its caption carries the field of view, which is the
+  // number that proves a simulation ran rather than a placeholder appearing.
+  const micrograph = page.locator('#stage .hrem-sim-stage img').first();
+  await expect(micrograph).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('#stage .hrem-sim-stage')).toContainText('Field of view');
+  await expect(page.locator('#stage .hrem-sim-stage')).toContainText('Point resolution');
+
+  // Both figures must fit the stage: they share its height rather than each
+  // claiming it, which is what the figure-layout rule asks of anything drawn
+  // on the stage.
+  const fits = await page.evaluate(() => {
+    const stage = document.getElementById('stage');
+    const cards = [...stage.querySelectorAll('.hrem-sim-stage > .plot')];
+    const bottom = (node) => Math.round(node.getBoundingClientRect().bottom);
+    return {
+      cards: cards.map(bottom),
+      count: cards.length,
+      stage: Math.round(stage.getBoundingClientRect().bottom),
+      drawing: Math.round(stage.querySelector('.hrem-sim-stage img')?.clientHeight ?? 0),
+    };
+  });
+  expect(fits.count).toBe(2);
+  for (const cardBottom of fits.cards) expect(cardBottom).toBeLessThanOrEqual(fits.stage);
+  expect(fits.drawing).toBeGreaterThan(150);
+
+  // The transfer view, on a round lens first: nothing about azimuth to say.
+  await view('tem.ctf_calculator');
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Calculate CTF', exact: true }).click(),
+  );
+  const chart = page.locator('#stage svg.hrem-ctf-chart');
+  await expect(chart).toBeVisible();
+  await expect(page.locator('#stage .hrem-ctf-stage .plot__status')).toContainText('every azimuth');
+  await expect(page.locator('#stage .hrem-legend')).toContainText('Damped transfer');
+
+  // Now the same lens with 20 A of two-fold astigmatism at 30 degrees. The
+  // expectation is algebraic rather than recorded: the term enters chi as a
+  // cosine of twice the azimuth, so the coarsest direction is 90 degrees from
+  // its axis, and the cut taken along the axis is a round lens at defocus
+  // Df + C12. The figure must gain a band, and the reading must say which
+  // direction the quoted resolution belongs to.
+  // Both forms stay mounted so the panel keeps one rail; only the current view's
+  // is shown. The visible one is the one to type into. Within it the numeric
+  // boxes run voltage, defocus, Cs, C5, then the astigmatism pair.
+  const ctfNumber = (index) =>
+    page.locator('.rail .hrem-form:not([hidden]) input[type="number"]').nth(index);
+  await ctfNumber(4).fill('20');
+  await ctfNumber(5).fill('30');
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Calculate CTF', exact: true }).click(),
+  );
+  await expect(page.locator('#stage .hrem-ctf-stage .plot__status')).toContainText('shaded band');
+  await expect(chart.locator('polygon')).toHaveCount(1);
+  await expect(page.locator('#stage .hrem-legend')).toContainText('Transfer over all azimuths');
+  await expect(page.locator('#stage .hrem-legend')).toContainText('C12 = 20.0');
+  await expect(page.locator('#stage .summary')).toContainText('not the whole lens');
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('shows every figure and its controls without scrolling the stage', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const browserErrors = await openWorkbench(page);

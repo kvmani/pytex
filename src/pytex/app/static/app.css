@@ -4408,3 +4408,89 @@ dl.detail dd {
   flex-direction: column;
   gap: 0.35rem;
 }
+
+/*
+ * The HRTEM workspace.
+ *
+ * The micrograph view shows two square figures - the image and its power
+ * spectrum - and the reason to show them together is that the Thon rings are
+ * read against the image that produced them. They share the stage width
+ * equally, following the TEM pattern-and-stereogram stage above, and share the
+ * stage height rather than each claiming it, so the pair fits without the
+ * scroll the figure-layout rule forbids. The transfer plot is wide rather than
+ * square, so it takes the stage alone.
+ */
+.hrem-sim-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  flex: none;
+  min-height: 0;
+  height: calc(100% - 1.5rem);
+}
+
+.hrem-ctf-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: none;
+  min-height: 0;
+  height: calc(100% - 1.5rem);
+}
+
+.hrem-sim-stage > .plot,
+.hrem-ctf-stage > .plot {
+  height: 100%;
+}
+
+/* Below this the two figures are each too narrow to read, so they stack and the
+ * page scrolls. The threshold is lower than the TEM stage's because these two
+ * frames carry only zoom and fit, not eight picking tools, so a narrower column
+ * is still a usable figure rather than a header over a thumbnail. */
+@media (max-width: 60rem) {
+  .hrem-sim-stage {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .hrem-sim-stage > .plot {
+    height: calc(100vh - 12rem);
+  }
+}
+
+.hrem-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: var(--radius);
+}
+
+.hrem-ctf-chart {
+  background: var(--bg-raised);
+  border-radius: var(--radius);
+}
+
+/*
+ * The CTF legend. Every curve on the transfer plot means a different physical
+ * quantity, and a plate with five unlabelled curves is a decoration.
+ */
+.hrem-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.hrem-legend__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.hrem-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}

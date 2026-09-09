@@ -55,6 +55,19 @@ _LAMBDA = SymbolUse(
     "Relativistic electron radiation wavelength.",
 )
 
+_C12 = SymbolUse(
+    r"C_{12}",
+    "Two-fold astigmatism amplitude of the objective lens.",
+)
+_PHI12 = SymbolUse(
+    r"\varphi_{12}",
+    "Azimuth of the two-fold astigmatism axis in the back focal plane.",
+)
+_THETA_Q = SymbolUse(
+    r"\theta_{q}",
+    "Azimuth in the back focal plane at which a transfer profile is cut.",
+)
+
 _THEORY = SeeAlso("HRTEM multislice and CTF theory", "../../theory/hrem_multislice_and_ctf")
 _API = SeeAlso("Diffraction API", "../../api/index")
 
@@ -229,6 +242,104 @@ NCSI_CONTRAST_INVERSION = WorkedExample(
 )
 
 
+ASTIGMATISM_EQUIVALENT_DEFOCUS = WorkedExample(
+    id="hrem-astigmatism-equivalent-defocus",
+    title="Two-fold astigmatism acts as a defocus offset along its own azimuth",
+    domain="diffraction",
+    scenario=(
+        "Two-fold astigmatism enters the wave aberration as "
+        "pi lambda q^2 C_12 cos(2(theta - phi_12)). Along its own azimuth, theta = phi_12, "
+        "the cosine equals +1 and the term is algebraically indistinguishable from adding "
+        "C_12 to the defocus; ninety degrees away the cosine equals -1 and it subtracts the "
+        "same amount. For a 300 kV lens at Delta f = -50 Å with Cs = 1 um and C_12 = 20 Å at "
+        "phi_12 = 30 degrees, the point resolution of the cut along phi_12 must therefore "
+        "equal that of a round lens at Delta f = -30 Å, and the cut across it that of a "
+        "round lens at Delta f = -70 Å. Compute the difference between each cut and its "
+        "equivalent round lens."
+    ),
+    setup=HREM_SETUP,
+    code=(
+        "astigmatic = MicroscopeAberrations(\n"
+        "    energy_kev=300.0,\n"
+        "    defocus_angstrom=-50.0,\n"
+        "    cs_mm=0.001,\n"
+        "    astigmatism_angstrom=20.0,\n"
+        "    astigmatism_angle_deg=30.0,\n"
+        ")\n"
+        "def round_lens(defocus):\n"
+        "    return MicroscopeAberrations(energy_kev=300.0, defocus_angstrom=defocus, cs_mm=0.001)\n"
+        "def d0(lens, azimuth=0.0):\n"
+        "    return lens.evaluate_ctf_1d(2.5, 4000, azimuth_deg=azimuth).point_resolution_angstrom\n"
+        "result = [\n"
+        "    abs(d0(astigmatic, 30.0) - d0(round_lens(-30.0))),\n"
+        "    abs(d0(astigmatic, 120.0) - d0(round_lens(-70.0))),\n"
+        "]"
+    ),
+    expected=[0.0, 0.0],
+    unit="Å",
+    tolerance=1e-12,
+    reference=(
+        "An exact algebraic identity of the wave aberration function: at theta = phi_12 the "
+        "C_12 term reduces to pi lambda q^2 C_12, which is the defocus term with "
+        "Delta f -> Delta f + C_12, so the two lenses have identical chi and hence identical "
+        "zero crossings."
+    ),
+    citation=(
+        "Krivanek, O. L., Dellby, N. & Lupini, A. R. (1999). Towards sub-A electron beams. "
+        "Ultramicroscopy 78, 1-11; Kirkland, E. J. Advanced Computing in Electron Microscopy, "
+        "2nd ed. (Springer, 2010), Chapter 3."
+    ),
+    symbols=(_C12, _PHI12, _THETA_Q, _DEFOCUS),
+    see_also=(_THEORY, _API),
+    result_format="{:.2e}",
+)
+
+
+ASTIGMATIC_RESOLUTION_SPLIT = WorkedExample(
+    id="hrem-astigmatic-resolution-split",
+    title="Orthogonal split of point resolution under two-fold astigmatism",
+    domain="diffraction",
+    scenario=(
+        "Because the C_12 term varies as cos(2 theta), its period in azimuth is 180 degrees "
+        "and its two extremes lie 90 degrees apart. A lens is therefore resolved best along "
+        "one direction and worst along the perpendicular one, and the separation between "
+        "those two directions is fixed by the multiplicity of the aberration rather than by "
+        "its size. Sample the transfer function of the same 300 kV lens over 180 azimuths and "
+        "report the angular separation, modulo 180 degrees, between the finest and the "
+        "coarsest point resolution."
+    ),
+    setup=HREM_SETUP,
+    code=(
+        "lens = MicroscopeAberrations(\n"
+        "    energy_kev=300.0,\n"
+        "    defocus_angstrom=-50.0,\n"
+        "    cs_mm=0.001,\n"
+        "    astigmatism_angstrom=20.0,\n"
+        "    astigmatism_angle_deg=30.0,\n"
+        ")\n"
+        "band = lens.evaluate_ctf_azimuthal(2.5, 4000, 180)\n"
+        "resolutions = band.point_resolution_angstrom\n"
+        "best = float(band.azimuths_deg[int(np.nanargmin(resolutions))])\n"
+        "result = float(abs(band.worst_azimuth_deg - best) % 180.0)"
+    ),
+    expected=90.0,
+    unit="deg",
+    tolerance=1.0,
+    reference=(
+        "The azimuthal multiplicity of two-fold astigmatism: cos(2 theta) has period 180 "
+        "degrees, so its maximum and minimum are separated by exactly 90 degrees. The "
+        "tolerance is one degree, the spacing of the 180-point azimuthal grid."
+    ),
+    citation=(
+        "Krivanek, O. L., Dellby, N. & Lupini, A. R. (1999). Towards sub-A electron beams. "
+        "Ultramicroscopy 78, 1-11."
+    ),
+    symbols=(_C12, _PHI12, _THETA_Q),
+    see_also=(_THEORY, _API),
+    result_format="{:.1f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="hrem-simulation-and-ctf",
     title="HRTEM simulation and contrast transfer function optics",
@@ -236,12 +347,16 @@ GROUP = ExampleGroup(
         "Optics and contrast transfer of high-resolution transmission electron microscopy: "
         "relativistic electron wavelength, Scherzer defocus and resolution, analytical "
         "zero-crossing of the CTF, chromatic aberration damping reduction in double-corrected "
-        "TEM, and phase contrast sign inversion in Negative Cs Imaging (NCSI)."
+        "TEM, phase contrast sign inversion in Negative Cs Imaging (NCSI), and the "
+        "directional splitting of point resolution that a residual two-fold astigmatism "
+        "imposes on a corrected lens."
     ),
     examples=(
         SCHERZER_OPTICS,
         SCHERZER_ZERO_CROSSING,
         DOUBLE_CORRECTED_INFO_LIMIT,
         NCSI_CONTRAST_INVERSION,
+        ASTIGMATISM_EQUIVALENT_DEFOCUS,
+        ASTIGMATIC_RESOLUTION_SPLIT,
     ),
 )

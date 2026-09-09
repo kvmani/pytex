@@ -148,11 +148,11 @@ worked-example and test coverage the rules require. Then cut 0.9.0.
 | Step | Scope | State |
 |---|---|---|
 | 3a | Core: azimuth-resolved CTF (`azimuth_deg` on `evaluate_ctf_1d`, an azimuthal band surface, `has_azimuthal_aberrations`), `describe()` reporting residual terms, analytic tests | Landed |
-| 3b | Registry: symbols for C5, C12/φ12, C21/φ21, C23/φ23 and the CTF azimuth, in `core.symbols` and the terminology registry | Planned |
-| 3c | GUI service: residual aberrations plus coherence controls on both operations, azimuth control and band data on the CTF, residuals in tables/summary/describe | Planned |
-| 3d | Panel: shell view-tab strip via `context.setViews`, azimuthal band and legend on the CTF chart, aberration state visible | Planned |
-| 3e | Docs: theory section on residual aberrations and the azimuthal CTF, algorithm/workflow updates, a worked example with independent provenance | Planned |
-| 3f | Verification, version 0.9.0, changelog, commit and push | Planned |
+| 3b | Registry: symbols for C5, C12/φ12, C21/φ21, C23/φ23 and the CTF azimuth, in `core.symbols` and the terminology registry | Landed |
+| 3c | GUI service: residual aberrations plus coherence controls on both operations, azimuth control and band data on the CTF, residuals in tables/summary/describe | Landed |
+| 3d | Panel: shell view-tab strip via `context.setViews`, azimuthal band and legend on the CTF chart, aberration state visible | Landed |
+| 3e | Docs: theory section on residual aberrations and the azimuthal CTF, algorithm/workflow updates, a worked example with independent provenance | Landed |
+| 3f | Verification, version 0.9.0, changelog, commit and push | Landed |
 
 **3a landed.** `evaluate_ctf_1d` takes `azimuth_deg` and evaluates the non-round terms there, so a
 radial cut is now a cut at a stated direction rather than a silent omission. New
@@ -181,6 +181,58 @@ a perfectly corrected lens at zero defocus is checked to report NaN rather than 
 CLI `pytex hrem ctf` gained `--c5`, `--astigmatism[-angle]`, `--coma[-angle]`,
 `--trefoil[-angle]` and `--azimuth`, and prints the azimuthal resolution range when the lens is
 non-round. 13 new tests; the HREM, abTEM-parity and CLI groups pass; Ruff and strict mypy clean.
+
+**3b-3e landed.** The workbench now reaches every aberration the core model carries, and the
+panel that presents them was found not to work at all.
+
+- **Symbols.** `C₅`, `C₁₂`/`φ₁₂`, `C₂₁`/`φ₂₁`, `C₂₃`/`φ₂₃` and the cut azimuth `θ_q` are registered
+  in `core.symbols` and in the terminology registry, the latter stating the Krivanek `C_nm`
+  numbering explicitly because `C_12` would otherwise read as an elastic stiffness. A separate
+  correction: `focal_spread_angstrom` was labelled with the `chromatic_aberration` symbol `Cc` in
+  both operations. The focal spread Δ is a length at the specimen set by `Cc` together with the
+  energy and lens-current spreads; it is not `Cc`, whose units are lens length. `focal_spread` (Δ)
+  is now its own registered symbol, and the registry row says why the two are distinct.
+- **Service.** Both operations declare the same residual set through one shared block, read it
+  through one shared `_aberrations_from_request`, and cannot drift apart. The simulation stops
+  hard-coding focal spread by mode and now exposes convergence and aperture as the CTF operation
+  beside it always did; the CTF gains the cut azimuth and a frequency range (2.5 Å⁻¹ was hard-coded,
+  which truncates the plot for a corrected 300 kV instrument). Both report the residual terms in the
+  result table and the summary, and omit a term left at zero rather than reciting it. A fifth
+  example scenario demonstrates the anisotropy.
+- **Panel.** Its two views moved from a pair of rail buttons into the shell's own sub-tab strip via
+  `context.setViews`, as the XRD panel does. The CTF chart gained the azimuthal band as a filled
+  polygon between the best and worst transfer over azimuth, y-axis gridlines and ticks, x-axis
+  ticks, and a legend naming every curve; the frame status states which azimuth the cut is at.
+
+**The panel had never run.** Driving it in the browser showed that it was written against a mount
+context PyTex does not provide: `form.read()` and `form.fill()` where `buildForm` exposes
+`values()` and `setValues()`, `context.spin()` which does not exist, `renderResult(result, context)`
+against a `(container, result, options)` signature, and `svg('svg.hrem-ctf-chart', …)` where the SVG
+helper has no class shorthand, so the chart was created as an element literally named
+`svg.hrem-ctf-chart` that no browser renders. Every button on the panel threw. None of this was
+visible to the unit lane, and `PANEL_PATH` in the browser spec did not list the panel, so the
+browser lane never opened it. It does now, and a new test drives both views, checks that both
+figures fit the stage, and checks that a lens given 20 Å of astigmatism gains the band and says
+which direction its quoted resolution belongs to. The layout was also wrong — the result card sat
+inside the figure stage and was drawn over the figures — and now follows the `.tem-stage` pattern,
+figures owning the stage height with the reading matter below.
+
+**Verified in the browser end to end** at 1400×900: the silicon [110] micrograph and its Thon-ring
+spectrum render side by side within the stage; the transfer view reports d₀ = 0.72 Å for the cut
+along φ₁₂ = 30°, a point-resolution range of 0.719–1.162 Å, an anisotropy of 0.443 Å and the
+coarsest direction at 120.0° — every one of which matches the analytic equivalent-defocus
+computation, and 120° is 90° from the astigmatism azimuth as the cos 2θ period requires.
+
+**Documentation.** The theory note's two-line astigmatism aside became a section deriving the full
+non-round wave aberration in Krivanek numbering, the equivalent-defocus identity, the period of each
+multiplicity, and why correction moves the limit to the residual rather than removing it — closing
+with the stated limitation that Frank's envelopes are isotropic, so the reported anisotropy is that
+of the transfer oscillation and not of the damping. Two worked examples were added with algebraic
+provenance and regenerated into the gallery: the equivalent-defocus identity, expected exactly zero
+to 1e-12, and the 90° separation of the resolution extremes, whose expected value follows from the
+multiplicity alone with a tolerance of one degree, the azimuthal grid spacing.
+
+12 new app tests, 13 core tests, 2 CLI tests, 1 browser test, 2 worked examples.
 
 **Constraint carried forward.** `tests/test_data/` is untracked and predates this task: preserve it,
 never stage it. Stage by explicit path.
