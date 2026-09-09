@@ -262,6 +262,33 @@ The HREM capability is partitioned into decoupled layers:
 
 ## References
 
+### Adapter convention and validation
+
+`to_abtem_ctf` preserves every coefficient represented by `MicroscopeAberrations`:
+defocus, twofold astigmatism, coma, trefoil, and third- and fifth-order spherical
+aberration. Amplitudes are converted to angstroms and azimuths from degrees to radians.
+PyTex's defocus is the coefficient multiplying the positive quadratic term in
+`wave_aberration`, so it maps directly to abTEM's `C10`; abTEM's `defocus` alias has
+the opposite sign. These conventions follow the
+[abTEM CTF documentation](https://abtem.readthedocs.io/en/latest/user_guide/walkthrough/contrast_transfer_function.html).
+
+`tests/unit/test_abtem_aberration_parity.py` compares the complex phase transfer
+over a frequency/azimuth grid for coma, trefoil, tiny astigmatism and combined
+aberrations. It also checks coefficient and angle conversion directly. These optional
+integration tests require abTEM; the analytic core tests and
+{doc}`computed HREM examples </examples/generated/hrem-simulation-and-ctf>` do not.
+This establishes optical coefficient agreement, not equality of the phase-object and
+multislice specimen models or validation against measured micrographs.
+
+For imported structures, `AtomicSnapshot.from_xyz` accepts a multiline single-frame XYZ
+string or a file path. A blank comment line is valid. Atom counts must match the frame,
+and coordinates must be finite. Supply the simulation cell explicitly when its dimensions
+are known: a plain XYZ file carries Cartesian angstrom coordinates, not a periodic lattice.
+`tests/unit/test_hrem_xyz.py` checks text/file equivalence and malformed input independently
+of ASE and operating-system filename limits.
+
+### Scientific sources
+
 1. Scherzer, O. (1949). The theoretical resolution limit of the electron microscope. *J. Appl. Phys.* **20**, 20–29.
 2. Cowley, J. M. & Moodie, A. F. (1957). The scattering of electrons by atoms and crystals. I. A new theoretical approach. *Acta Crystallogr.* **10**, 609–619.
 3. Thon, F. (1966). Zur Defokussierungsabhängigkeit des Phasenkontrastes im elektronenmikroskopischen Abbildung. *Z. Naturforsch. A* **21**, 476–478.

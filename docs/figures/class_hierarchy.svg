@@ -111,7 +111,7 @@
   <text x="56.0" y="756.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
   <line x1="58.0" y1="778.0" x2="98.0" y2="778.0" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <text x="116.0" y="782.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">inheritance - the triangle touches the base class</text>
-  <text x="56.0" y="809.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">316 public classes: 298 dataclasses (297 frozen), and 6 inheritance relations.</text>
+  <text x="56.0" y="809.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">315 public classes: 297 dataclasses (296 frozen), and 6 inheritance relations.</text>
   <text x="56.0" y="827.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Subclassing is used where alternatives share one interface, not to share code.</text>
   <text x="56.0" y="845.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">The object-model diagrams show the composition that carries the real structure.</text>
 </svg>

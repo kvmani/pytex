@@ -170,6 +170,11 @@ def test_atomic_snapshot_amorphous_and_xyz_roundtrip() -> None:
     assert loaded.natoms == amorphous.natoms
     assert np.allclose(loaded.positions, amorphous.positions, atol=1e-4)
 
+def test_atomic_snapshot_ase_roundtrip() -> None:
+    pytest.importorskip("ase", reason="ASE is an optional interoperability dependency")
+    amorphous = AtomicSnapshot.amorphous_sample(
+        species="C", density_g_cm3=2.0, dimensions_angstrom=(15.0, 15.0, 10.0), seed=123,
+    )
     # ASE roundtrip
     ase_atoms = amorphous.to_ase()
     assert len(ase_atoms) == amorphous.natoms

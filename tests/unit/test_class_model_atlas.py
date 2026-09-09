@@ -251,7 +251,8 @@ def test_the_page_does_not_hand_transcribe_the_model_counts(model) -> None:  # t
 
     page = ATLAS_PAGE.read_text(encoding="utf-8")
     match = re.search(
-        r"Of (\d+) public classes, (\d+) are dataclasses and only (\d+)\s+inheritance relations",
+        r"Of (\d+) classes declared in public modules, (\d+) are dataclasses and only "
+        r"(\d+)\s+inheritance relations",
         page,
     )
     assert match is not None, "the atlas page no longer states the counts in the expected form"

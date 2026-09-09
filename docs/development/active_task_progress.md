@@ -5,90 +5,104 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Repository scientific review and capability release — ACTIVE (2026-09-08)
+## Repository scientific review and capability release — ACTIVE (2026-09-09)
 
-**Objective.** Review the entire repository, select substantive scientific core and GUI improvements,
-upgrade user documentation, validate, bump the version, and commit/push tested increments to main.
-This is the current task; older entries below retain their historical status.
+**Objective.** Review the repository, deliver substantive scientific core/GUI improvements and
+user documentation, test, bump the version, and commit/push green increments to main.
+The governing rules require a source-only repository, explicit staging and durable increments.
 
-**Starting state.** Main at `60ffbff`, version 0.8.1. Untracked `tests/test_data/` predates this task
-and must be preserved and excluded from commits. Recent HREM implementation and documentation
-rewrites are part of the baseline, not work delivered by this review.
+**Starting state.** Main at `60ffbff`, version 0.8.1. Untracked `tests/test_data/` predates this
+task: preserve it and exclude it from every commit. The preceding HREM implementation and docs
+rewrite are baseline work, not additions authored by this review. The audit and remaining
+scientific validation boundaries are in `repository_review_2026_09.md`.
 
-**Plan and gates.**
-1. Read governing standards and audit all package domains, public workflows, tests, docs and release metadata.
-2. Record evidence-backed findings and choose a bounded, coherent capability increment, prioritizing OR.
-3. Implement core/GUI changes with independent numerical tests, explainable results, examples and docs.
-4. Run Ruff, strict mypy and full pytest for each substantial increment; commit explicit paths and push main.
-5. Verify coverage does not decrease, browser journeys and zero-warning executable Sphinx; release version
-   and changelog only after gates pass. Record outstanding validation limitations honestly.
+### Increment 1 — committed and pushed: 00cc0a6
 
-**In progress (2026-09-09).** Core weighted OR fitting and GUI evidence controls implemented.
-Full revised suite passed: **8052 passed, 6 expected skips**, 2442.82 seconds; coverage
-**91.41497091000195%**, above the recorded comparison floor. Log `outputs/review_increment_full.log`,
-report `outputs/review_increment_coverage.json`. Ruff and strict mypy (169 files) passed again.
-Post-prose-change focused tests: 52 passed (`outputs/review_final_weighted_focused.log`).
-Full browser rerun is session 10670, log `outputs/review_final_browser.log`.
-Logs: ignored `outputs/review_baseline_pytest.log`; coverage: `outputs/review_baseline_coverage.json`.
-Baseline completed: 8007 passed, 8 skipped, 6 failed, 2577.66 seconds; reported coverage 90.343234%.
-The six failures included optional dependency assumptions and the overlong aperture symbol (fixed),
-plus atlas/gallery staleness checks. Important qualification: source modules were loaded before edits
-but canonical assets changed while that baseline ran; staleness failures are not all independent
-pre-existing failures, and coverage is a conservative comparison floor rather than a pristine checkout
-measurement. Final run enforces at least 90.343% and must be compared at full precision afterward.
-Other completed sessions: baseline mypy found CLI missing return (fixed); baseline Ruff passed;
-baseline Sphinx session 32934 passed its zero-warning counter but notebook 33 emitted missing-cell-ID
-warning; browser 93462: 60 passed, 2 passed on retry (rerun without competing CPU jobs at final gate).
-Installed ASE/abTEM in local venv for optional integration validation (log under outputs).
+- Added normalized nonnegative evidence weights to measured-pair OR fits, retained zero-weight
+  observations/residuals, weighted scatter and effective pair counts, bounded symmetry alignment,
+  precise small-angle recovery, validation and convergence-aware characterization.
+- GUI accepts six angles or six plus weight, keeps excluded rows visible, rejects malformed
+  pasted input atomically and uses registered Euler symbols. Existing six-angle inputs remain valid.
+- Added 27 analytic/invariant weighted tests, two executable examples, theory and workflow guidance,
+  a practical measurement-to-analysis guide, benchmark coverage and canonical diagrams.
+- Fixed CLI missing return, optional ASE/abTEM test assumptions, aperture-symbol width, stale atlas
+  and missing notebook cell IDs. Notebook outputs remain cleared.
+- Full suite: **8052 passed, 6 expected skips**, 2442.82 seconds, **91.41497091000195% coverage**.
+  Ruff and strict mypy (169 source files) passed. Subsequent prose-only correction: 52 focused tests
+  passed. Policy checks: 819 passed, 6 expected skips. Sphinx: **zero warnings**. Browser: **63 passed
+  without retries**, 2.9 minutes. No numerical source changes during that full run.
+- Benchmark: planted KS recovered from 5000 weighted pairs; 0.2437 s best, 34,396,142 traced peak
+  bytes, excluding input allocation and native BLAS workspaces; local measurement, not a portable
+  performance claim. Tracked runner: `scripts/benchmark_transformation_performance.py`.
+- Comparison floor was 90.34323413968767%. Qualification: the preliminary run loaded source before
+  edits while canonical assets changed during its execution; its six failures included optional
+  assumptions, symbol width and atlas/gallery checks, so it is not a pristine-checkout baseline.
+- Local ignored evidence: `outputs/review_increment_full.log`, `review_increment_coverage.json`,
+  `review_final_browser.log`, `review_docs.log`, `review_final_weighted_focused.log`.
 
-**Selected increment.** Weighted Markley OR fit, retained excluded-pair residuals, bounded symmetry
-alignment, accurate small-angle recovery, input phase/iteration validation, convergence-aware naming;
-GUI seventh optional weight column and atomic rejection of malformed pasted rows. Preserve all old
-six-angle inputs. Existing 119 OR tests pass; new weighted/app/adapter group 52 passed (session 37277).
-Strict mypy passes 169 files; Ruff passes. Source audit and
-remaining work recorded in `repository_review_2026_09.md`.
+### Increment 2 — corrected and ready for durable commit; release gates pending
 
-**Current artifacts.** First increment ready to commit with the base lane green. New tests:
-`tests/unit/test_or_weighted_fitting.py`. New worked-example source `weighted_or_fitting.py`;
-gallery generation completed session 63946 (`outputs/review_generate_examples.log`). Class atlas
-regenerated and page reconciled to 316 classes / 298 dataclasses. Policy checks: 819 passed, 6 skipped.
-Focused browser checks: 3 passed (session 64326), including atomic paste rejection and excluded weights.
-Notebook 33 IDs added with LF-only JSON (no output/count changes). Docs build caught 3 new cross-link
-warnings, corrected to absolute Sphinx document roles; rebuild passed at zero warnings. A new practical
-`choosing_an_analysis.md` guide was then added; the complete build passed at zero warnings again
-(session 33262). No commits/push yet.
+- Moved the existing candidate-scoring implementation intact to private `core._parent_scoring`;
+  stable core no longer imports experimental modules. The experimental facade retains its class,
+  function and reduction-mode imports. Map-scale reconstruction stays experimental.
+- abTEM adapter now forwards coma/trefoil amplitudes and azimuths and preserves tiny nonzero
+  coefficients. Four optical phase-transfer cases pass against installed abTEM. Coefficients are
+  angstroms, azimuths radians, PyTex defocus maps to C10 (not the negated abTEM defocus alias).
+  Primary source: official abTEM CTF guide, linked from the HREM theory page. Optical coefficient
+  parity does not establish measured-image or phase-object/multislice equivalence.
+- Added import isolation/facade compatibility tests; affected reconstruction tests passed in the
+  isolated preparation. Regenerated eight class atlas assets because private declarations are
+  excluded; counts now 315 declarations in public modules / 297 dataclasses / 6 inheritance links.
+  Atlas wording and count test updated together; final atlas checks: 27 passed.
+- Updated architecture, governing guide, audit, HREM theory and changelog. Ruff and strict mypy
+  pass (170 source files). Second Sphinx build passed with **zero warnings**.
+- Full suite session **16043** was stopped after CI exposed additional failures. Its log is
+  `outputs/review_second_full.log`; it is not a successful final gate. Require final coverage at
+  least **91.41497091000195%**. Do not change source during the replacement run.
+  The earlier focused combined run caught only
+  atlas staleness/count wording, corrected and checked separately afterward.
 
-**Additional verification/preparation.** Weighted tests expanded to 27 passing cases, including
-exhausted iteration budget and Euler-wrapper forwarding. Full transformation benchmark now includes
-the weighted case and traced allocation: 5,000 pairs, known KS recovered, 0.2437 s best and 34,396,142
-peak traced bytes on this machine (excludes input allocation/native BLAS, not a portable speed claim).
-Source is `scripts/benchmark_transformation_performance.py`; output is ignored
-`outputs/review_transformation_benchmark.json`.
+**CI correction (2026-09-09).** macOS 3.12 job 102484186004 exposed two failures:
+the benchmark test still expected four cases after a fifth was added, and XYZ raw text was
+passed to `Path.is_file`, raising a platform filename-length error. The first local suite had
+imported the benchmark before that script changed, so its green result did not cover the new
+benchmark inventory; this qualification supersedes any broader inference from that run.
+Corrected the test to pin five case names and allocation evidence. XYZ now distinguishes text
+from paths before filesystem access, retains blank comments, validates counts/finite coordinates,
+and reports missing paths accurately. Split optional ASE round-trip from pure-Python XYZ checks.
+Added nine XYZ boundary tests. Corrected affected group: **60 passed**; Ruff/mypy pass.
+Evidence: `outputs/review_ci_macos312.log`, `outputs/review_second_corrected_focused.log`.
+Replacement full run will use `outputs/review_final_full.log` and `review_final_coverage.json`.
+It is active in session **37957**. The corrected source is frozen for this run. Final affected
+tests pass (60), Ruff/mypy pass, and final Sphinx build passes with zero warnings. The corrected
+increment is being committed/pushed now to repair the known CI failures and obtain cross-platform
+verification in parallel; the full suite remains an explicit release gate, not a claimed pass.
 
-To avoid changing the scientific code under the running full suite, the dependency refactor is
-prepared separately in detached worktree `outputs/review-scoring` at the starting HEAD. Only four
-files there differ: new `src/pytex/core/_parent_scoring.py`, experimental facade
-`src/pytex/experimental/phase_transformation.py`, its importer `src/pytex/core/parent_reconstruction.py`,
-and new `tests/unit/test_core_dependency_boundary.py`. The implementation is moved intact, with only
-its scope docstring updated. Nineteen relevant tests pass (`outputs/review_scoring_tests.log`).
-After the first increment lands, copy those four exact files into main, run affected tests/type/lint,
-update architecture/guide/ledger, and land the refactor. Do not copy the whole worktree or its old
-CLI/docs. Remove the scratch worktree only after its changes are landed.
+### Exact next actions
 
-**Next actions.** Inspect full browser rerun. Preserve the existing one-way characterization summary v1
-as an additive payload (existing fields unchanged; weights and residuals are additional evidence).
-Commit explicit paths/push main. Then close stable
-core->experimental scoring dependency, release metadata and version bump with full final checks.
+An isolated release candidate is now prepared at `outputs/review-release`: the first commit plus
+the exact second-increment diff/new files, and only then version/CITATION/changelog changes for
+0.9.0. Its bundled-docs build is session 50806 (`outputs/review_release_bundle.log`); focused
+release checks write `outputs/review_release_metadata.log`. Main's version remains 0.8.1 until
+its full suite passes. After increment 2 lands, compare package source trees and copy only the
+three release metadata files from the candidate; the prepared wheel must match the final sources.
 
-**Adapter review follow-up.** The isolated worktree also contains a correction to
-`src/pytex/adapters/abtem.py` and new `tests/unit/test_abtem_aberration_parity.py`:
-forward previously omitted coma/trefoil coefficients and angles, and preserve tiny nonzero
-astigmatism/fifth-order coefficients. Four optical-phase comparison cases pass against installed
-abTEM (`outputs/review_aberration_parity.log`). Official abTEM CTF documentation confirms
-amplitudes in angstroms and azimuths in radians; PyTex defocus maps to C10, not abTEM's negated
-defocus alias. These two files remain isolated and need documentation/validation before landing.
-The main-tree report prose was also corrected to say one *positive-weight* pair when exclusions
-are present; this changes no numerical code and needs the focused explanation tests rerun.
+1. Commit/push the corrected increment, then inspect final full-suite outcome, skips and exact coverage.
+   Fix any failures and rerun affected
+   checks; do not claim completion while it is running. Recheck Ruff/mypy before explicit staging.
+2. Update this ledger with final verification. Stage only named
+   changed sources/tests/docs/canonical figures, never `tests/test_data/` or ignored outputs.
+3. Cut version **0.9.0** in `_version.py` and `CITATION.cff`, cut the changelog release section and
+   correct the stale citation abstract's LaTeX-first claim. Build bundled docs and wheel, inspect
+   required assets and installed version, run release metadata/integrity checks. No generated
+   distribution/bundle/logs are committed.
+4. Commit/push tested release metadata; tag `v0.9.0` and verify CI on that exact commit, per policy.
+   GitHub CLI is not logged in, but git push works through the credential helper. Public GitHub
+   Actions API is readable. First-increment CI run: **34357022821**, still running at last check.
+5. Remove the detached preparation worktree `outputs/review-scoring` only after its six prepared
+   files have landed. Its absolute resolved path is within this workspace; preserve all other work.
+6. Record completion and remaining external-validation limits in this ledger; commit/push the
+   closing record. Confirm main/upstream and tag, then mark the goal complete.
 
 ## HREM Simulation Module for Double-Corrected TEM with abTEM Integration — COMPLETE (2026-09-08)
 

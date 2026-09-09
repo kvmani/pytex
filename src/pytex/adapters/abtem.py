@@ -136,11 +136,15 @@ def to_abtem_ctf(aberrations: MicroscopeAberrations) -> abtem.transfer.CTF:
         "C30": cs_angstrom,
     }
 
-    if abs(c5_angstrom) > 1e-6:
-        kwargs["C50"] = c5_angstrom
-    if abs(c12_angstrom) > 1e-6:
-        kwargs["C12"] = c12_angstrom
-        kwargs["phi12"] = phi12_rad
+    kwargs.update({
+        "C50": c5_angstrom,
+        "C12": c12_angstrom,
+        "phi12": phi12_rad,
+        "C21": float(aberrations.coma_angstrom),
+        "phi21": math.radians(aberrations.coma_angle_deg),
+        "C23": float(aberrations.trefoil_angstrom),
+        "phi23": math.radians(aberrations.trefoil_angle_deg),
+    })
 
     return abtem.transfer.CTF(**kwargs)
 

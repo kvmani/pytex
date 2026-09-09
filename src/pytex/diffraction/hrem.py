@@ -914,21 +914,40 @@ class AtomicSnapshot:
 
     @classmethod
     def from_xyz(cls, text_or_path: str | Path, cell: np.ndarray | None = None) -> AtomicSnapshot:
-        """Load atomic snapshot from an XYZ format string or file path."""
-        p = Path(text_or_path)
-        content = p.read_text(encoding="utf-8") if p.is_file() else str(text_or_path)
-        lines = [line.strip() for line in content.strip().splitlines() if line.strip()]
+        """Load one XYZ snapshot, preserving its comment and Cartesian angstrom coordinates.
+
+        Use this for an atomic configuration exported by another tool. Supply a
+        multiline XYZ string or a filesystem path, and optionally a 3x3 cell in
+        angstroms. Without a cell, a bounding box is inferred; XYZ does not define
+        lattice periodicity. Returns an :class:`AtomicSnapshot`. A blank comment is
+        valid, but nonpositive counts, truncated/multiple frames and nonfinite
+        coordinates raise ``ValueError``. Missing paths raise ``FileNotFoundError``.
+        """
+        if isinstance(text_or_path, Path) or (
+            "\n" not in text_or_path and "\r" not in text_or_path
+        ):
+            content = Path(text_or_path).read_text(encoding="utf-8")
+        else:
+            content = text_or_path
+        lines = content.splitlines()
         if len(lines) < 3:
             raise ValueError("XYZ data must contain at least 3 lines (count, comment, atom).")
         natoms = int(lines[0])
-        comment = lines[1]
+        atom_lines = [line for line in lines[2:] if line.strip()]
+        if natoms <= 0 or len(atom_lines) != natoms:
+            raise ValueError("XYZ atom count must be positive and match exactly one frame.")
+        comment = lines[1].strip()
         species_list: list[str] = []
         pos_list: list[list[float]] = []
-        for line in lines[2 : 2 + natoms]:
+        for line in atom_lines:
             parts = line.split()
+            if len(parts) < 4:
+                raise ValueError("Each XYZ atom needs a species and three coordinates.")
             species_list.append(parts[0])
             pos_list.append([float(parts[1]), float(parts[2]), float(parts[3])])
         pos_arr = np.array(pos_list, dtype=np.float64)
+        if not np.all(np.isfinite(pos_arr)):
+            raise ValueError("XYZ coordinates must be finite.")
         if cell is not None:
             box = as_float_array(cell)
         else:

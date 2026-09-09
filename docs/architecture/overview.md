@@ -55,6 +55,10 @@ The current architectural risk is not lack of code. It is adding new stable surf
 - `texture/`, `ebsd/`, and `diffraction/` build on `core/`.
 - `adapters/` may depend on external libraries, but stable core types must remain usable without them.
 - `experimental/` can depend on stable types but must not weaken or bypass stable semantics.
+- Parent-orientation candidate scoring lives in the private `core._parent_scoring` module.
+  Stable reconstruction and the compatible experimental facade share this implementation;
+  importing `pytex.core` does not import experimental modules. Map-scale reconstruction
+  retains its existing experimental status and validation requirements.
 
 ## Data Flow Principle
 

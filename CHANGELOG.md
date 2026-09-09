@@ -13,6 +13,10 @@ downstream analyses depend on them.
 
 ### Added
 
+- HREM simulation with microscope aberration models, phase-object propagation and optional
+  abTEM multislice integration, exposed through the library, CLI and TEM workbench, with
+  theory, computed examples and a tutorial.
+
 - Measured-pair orientation-relationship fitting accepts explicit non-negative evidence
   weights. Zero-weight pairs remain in the residual report for inspection. Both fitting
   reports expose normalized weights, weighted mean residuals and effective pair counts;
@@ -25,6 +29,17 @@ downstream analyses depend on them.
   guidance explain evidence selection, the objective and the limits of interpretation.
 
 ### Fixed
+
+- XYZ snapshot import distinguishes multiline content from paths on all platforms,
+  preserves blank comments, and rejects inconsistent atom counts and nonfinite coordinates.
+- The benchmark test pins all five named cases, including weighted fitting. ASE round-trip
+  checks are separate from pure-Python XYZ checks and skip only when ASE is absent.
+
+- The abTEM adapter now forwards coma and trefoil amplitudes and azimuths, and preserves
+  tiny nonzero coefficients instead of silently dropping them. Optical phase comparisons
+  cover asymmetric and combined aberrations against the optional abTEM backend.
+- Stable core imports no longer load experimental parent-scoring modules. Both existing
+  callers share a private core implementation without changing scoring behavior.
 
 - OR fitting bounds symmetry-expanded temporary storage and recomputes residuals against
   the final estimate. Shared `atan2` angle recovery preserves precision near zero.

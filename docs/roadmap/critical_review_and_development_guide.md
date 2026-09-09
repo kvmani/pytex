@@ -54,7 +54,7 @@ it is **not** a current missing-feature list. Current disposition:
 
 | July findings | 2026-08-15 disposition |
 | --- | --- |
-| 1–4, 6–7: OR correspondence, deviation, fitting, reconstruction, consistency, vectorization | Implemented; map-scale reconstruction remains experimental pending measured-data and MTEX evidence. One new boundary defect remains: stable `core.parent_reconstruction` imports an experimental scoring primitive. |
+| 1–4, 6–7: OR correspondence, deviation, fitting, reconstruction, consistency, vectorization | Implemented; map-scale reconstruction remains experimental pending measured-data and MTEX evidence. The stable-to-experimental scoring dependency was removed on 2026-09-09: both callers use a private core implementation, with import isolation and facade compatibility tests. |
 | 5: habit plane / PTMC | Open, long-term; no current parity claim. |
 | 8: kernel breadth | Implemented for the planned kernel family. |
 | 9–10: harmonic completion, ghost correction, statistics | Partial; harmonic inversion, random-standard defocusing calibration, constrained named-component ODF fitting, and positivity / zero-range ghost correction (`correct_ghosts`, 2026-09-06) exist, but component-shape refinement and uncertainty breadth remain open. |
@@ -196,8 +196,8 @@ priorities compete within a horizon. The active program as of 2026-08-15 is:
 1. **Governance and executable gates:** reconcile the roadmap and durable ledger, add Windows to
    the base CI lane, forbid growth in Sphinx warnings, and add a minimal real-browser Playwright
    lane for critical workbench behavior.
-2. **Architecture and validation hardening:** remove the stable-core dependency on experimental
-   parent scoring, finish `describe()`/JSON coverage for stable reports, and execute the prepared
+2. **Architecture and validation hardening:** the stable-core dependency on experimental
+   parent scoring is resolved (2026-09-09); finish `describe()`/JSON coverage for stable reports and execute the prepared
    MTEX OR-fitting/reconstruction campaign before stronger parity claims.
 3. **Five-feature delivery cycle, in dependency order:** measured powder-XRD I/O and comparison;
    random-standard defocus calibration; hex-grid EBSD; finite-thickness SAED; named-component ODF

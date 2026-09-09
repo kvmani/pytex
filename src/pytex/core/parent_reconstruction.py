@@ -5,11 +5,11 @@ from typing import Literal
 
 import numpy as np
 
+from pytex.core._parent_scoring import score_parent_orientations
 from pytex.core.lattice import Phase
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.transformation import OrientationRelationship, PhaseTransformationRecord
-from pytex.experimental.phase_transformation import score_parent_orientations
 
 ReductionMode = Literal["mean", "median", "max"]
 
