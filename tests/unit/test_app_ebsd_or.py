@@ -290,6 +290,22 @@ class TestVariantAssignment:
 class TestInput:
     """The table format, and what it says when it cannot read a line."""
 
+    def test_optional_weight_retains_excluded_pair_and_reports_evidence(self) -> None:
+        lines = pairs_text([1, 5, 9]).splitlines()
+        result = run("\n".join(f"{line} {weight}" for line, weight in zip(
+            lines, [0, 1, 3], strict=True
+        )))
+        data = result["data"]
+        assert data["fit"]["included_pair_count"] == 2
+        assert data["fit"]["effective_pair_count"] == pytest.approx(1.6)
+        assert [pair["weight"] for pair in data["pairs"]] == [0, 1, 3]
+        assert [pair["normalized_weight"] for pair in data["pairs"]] == [0, 0.25, 0.75]
+
+    @pytest.mark.parametrize("weight", ["-1", "nan", "inf", "0"])
+    def test_invalid_or_all_zero_weights_are_refused(self, weight: str) -> None:
+        with pytest.raises(InvalidInputError):
+            run(pairs_text([1]) + f" {weight}")
+
     def test_comments_and_blank_lines_are_ignored(self) -> None:
         text = "# a header\n\n" + pairs_text([1]) + "\n\n"
         assert run(text)["data"]["fit"]["pair_count"] == 1

@@ -21,6 +21,14 @@ does not depend on the newest MTEX release line. Regeneration scripts live under
 
 ## Matrix
 
+The September 2026 measured-pair OR increment adds scalar-weighted quaternion fitting,
+bounded symmetry alignment, retained residuals for excluded pairs and convergence-aware
+catalog naming. Tests in `test_or_weighted_fitting.py` use the analytic common-axis circular
+mean, scale invariance, exclusions and multi-variant chunk equivalence. These are independent
+mathematical and synthetic checks, **not** a measured-data or MTEX `calcParent2Child`
+comparison. That external comparison remains outstanding. See the
+{doc}`weighted examples </examples/generated/weighted-or-fitting>`.
+
 | Area | MTEX reference examples/tests | PyTex status | Notes |
 | --- | --- | --- | --- |
 | Euler/quaternion conversions | `check_eulerquat.m`; `fixtures/mtex_parity/campaigns/orientation_core_cases.json` | implemented | Baseline conversion and normalization tests are present, and the public rotation surface now also covers vectorized axis-angle, matrix, and Rodrigues / Rodrigues--Frank conversions. The campaign runner adds shared JSON inputs and MTEX/PyTex result JSON for Euler, matrix, quaternion, axis-angle, Miller construction, composition, inverse, and misorientation cases. Misorientation now composes in the crystal frame (`inv(o1) * o2`, the MTEX convention) so crystal-symmetry reduction through fixed left/right operator products is exact; symmetry-equivalent orientations measure zero disorientation, with regression coverage. Symmetry-aware quaternion mean (`OrientationSet.mean_orientation`) and spread statistics are implemented. |

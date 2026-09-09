@@ -42,7 +42,7 @@
   <text x="54.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Double-coset seed</text>
   <text x="54.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">max-trace element of G_c V_0</text>
   <text x="54.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">G_p</text>
-  <text x="54.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">One pair reduced to its</text>
+  <text x="54.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A weighted pair at its</text>
   <text x="54.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">minimum-angle</text>
   <text x="54.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">representative. The coset</text>
   <text x="54.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">absorbs the</text>
@@ -60,9 +60,9 @@
   <line x1="276.0" y1="422.5" x2="306.0" y2="422.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="580.0" y="316.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
   <text x="594.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Quaternion eigen-mean</text>
-  <text x="594.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">R &lt;- top eigenvector of sum q</text>
-  <text x="594.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">q^T</text>
-  <text x="594.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Markley's rotation average of</text>
+  <text x="594.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">Top eigenvector of weighted</text>
+  <text x="594.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">scatter</text>
+  <text x="594.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Markley's weighted average of</text>
   <text x="594.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the</text>
   <text x="594.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">aligned set. Align and average</text>
   <text x="594.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">iterate</text>

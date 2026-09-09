@@ -3,7 +3,7 @@
 This note derives the mathematical formulation and optimization framework implemented in
 `pytex.core.transformation.characterize_orientation_relationship` to determine orientation
 relationships from experimental parent and child orientation data. It covers double-coset symmetry
-quotienting, data-driven Karcher mean refinement on the $\mathrm{SO}(3)$ Riemannian manifold,
+quotienting, weighted quaternion eigen-mean refinement,
 automated classification against classical cataloged relationships, and recovery of rational
 plane and direction parallelisms.
 
@@ -52,7 +52,7 @@ $288$ for cubic-to-hexagonal.
 
 Earlier fitting surfaces required the caller to supply a nominal relationship as the starting
 estimate, which presupposes the answer. Here the estimate is taken from the data: one measured
-pair is reduced to its minimum-angle representative,
+pair with positive weight is reduced to its minimum-angle representative,
 
 $$
 \mathbf{R}_{0}
@@ -89,23 +89,49 @@ and the averaging step replaces the estimate by the quaternion eigen-mean of the
 $\mathbf{q}_{i}$ the unit quaternion of $\tilde{\mathbf{V}}_{i}$, form the scatter matrix
 
 $$
-\mathbf{M} = \sum_{i} \mathbf{q}_{i}\,\mathbf{q}_{i}^{\mathsf{T}}
+\mathbf{Q}_{\mathrm{OR}} = \sum_{i} w_i\,\mathbf{q}_{i}\,\mathbf{q}_{i}^{\mathsf{T}}
 $$ (eq-or-scatter)
 
-and take the eigenvector of largest eigenvalue as the mean quaternion. This is Markley's
-attitude average: the maximum-likelihood estimate for small isotropic noise, and, unlike averaging
+and take the eigenvector of largest eigenvalue as the mean quaternion. The non-negative scalar
+weights sum to one; equal weights are the default. This is Markley's attitude average,
+minimizing the weighted squared Frobenius distance between aligned rotation matrices. It is
+a chordal objective, rather than the squared geodesic-angle objective of a Karcher mean.
+For small isotropic errors, inverse-variance weights motivate a local statistical interpretation;
+arbitrary reliability weights do not establish that interpretation. Unlike averaging
 rotation matrices, it needs no re-orthogonalization because a unit quaternion is a rotation by
 construction. Note $\mathbf{q}$ and $-\mathbf{q}$ describe the same rotation and
-$\mathbf{M}$ is invariant under that sign, so no sign convention is required.
+$\mathbf{Q}_{\mathrm{OR}}$ is invariant under that sign, so no sign convention is required.
 
 Convergence is declared when the assignment set in {eq}`eq-or-align` repeats, the mean being a
 deterministic function of it, or when the step angle falls below the tolerance. Testing the
-assignments rather than the step is what makes the criterion robust to the
-$\sim 10^{-6}$ degree matrix-to-quaternion round-trip floor.
+assignments also detects a fixed point directly. Step and residual angles use the shared
+skew/trace `atan2` recovery, avoiding the loss of precision of `arccos` near zero.
 
 Each iteration costs $\mathcal{O}\!\left(n \lvert G_{p}\rvert \lvert G_{c}\rvert\right)$ and is
-evaluated as a single contraction over all pairs and both groups; convergence is typically
-attained in two to four iterations.
+evaluated in bounded blocks over pairs and both groups. Only one aligned rotation per pair
+survives each block, so the symmetry-expanded temporary is independent of dataset size.
+Final residuals are realigned to the final estimate, including when the iteration limit is reached.
+
+## Measurement Weights And Excluded Pairs
+
+Use `pair_weights` on `fit_orientation_relationship`, `characterize_orientation_relationship`,
+or `orientation_relationship_from_euler` when there is an independent reason to give pairs
+different influence. A zero weight excludes a pair from estimation and seed selection; it
+does not remove the pair from `residuals_deg`, the all-pair mean, or the maximum residual.
+The report owns a normalized, read-only copy of the weights.
+
+The weighted mean residual is the sum of each residual multiplied by its normalized weight.
+The effective pair count is the reciprocal of the sum of squared normalized weights. It
+measures concentration of evidence: equal weights give the supplied pair count, while one
+nonzero weight gives one. Repeated observations from one grain are still correlated; this
+quantity is neither an independence test nor a confidence interval. Inspect both weighted
+and all-pair residuals, and retain the reason for exclusions with the experimental record.
+
+For two rotations about one axis with angles zero and a known angle, the fitted angle is
+the argument of the weighted sum of their unit complex numbers. This independent circular
+identity tests the quaternion implementation without comparing it against an earlier run.
+The [weighted worked examples](../examples/generated/weighted-or-fitting.md) compute this identity
+and demonstrate an excluded pair retained in the diagnostics.
 
 ## Naming: Symmetry-Reduced Catalog Distance
 
@@ -192,14 +218,16 @@ responses.
 
 ## Conclusiveness
 
-An identification is reported as conclusive only when the winning candidate both fits within the
-stated tolerance and leads the runner-up by more than the measurement scatter and its own misfit,
+An identification is reported as conclusive only after convergence, when both the weighted
+mean scatter and the best catalog distance are within the naming tolerance. With more than
+one catalog candidate the winner must also lead the runner-up by more than the weighted
+scatter and its own misfit,
 
 $$
 \text{margin} \;>\; \max\!\left( \overline{\rho},\ d_{\mathrm{best}} \right)
 $$
 
-with $\overline{\rho}$ the mean per-pair residual. Those are precisely the two quantities that
+with $\overline{\rho}$ the weighted mean per-pair residual. Those are precisely the two quantities that
 could otherwise account for the lead. On planted Kurdjumov–Sachs data with added Gaussian
 orientation scatter the verdict remains conclusive to $2^{\circ}$ of scatter and correctly
 becomes inconclusive at $5^{\circ}$, which is comparable to the $2.404^{\circ}$ catalog spacing.
@@ -218,7 +246,10 @@ International Tables for Crystallography, Vol. A (point groups and basis convent
 
 ## Informative references
 
-Markley, F. L., Cheng, Y., Crassidis, J. L., Oshman, Y., J. Guid. Control Dyn. 30 (2007) 1193.
+Markley, F. L., Cheng, Y., Crassidis, J. L., Oshman, Y., *Averaging Quaternions*,
+J. Guid. Control Dyn. 30 (2007) 1193–1197, [doi:10.2514/1.28949](https://doi.org/10.2514/1.28949).
+[Author manuscript at NASA](https://ntrs.nasa.gov/citations/20070017872).
 Kurdjumov, G., Sachs, G., Z. Phys. 64 (1930) 325.
 Burgers, W. G., Physica 1 (1934) 561.
 Morito, S., Tanaka, H., Konishi, R., Furuhara, T., Maki, T., Acta Mater. 51 (2003) 1789.
+The symbols follow the {doc}`central registry </standards/terminology_and_symbol_registry>`.

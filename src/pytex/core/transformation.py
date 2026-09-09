@@ -16,7 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover - import-cycle guard
     # function that needs it.
     from pytex.core.parent_reconstruction import OrientationRelationshipCatalog
 
-from pytex.core._angles import acute_angle_between_unit_vectors_rad
+from pytex.core._angles import acute_angle_between_unit_vectors_rad, rotation_angle_from_matrix_rad
 from pytex.core._arrays import as_int_array
 from pytex.core.batches import VectorSet
 from pytex.core.frames import ReferenceFrame
@@ -2268,6 +2268,7 @@ class OrientationRelationshipFitReport:
     converged: bool
     deviation_from_nominal_deg: float
     provenance: ProvenanceRecord | None = None
+    pair_weights: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         residuals = np.asarray(self.residuals_deg, dtype=np.float64).reshape(-1)
@@ -2279,6 +2280,19 @@ class OrientationRelationshipFitReport:
             raise ValueError("iterations must be positive.")
         residuals.setflags(write=False)
         object.__setattr__(self, "residuals_deg", residuals)
+        object.__setattr__(self, "pair_weights", _normalized_pair_weights(
+            self.pair_weights, residuals.size
+        ))
+
+    @property
+    def weighted_mean_residual_deg(self) -> float:
+        """Mean residual in degrees weighted by the declared pair evidence."""
+        return float(np.average(self.residuals_deg, weights=self.pair_weights))
+
+    @property
+    def effective_pair_count(self) -> float:
+        """Weight concentration, 1/sum(w**2); not a count of independent measurements."""
+        return float(1.0 / np.sum(np.asarray(self.pair_weights) ** 2))
 
     @property
     def mean_residual_deg(self) -> float:
@@ -2319,13 +2333,54 @@ class OrientationRelationshipFitReport:
             f"{self.deviation_from_nominal_deg:.3f} deg from the nominal relationship; "
             "a large value means the operative relationship differs systematically "
             "from the assumed one."
+            f" Weighted mean residual: {self.weighted_mean_residual_deg:.3f} deg; "
+            f"effective pair count {self.effective_pair_count:.2f}. Zero-weight pairs "
+            "remain in the residuals but do not influence the fit. This is a scalar-weighted "
+            "quaternion eigen-mean (Markley et al., 2007, doi:10.2514/1.28949), not a "
+            "confidence interval. Rotations map parent crystal to child crystal, C^T P."
         )
 
 
 def _rotation_angles_deg_from_matrices(matrices: np.ndarray) -> np.ndarray:
-    traces = np.trace(matrices, axis1=-2, axis2=-1)
-    cosines = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
-    return np.asarray(np.degrees(np.arccos(cosines)), dtype=np.float64)
+    return np.asarray(np.degrees(rotation_angle_from_matrix_rad(matrices)), dtype=np.float64)
+
+
+def _normalized_pair_weights(weights: ArrayLike | None, count: int) -> np.ndarray:
+    """Own and normalize nonnegative scalar evidence weights without overflow."""
+    values = np.ones(count) if weights is None else np.array(weights, dtype=np.float64, copy=True)
+    if values.shape != (count,):
+        raise ValueError("pair_weights must have one value per orientation pair.")
+    if not np.all(np.isfinite(values)) or np.any(values < 0.0) or not np.any(values > 0.0):
+        raise ValueError("pair_weights must be finite, non-negative and include a positive value.")
+    values /= np.max(values)
+    values /= np.sum(values)
+    values.setflags(write=False)
+    return values
+
+
+_OR_ALIGNMENT_CHUNK_SIZE = 256
+
+
+def _align_measured_rotations(
+    measured: np.ndarray,
+    estimate: np.ndarray,
+    parent_operators: np.ndarray,
+    child_operators: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Align in bounded blocks; retain only one rotation and assignment per pair."""
+    aligned = np.empty_like(measured)
+    best = np.empty(len(measured), dtype=np.int64)
+    for start in range(0, len(measured), _OR_ALIGNMENT_CHUNK_SIZE):
+        stop = min(start + _OR_ALIGNMENT_CHUNK_SIZE, len(measured))
+        candidates = np.einsum(
+            "aij,njk,bkl->nabil", child_operators, measured[start:stop], parent_operators,
+            optimize=True,
+        ).reshape(stop - start, -1, 3, 3)
+        scores = np.einsum("ncij,ij->nc", candidates, estimate, optimize=True)
+        indices = np.argmax(scores, axis=1)
+        aligned[start:stop] = candidates[np.arange(stop - start), indices]
+        best[start:stop] = indices
+    return aligned, best
 
 
 def _symmetry_reduced_angle_between_deg(
@@ -2390,6 +2445,7 @@ def _fit_from_seed(
     child_operators: np.ndarray,
     max_iterations: int,
     convergence_tol_deg: float,
+    pair_weights: ArrayLike | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int, bool]:
     """Symmetry-aware rotation averaging of measured parent-to-child rotations.
 
@@ -2404,24 +2460,24 @@ def _fit_from_seed(
     Returns ``(estimate, residuals_deg, iterations, converged)``.
     """
 
-    candidates = np.einsum(
-        "aij,njk,bkl->nabil", child_operators, measured, parent_operators, optimize=True
-    )
-    pair_count = measured.shape[0]
-    flat_candidates = candidates.reshape(pair_count, -1, 3, 3)
+    if isinstance(max_iterations, (bool, np.bool_)) or not isinstance(
+        max_iterations, (int, np.integer)
+    ) or max_iterations < 1:
+        raise ValueError("max_iterations must be a positive integer.")
+    if not np.isfinite(convergence_tol_deg) or convergence_tol_deg < 0.0:
+        raise ValueError("convergence_tol_deg must be finite and non-negative.")
+    weights = _normalized_pair_weights(pair_weights, len(measured))
     estimate = np.asarray(seed, dtype=np.float64)
     iterations = 0
     converged = False
-    aligned = flat_candidates[:, 0]
     previous_best: np.ndarray | None = None
     while iterations < max_iterations and not converged:
         iterations += 1
-        relative = np.einsum("ncij,kj->ncik", flat_candidates, estimate, optimize=True)
-        traces = np.trace(relative, axis1=-2, axis2=-1)
-        best = np.argmax(traces, axis=1)
-        aligned = flat_candidates[np.arange(pair_count), best]
+        aligned, best = _align_measured_rotations(
+            measured, estimate, parent_operators, child_operators
+        )
         quaternions = matrices_to_quaternions(aligned)
-        scatter = quaternions.T @ quaternions
+        scatter = quaternions.T @ (weights[:, None] * quaternions)
         eigenvalues, eigenvectors = np.linalg.eigh(scatter)
         mean_quaternion = eigenvectors[:, int(np.argmax(eigenvalues))]
         updated = Rotation(quaternion=mean_quaternion).as_matrix()
@@ -2435,6 +2491,8 @@ def _fit_from_seed(
             previous_best is not None and bool(np.array_equal(best, previous_best))
         ) or step_angle <= convergence_tol_deg
         previous_best = best
+    # Report distance to the final estimate even when the iteration budget was exhausted.
+    aligned, _ = _align_measured_rotations(measured, estimate, parent_operators, child_operators)
     residuals = _rotation_angles_deg_from_matrices(
         np.einsum("nij,kj->nik", aligned, estimate, optimize=True)
     )
@@ -2488,6 +2546,7 @@ def fit_orientation_relationship(
     max_iterations: int = 20,
     convergence_tol_deg: float = 1e-8,
     provenance: ProvenanceRecord | None = None,
+    pair_weights: ArrayLike | None = None,
 ) -> OrientationRelationshipFitReport:
     """Fit the operative orientation relationship to measured pairs.
 
@@ -2497,7 +2556,7 @@ def fit_orientation_relationship(
     relationship, it refines the relationship itself (e.g. starting from
     Kurdjumov-Sachs and recovering the operative Greninger-Troiano-like OR).
 
-    Algorithm: each pair's measured crystal-to-crystal map ``C P^T`` is
+    Algorithm: each pair's measured crystal-to-crystal map ``C^T P`` is
     aligned to the current estimate through the parent and child symmetry
     groups (the equivalent description nearest the estimate), the aligned
     rotations are averaged with the quaternion eigen-mean (Markley), and the
@@ -2510,6 +2569,14 @@ def fit_orientation_relationship(
     relationship supplies the starting estimate, phases, and symmetry groups.
 
     Output: an ``OrientationRelationshipFitReport`` (see its ``describe()``).
+
+    ``pair_weights`` supplies one finite non-negative scalar per pair (equal
+    weights by default). At least one must be positive. Use independently
+    justified reliability weights, or zero to exclude a suspect pair while
+    retaining its residual. The weights are normalized and stored in the
+    report; they are not inferred uncertainties or automatic outlier rejection.
+    See ``docs/site/theory/orientation_relationship_determination.md`` and
+    the weighted OR worked examples for the objective and analytic checks.
     """
 
     if len(parent_orientations) != len(child_orientations):
@@ -2533,6 +2600,7 @@ def fit_orientation_relationship(
         child_operators=child_operators,
         max_iterations=max_iterations,
         convergence_tol_deg=convergence_tol_deg,
+        pair_weights=pair_weights,
     )
     fitted_rotation = Rotation.from_matrix(estimate).canonicalized()
     fitted = OrientationRelationship(
@@ -2556,6 +2624,7 @@ def fit_orientation_relationship(
         converged=converged,
         deviation_from_nominal_deg=deviation,
         provenance=provenance or nominal.provenance,
+        pair_weights=_normalized_pair_weights(pair_weights, len(parent_orientations)),
     )
 
 
@@ -3361,6 +3430,7 @@ class ORCharacterizationReport:
     plane_statements: tuple[ORParallelismStatement, ...]
     direction_statements: tuple[ORParallelismStatement, ...]
     provenance: ProvenanceRecord | None = None
+    pair_weights: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         residuals = np.asarray(self.residuals_deg, dtype=np.float64).reshape(-1)
@@ -3389,6 +3459,19 @@ class ORCharacterizationReport:
         object.__setattr__(self, "catalog_names", names)
         object.__setattr__(self, "plane_statements", tuple(self.plane_statements))
         object.__setattr__(self, "direction_statements", tuple(self.direction_statements))
+        object.__setattr__(self, "pair_weights", _normalized_pair_weights(
+            self.pair_weights, residuals.size
+        ))
+
+    @property
+    def weighted_mean_residual_deg(self) -> float:
+        """Mean angular residual in degrees under the declared evidence weights."""
+        return float(np.average(self.residuals_deg, weights=self.pair_weights))
+
+    @property
+    def effective_pair_count(self) -> float:
+        """Weight concentration 1/sum(w**2), without an independence assumption."""
+        return float(1.0 / np.sum(np.asarray(self.pair_weights) ** 2))
 
     @property
     def mean_residual_deg(self) -> float:
@@ -3583,11 +3666,15 @@ class ORCharacterizationReport:
         quantities that could otherwise explain the lead away.
         """
 
-        if not self.matches_catalog:
+        if not self.converged or not self.matches_catalog:
+            return False
+        if self.weighted_mean_residual_deg > self.catalog_tolerance_deg:
             return False
         if len(self.catalog_names) == 1:
             return True
-        return self.margin_deg > max(self.mean_residual_deg, self.best_catalog_deviation_deg)
+        return self.margin_deg > max(
+            self.weighted_mean_residual_deg, self.best_catalog_deviation_deg
+        )
 
     def statement_text(self) -> str:
         """The parallelism statement as one line, e.g. ``(111) || (011), [10-1] || [11-1]``."""
@@ -3610,9 +3697,17 @@ class ORCharacterizationReport:
             f"{self.relationship.child_phase.name}). Pair scatter about the fit: mean "
             f"{self.mean_residual_deg:.3f} deg, max {self.max_residual_deg:.3f} deg."
         ]
-        if self.pair_count == 1:
+        lines.append(
+            f"Weighted mean residual: {self.weighted_mean_residual_deg:.3f} deg; "
+            f"effective pair count {self.effective_pair_count:.2f}. Zero-weight pairs "
+            "are retained for inspection and excluded from the fit. Weight concentration "
+            "is not an uncertainty estimate (Markley et al., 2007, doi:10.2514/1.28949)."
+        )
+        if not self.converged:
+            lines.append("The fit did NOT converge; its catalogue naming is inconclusive.")
+        if np.count_nonzero(np.asarray(self.pair_weights)) == 1:
             lines.append(
-                "  Only one pair was supplied, so the scatter is zero by construction and "
+                "  Only one pair has positive weight, so its scatter is zero by construction and "
                 "says nothing about measurement quality; supply several pairs to estimate it."
             )
         if self.catalog_names:
@@ -3700,6 +3795,10 @@ class ORCharacterizationReport:
             "parent_phase": self.relationship.parent_phase.name,
             "child_phase": self.relationship.child_phase.name,
             "pair_count": int(self.pair_count),
+            "pair_weights": np.asarray(self.pair_weights).tolist(),
+            "residuals_deg": self.residuals_deg.tolist(),
+            "weighted_mean_residual_deg": self.weighted_mean_residual_deg,
+            "effective_pair_count": self.effective_pair_count,
             "rotation_angle_deg": float(misorientation.angle_deg),
             "rotation_axis": [float(value) for value in misorientation.rotation.axis],
             "mean_residual_deg": self.mean_residual_deg,
@@ -3733,6 +3832,7 @@ def characterize_orientation_relationship(
     max_iterations: int = 20,
     convergence_tol_deg: float = 1e-8,
     provenance: ProvenanceRecord | None = None,
+    pair_weights: ArrayLike | None = None,
 ) -> ORCharacterizationReport:
     """Determine the orientation relationship shown by measured orientation pairs.
 
@@ -3751,10 +3851,10 @@ def characterize_orientation_relationship(
 
     Algorithm: each pair contributes the measured rotation ``V_i = C_i^T P_i``.
     Without a nominal relationship the starting estimate comes from the data
-    itself — every ``V_i`` is reduced to its minimum-angle representative in the
-    double coset ``G_c V_i G_p``, which absorbs the parent symmetry operation
-    that distinguishes one variant from another, so pairs belonging to different
-    variants reduce to the same matrix and can be averaged. The estimate is then
+    itself — the first positive-weight ``V_i`` is reduced to its minimum-angle
+    representative in the double coset ``G_c V_i G_p``. The other pairs are
+    aligned to this seed, avoiding inconsistent choices among tied minimum-angle
+    representatives from different variants. The estimate is then
     refined by symmetry-aware rotation averaging (align each measurement to its
     nearest equivalent description, take the quaternion eigen-mean, iterate) —
     the same routine `fit_orientation_relationship` uses. Finally the fit is
@@ -3767,6 +3867,12 @@ def characterize_orientation_relationship(
     crystal systems is used (see `pytex.core.parent_reconstruction.default_relationship_catalog`).
     ``nominal`` overrides the data-derived starting estimate. The two tolerances
     govern the named match and the parallelism search respectively.
+    ``pair_weights`` contains one finite non-negative evidence weight per pair,
+    with at least one positive value; omitted weights are equal. A zero weight
+    excludes a pair from estimation but retains its residual in the report.
+    Naming uses weighted scatter, and requires convergence. The ordinary mean
+    and maximum still describe all supplied pairs. Weighting is not automatic
+    outlier rejection and does not provide a confidence interval.
 
     Output: an `ORCharacterizationReport` — read its ``describe()``.
 
@@ -3800,6 +3906,13 @@ def characterize_orientation_relationship(
         )
     if max_statements < 1:
         raise ValueError("max_statements must be at least 1.")
+    weights = _normalized_pair_weights(pair_weights, len(parent_orientations))
+    for label, tolerance in (
+        ("catalog_tolerance_deg", catalog_tolerance_deg),
+        ("parallelism_tolerance_deg", parallelism_tolerance_deg),
+    ):
+        if not np.isfinite(tolerance) or tolerance < 0.0:
+            raise ValueError(f"{label} must be finite and non-negative.")
 
     from pytex.core.parent_reconstruction import (
         OrientationRelationshipCatalog as _Catalog,
@@ -3819,6 +3932,12 @@ def characterize_orientation_relationship(
     else:
         candidates = tuple(catalog)
 
+    for candidate in (*candidates, *((nominal,) if nominal is not None else ())):
+        if not phases_semantically_match(parent_phase, candidate.parent_phase) or not (
+            phases_semantically_match(child_phase, candidate.child_phase)
+        ):
+            raise ValueError("Catalog and nominal relationships must match the measured phases.")
+
     seed_relationship = nominal or OrientationRelationship(
         name="seed",
         parent_phase=parent_phase,
@@ -3832,7 +3951,8 @@ def characterize_orientation_relationship(
         nominal.parent_to_child_rotation.as_matrix()
         if nominal is not None
         else _double_coset_seed(
-            measured, parent_operators=parent_operators, child_operators=child_operators
+            measured[weights > 0.0],
+            parent_operators=parent_operators, child_operators=child_operators
         )
     )
     estimate, residuals, iterations, converged = _fit_from_seed(
@@ -3842,6 +3962,7 @@ def characterize_orientation_relationship(
         child_operators=child_operators,
         max_iterations=max_iterations,
         convergence_tol_deg=convergence_tol_deg,
+        pair_weights=weights,
     )
     fitted = OrientationRelationship(
         name=f"{parent_phase.name}_to_{child_phase.name}_fitted",
@@ -3914,6 +4035,7 @@ def characterize_orientation_relationship(
         plane_statements=planes,
         direction_statements=directions,
         provenance=provenance,
+        pair_weights=weights,
     )
 
 
@@ -3932,6 +4054,7 @@ def orientation_relationship_from_euler(
     max_index: int = 3,
     max_statements: int = 4,
     provenance: ProvenanceRecord | None = None,
+    pair_weights: ArrayLike | None = None,
 ) -> ORCharacterizationReport:
     """Determine the OR directly from measured Euler angle triples.
 
@@ -3972,6 +4095,7 @@ def orientation_relationship_from_euler(
         max_index=max_index,
         max_statements=max_statements,
         provenance=provenance,
+        pair_weights=pair_weights,
     )
 
 

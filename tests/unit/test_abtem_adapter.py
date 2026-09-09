@@ -23,12 +23,17 @@ from pytex.diffraction.hrem import (
 )
 
 
-def test_is_abtem_available() -> None:
-    # Environment has abtem and ase installed
-    assert is_abtem_available() is True
+@pytest.mark.parametrize("abtem_present,ase_present", [(False, False), (False, True),
+                                                       (True, False), (True, True)])
+def test_is_abtem_available(abtem_present: bool, ase_present: bool) -> None:
+    """Both optional packages are needed, independently of this machine's install."""
+    available = {"abtem": abtem_present, "ase": ase_present}
+    with patch("importlib.util.find_spec", side_effect=lambda name: available[name] or None):
+        assert is_abtem_available() is (abtem_present and ase_present)
 
 
 def test_snapshot_and_ase_conversion() -> None:
+    pytest.importorskip("ase", reason="ASE is an optional HREM interoperability dependency")
     snap = AtomicSnapshot.amorphous_sample(
         species="C",
         density_g_cm3=2.0,

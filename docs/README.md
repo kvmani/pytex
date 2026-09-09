@@ -12,6 +12,7 @@ generated figures, and the site's own README.
 - [Mission](../mission.md)
 - [Changelog](../CHANGELOG.md)
 - [Specifications](../specifications.md)
+- [Choose An Analysis From The Measurement](site/workflows/choosing_an_analysis.md)
 - [Agent Instructions](../AGENTS.md)
 
 ## Architecture
@@ -63,6 +64,8 @@ generated figures, and the site's own README.
 - [API Stability And Deprecation](standards/api_stability_and_deprecation.md)
 
 ## Development
+
+- [Repository Review, September 2026](development/repository_review_2026_09.md) — evidence, selected improvements and validation boundaries
 
 - [Local Development](development/local_development.md)
 - [Active Task Progress](development/active_task_progress.md) — the durable handoff record for the current task

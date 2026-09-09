@@ -30,6 +30,7 @@ from . import (
     texture_kernels,
     transformation_correspondence,
     visualization_composition,
+    weighted_or_fitting,
     workbench_service_layer,
 )
 
@@ -61,6 +62,7 @@ GROUPS: tuple[ExampleGroup, ...] = (
     visualization_composition.GROUP,
     workbench_service_layer.GROUP,
     hrem_simulation.GROUP,
+    weighted_or_fitting.GROUP,
 )
 
 __all__ = ["GROUPS"]

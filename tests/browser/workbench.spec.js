@@ -3197,6 +3197,25 @@ test('draws two measured grains in the specimen frame, with what 2.4 degrees loo
  * the zero a single pair always reports, and follows the answer through to the
  * picture of it.
  */
+test('OR evidence weights retain excluded pairs and malformed pastes retain all input', async ({ page }) => {
+  await openWorkbench(page);
+  await openPanel(page, 'OR from grains');
+  await expect(page.locator('#stage .verdict')).toContainText('Burgers');
+  await page.getByLabel('Pair 1 weight', { exact: true }).fill('0');
+  await page.getByRole('button', { name: 'Determine the relationship', exact: true }).click();
+  await expect(page.locator('#stage .verdict')).toContainText('1 excluded');
+  await expect(page.locator('#stage')).toContainText('Excluded (0)');
+  await expect(page.locator('.grains__row')).toHaveCount(3);
+
+  await page.getByRole('button', { name: 'Paste rows…', exact: true }).click();
+  const pasted = '30 40 10 1 2 3\n30 40 10 1 2';
+  await page.getByLabel('Rows to paste').fill(pasted);
+  await page.getByRole('button', { name: 'Add these rows', exact: true }).click();
+  await expect(page.getByLabel('Rows to paste')).toHaveValue(pasted);
+  await expect(page.locator('.grains__row')).toHaveCount(3);
+  await expect(page.getByText(/Line 2 has 5 columns/).first()).toBeVisible();
+});
+
 test('names the relationship a table of measured grains shows', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'OR from grains');
@@ -3249,7 +3268,7 @@ test('names the relationship a table of measured grains shows', async ({ page })
     page.getByRole('button', { name: 'Determine the relationship' }).click(),
   );
   await expect.poll(() => verdict.textContent()).not.toBe(before);
-  await expect(verdict).toContainText('over 1 pair(s)');
+  await expect(verdict).toContainText('over 1 included pair(s)');
 
   /*
    * The hand-off. Identifying a relationship and then seeing it drawn is one

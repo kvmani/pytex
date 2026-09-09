@@ -79,7 +79,7 @@ def or_determination_figure() -> str:
                         label="Double-coset seed",
                         formula="max-trace element of G_c V_0 G_p",
                         detail=[
-                            "One pair reduced to its minimum-angle",
+                            "A weighted pair at its minimum-angle",
                             "representative. The coset absorbs the",
                             "parent symmetry operation that",
                             "distinguishes one variant from another.",
@@ -96,9 +96,9 @@ def or_determination_figure() -> str:
                     ),
                     AlgorithmStage(
                         label="Quaternion eigen-mean",
-                        formula="R <- top eigenvector of sum q q^T",
+                        formula="Top eigenvector of weighted scatter",
                         detail=[
-                            "Markley's rotation average of the",
+                            "Markley's weighted average of the",
                             "aligned set. Align and average iterate",
                             "until the assignment is stable.",
                         ],

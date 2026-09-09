@@ -87,7 +87,8 @@ Rules:
   honestly: correctness fixes under **Fixed** (even when embarrassing),
   convention or semantics changes under **Changed** — downstream analyses
   depend on them, and silence is a correctness bug of the documentation.
-- A release consists of: version bump in `pyproject.toml`, changelog section
+- A release consists of: version bump in `src/pytex/_version.py` (the single literal read
+  statically by `pyproject.toml`), changelog section
   cut, a git tag `vX.Y.Z`, and green CI on the tagged commit. Pre-1.0, minor
   versions may break with deprecation warnings per the stability guarantees
   above; patch versions must not.

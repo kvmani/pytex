@@ -4,6 +4,9 @@ PyTex is a pure-Python-first crystallographic texture and diffraction library bu
 
 PyTex is intentionally opinionated about scientific semantics. Stable APIs are expected to make frame, basis, symmetry, and provenance meaning explicit instead of hiding that meaning in arrays or import-time conventions.
 
+Start with {doc}`workflows/choosing_an_analysis` to connect your measurement to a workflow,
+its expected result and the diagnostic evidence needed to interpret it.
+
 ```{toctree}
 :maxdepth: 2
 :caption: Concepts
@@ -52,6 +55,7 @@ examples/index
 :caption: Workflows
 
 workflows/workbench_application
+workflows/choosing_an_analysis
 workflows/ebsd_kam
 workflows/ebsd_grains
 workflows/ebsd_import_normalization

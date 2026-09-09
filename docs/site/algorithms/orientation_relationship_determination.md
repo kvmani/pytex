@@ -109,19 +109,26 @@ $$\tilde{\mathbf{V}}_i = \arg\max_{\mathbf{S}_c,\, \mathbf{S}_p}
 $\mathbf{q}_i$ the unit quaternion of $\tilde{\mathbf{V}}_i$, the mean rotation
 is the eigenvector of largest eigenvalue of
 
-$$\mathbf{M} = \sum_i \mathbf{q}_i \mathbf{q}_i^{\mathsf{T}} .$$
+$$\mathbf{Q}_{\mathrm{OR}} = \sum_i w_i\,\mathbf{q}_i \mathbf{q}_i^{\mathsf{T}} .$$
 
-This is the maximum-likelihood rotation average for small isotropic noise, and
-unlike averaging matrices it needs no re-orthogonalization.
+The normalized non-negative weights default to equal values. This minimizes a weighted
+chordal rotation-matrix objective; it is not a Karcher mean. A statistical interpretation
+requires justified noise assumptions and weights. Zero-weight rows remain in the residual
+report but influence neither seeding nor estimation.
 
 Convergence is declared when the alignment **assignments** repeat — the mean is
 then a deterministic function of them — or when the step falls below the angular
-tolerance. Testing the assignments rather than the step is what makes it robust
-to the $\sim 10^{-6}$ degree matrix-to-quaternion round-trip floor.
+tolerance. Angles use skew/trace `atan2` recovery to retain accuracy near zero.
 
 Cost is $\mathcal{O}\!\left(n \lvert G_p \rvert \lvert G_c \rvert\right)$ per
-iteration, evaluated as a single `einsum` over all pairs and both groups at once,
-and convergence is typically two to four iterations.
+iteration, evaluated by `einsum` in bounded pair blocks. Symmetry-expanded storage no
+longer grows with the pair count. Residuals are aligned again against the final estimate,
+and a fit that exhausts its iteration limit cannot produce a conclusive naming.
+
+The [weighted fitting examples](../examples/generated/weighted-or-fitting.md) check a
+common-axis analytic circular mean and the retained residual of an excluded pair. The
+[measurement workflow](../workflows/workbench_application.md) explains choosing and
+recording weights. Synthetic tests do not establish measured-data MTEX parity.
 
 ### Worked behaviour: the fit averages noise
 

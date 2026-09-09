@@ -661,11 +661,25 @@ residual is zero by construction, so one pair can never be contradicted by its o
 evidence that the relationship is real. Several pairs give a **scatter**, which is the only number in
 the answer that says whether the fit means anything. Rows can be added, removed, or pasted in
 wholesale, because what a user has is a column of Euler angles from OIM, AZtec or MTEX rather than
-six numbers to retype.
+six numbers to retype. Paste six Euler angles per row, or add a seventh column containing
+the relative evidence weight. Six-column input receives weight 1. A malformed row rejects
+the entire paste and leaves the text available for correction; it is never silently omitted.
 
-**Pairs from different variants are welcome.** Each measured rotation is reduced to its minimum-angle
-representative in the double coset before the pairs are averaged, and the parent symmetry operator
-that distinguishes one variant from another is exactly what that reduction absorbs. Three product
+**Inspect measurement evidence before naming the relationship.** Leave the weights at 1
+unless there is an independently justified reason to change them. Set a pair's weight to
+zero to exclude a suspected mismatch while keeping its angles, residual and variant
+assignment in the result. Record the reason alongside the exported inputs. The verdict uses
+weighted scatter; the result also preserves the ordinary mean and maximum over all pairs.
+Compare the answers before and after an exclusion rather than choosing weights to obtain
+a preferred catalogue name. The effective pair count describes concentration of weights,
+not independent grains or a confidence interval. See the
+[computed examples](../examples/generated/weighted-or-fitting.md) and
+[weighted fitting theory](../theory/orientation_relationship_determination.md).
+
+**Pairs from different variants are welcome.** One positive-weight measured rotation supplies
+the minimum-angle seed; the remaining pairs are aligned to the current estimate through both
+crystal symmetry groups before averaging. This absorbs the parent symmetry operation that
+distinguishes variants without independently choosing incompatible symmetry branches. Three product
 grains inside one parent, on three different variants, therefore fit *one* rotation with no scatter —
 which is essential, because on a real map the grains inside one parent are on different variants by
 definition.

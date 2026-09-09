@@ -21,6 +21,7 @@ import argparse
 import json
 import platform
 import time
+import tracemalloc
 from collections.abc import Callable
 from pathlib import Path
 
@@ -132,6 +133,8 @@ def run(quick: bool) -> dict[str, object]:
     grain_count = 30 if quick else 400
     repeats = 1 if quick else 3
     parents, children, ks = _paired_sets(pair_count)
+    weights = np.linspace(0.0, 2.0, pair_count)
+    weighted_name = f"weighted_or_fit_{pair_count}_pairs"
     _grain_parents, grain_children, _ = _paired_sets(grain_count)
     adjacency = np.column_stack(
         [np.arange(grain_count - 1), np.arange(1, grain_count)]
@@ -142,6 +145,9 @@ def run(quick: bool) -> dict[str, object]:
         f"fit_orientation_relationship_{pair_count}_pairs": lambda: (
             fit_orientation_relationship(parents, children, ks)
         ),
+        weighted_name: lambda: fit_orientation_relationship(
+            parents, children, ks, pair_weights=weights
+        ),
         f"reconstruct_parent_grains_{grain_count}_grains": lambda: (
             reconstruct_parent_grains(grain_children, adjacency, ks, tolerance_deg=2.0)
         ),
@@ -150,6 +156,17 @@ def run(quick: bool) -> dict[str, object]:
         name: {"best_seconds": round(_time(function, repeats=repeats), 4)}
         for name, function in cases.items()
     }
+    # The observations were planted from KS, so weighting must recover that OR.
+    # Trace just the call: input construction and native BLAS workspaces are
+    # outside this allocation measurement; it is not process resident memory.
+    tracemalloc.start()
+    try:
+        weighted = fit_orientation_relationship(parents, children, ks, pair_weights=weights)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert weighted.converged and weighted.weighted_mean_residual_deg < 1e-8
+    results[weighted_name]["peak_traced_bytes"] = peak
     return {
         "schema_id": "pytex.benchmarks.transformation_performance",
         "schema_version": "1",

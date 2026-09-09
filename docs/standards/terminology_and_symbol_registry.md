@@ -207,6 +207,12 @@ one a given control means even though the glyph is the same.
 
 ### Orientation and misorientation
 
+For measured-pair OR fitting, $w_i$ is the normalized non-negative scalar evidence weight
+of pair $i$ (sum one). $\mathbf{Q}_{\mathrm{OR}}$ is its quaternion scatter matrix,
+$\sum_i w_i q_i q_i^{\mathsf{T}}$, distinct from the direction-index correspondence
+matrix $\mathbf{M}$. The effective pair count is $1/\sum_i w_i^2$, a measure of weight
+concentration; it carries no independence or confidence-interval claim.
+
 | Symbol | Meaning |
 | --- | --- |
 | $g$ | An orientation (crystal-to-specimen mapping). |

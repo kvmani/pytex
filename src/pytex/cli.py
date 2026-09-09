@@ -184,6 +184,9 @@ def _cmd_examples_inventory(_: argparse.Namespace) -> int:
     print("Tutorial notebooks:")
     for path in notebooks:
         print(f"  - {path.relative_to(repo_root)}")
+    return 0
+
+
 def _cmd_hrem_ctf(args: argparse.Namespace) -> int:
     from pytex.diffraction.hrem import DoubleCorrectionMode, MicroscopeAberrations
 

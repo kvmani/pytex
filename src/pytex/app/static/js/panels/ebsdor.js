@@ -30,6 +30,7 @@ import { buildForm } from '../core/controls.js';
 import { renderResult } from '../core/result.js';
 import { call } from '../core/api.js';
 import { claim, offer } from '../core/handoff.js';
+import { symbolText } from '../core/symbols.js';
 
 export const panel = {
   id: 'ebsd_or',
@@ -41,12 +42,12 @@ const OPERATION = 'ebsd.or_from_grains';
 
 /** The six columns of one grain pair, in the order they are entered. */
 const COLUMNS = [
-  { key: 'p1', group: 'parent', label: 'φ₁' },
-  { key: 'p2', group: 'parent', label: 'Φ' },
-  { key: 'p3', group: 'parent', label: 'φ₂' },
-  { key: 'c1', group: 'child', label: 'φ₁' },
-  { key: 'c2', group: 'child', label: 'Φ' },
-  { key: 'c3', group: 'child', label: 'φ₂' },
+  { key: 'p1', group: 'parent', label: 'phi_1' },
+  { key: 'p2', group: 'parent', label: 'Phi' },
+  { key: 'p3', group: 'parent', label: 'phi_2' },
+  { key: 'c1', group: 'child', label: 'phi_1' },
+  { key: 'c2', group: 'child', label: 'Phi' },
+  { key: 'c3', group: 'child', label: 'phi_2' },
 ];
 
 export function mount(context) {
@@ -138,6 +139,7 @@ export function mount(context) {
         el('span.grains__spacer', { text: '#' }),
         el('span.grains__group', { text: 'Parent grain' }),
         el('span.grains__group', { text: 'Product grain' }),
+        el('span', { text: 'Weight', title: 'Relative evidence weight; zero excludes the pair from fitting.' }),
         el('span.grains__spacer', { text: '' }),
       ]),
       grid,
@@ -199,11 +201,17 @@ export function mount(context) {
 
   function applyPaste() {
     const box = context.stage.querySelector('.grains__pastebox');
-    const added = parseText(box?.value ?? '');
+    let added;
+    try {
+      added = parseText(box?.value ?? '');
+    } catch (error) {
+      context.showError(error);
+      return;
+    }
     if (added.length) {
       // Rows that were left blank are scaffolding, not data: appending under
       // them would leave a hole in the middle of the table.
-      const kept = state.rows.filter((row) => row.some((value) => value.trim() !== ''));
+      const kept = state.rows.filter((row) => row.slice(0, 6).some((value) => value.trim() !== ''));
       setRows([...kept, ...added]);
     }
     if (box) box.value = '';
@@ -213,12 +221,14 @@ export function mount(context) {
   /** Read the wire format: six numbers a line, `#` comments and blanks ignored. */
   function parseText(text) {
     const rows = [];
-    for (const raw of String(text).split('\n')) {
+    for (const [index, raw] of String(text).split('\n').entries()) {
       const line = raw.split('#')[0].trim();
       if (!line) continue;
       const fields = line.replace(/[,\t]/g, ' ').split(/\s+/).filter(Boolean);
-      if (fields.length !== 6) continue;
-      rows.push(fields);
+      if (![6, 7].includes(fields.length)) {
+        throw new Error(`Line ${index + 1} has ${fields.length} columns. Expected six Euler angles and an optional weight. No rows were added.`);
+      }
+      rows.push(fields.length === 6 ? [...fields, '1'] : fields);
     }
     return rows;
   }
@@ -231,7 +241,7 @@ export function mount(context) {
   /** Write the grid back to the hidden parameter. One value, one source. */
   function syncField() {
     const text = state.rows
-      .filter((row) => row.some((value) => String(value).trim() !== ''))
+      .filter((row) => row.slice(0, 6).some((value) => String(value).trim() !== ''))
       .map((row) => row.join(' '))
       .join('\n');
     state.form.field('pairs')?.write(text);
@@ -248,15 +258,24 @@ export function mount(context) {
               inputmode: 'decimal',
               value: row[position] ?? '',
               dataset: { group: column.group },
-              'aria-label': `Pair ${index + 1} ${column.group} ${column.label}`,
-              title: `${column.group === 'parent' ? 'Parent' : 'Product'} ${column.label}`,
-              placeholder: column.label,
+              'aria-label': `Pair ${index + 1} ${column.group} ${symbolText(column.label)}`,
+              title: `${column.group === 'parent' ? 'Parent' : 'Product'} ${symbolText(column.label)}`,
+              placeholder: symbolText(column.label),
               oninput: (event) => {
                 state.rows[index][position] = event.currentTarget.value;
                 syncField();
               },
             }),
           ),
+          el('input.grains__weight', {
+            type: 'number', min: '0', step: 'any', value: row[6] ?? '1',
+            'aria-label': `Pair ${index + 1} weight`,
+            title: 'Relative evidence weight. Zero excludes this pair but retains its residual.',
+            oninput: (event) => {
+              state.rows[index][6] = event.currentTarget.value;
+              syncField();
+            },
+          }),
           el('button.grains__drop', {
             type: 'button',
             text: '×',
@@ -320,6 +339,8 @@ export function mount(context) {
     runButton.textContent = 'Fitting…';
     state.form.clearErrors();
     try {
+      const emptyWeight = state.rows.findIndex((row) => row[6] === '');
+      if (emptyWeight >= 0) throw new Error(`Pair ${emptyWeight + 1}: enter a weight, or 0 to exclude the pair.`);
       const result = await call(OPERATION, state.form.values());
       if (token !== runToken) return;
       state.result = result;
@@ -383,12 +404,17 @@ export function mount(context) {
           meanings.catalog,
         ),
         fact(
-          'Scatter',
-          `${formatNumber(fit.mean_residual_deg, 3)}° over ${fit.pair_count} pair(s)`,
-          fit.pair_count > 1
+          'Weighted scatter',
+          `${formatNumber(fit.weighted_mean_residual_deg, 3)}° over ${fit.included_pair_count} included pair(s)`,
+          fit.included_pair_count > 1
             ? meanings.residual
             : 'Zero by construction: one pair fits one rotation exactly. Add pairs before ' +
               'reading this number as agreement.',
+        ),
+        fact(
+          'Evidence weights',
+          `${formatNumber(fit.effective_pair_count, 2)} effective pairs; ${fit.pair_count - fit.included_pair_count} excluded`,
+          'Weight concentration, not a confidence interval or a count of independent grains. All residuals remain below.',
         ),
         fact(
           'Lead over the runner-up',
@@ -585,8 +611,8 @@ export function mount(context) {
         el('thead', {}, [
           el('tr', {}, [
             el('th', { text: '#' }),
-            el('th', { text: 'Parent φ₁ Φ φ₂' }),
-            el('th', { text: 'Product φ₁ Φ φ₂' }),
+            el('th', { text: `Parent ${['phi_1', 'Phi', 'phi_2'].map(symbolText).join(' ')}` }),
+            el('th', { text: `Product ${['phi_1', 'Phi', 'phi_2'].map(symbolText).join(' ')}` }),
             el('th', { title: data.angle_meanings?.residual, text: 'Residual' }),
             el('th', {
               title:
@@ -595,6 +621,7 @@ export function mount(context) {
               text: data.variant_count ? `Variant (of ${data.variant_count})` : 'Variant',
             }),
             el('th', { text: 'Distance to it' }),
+            el('th', { text: 'Weight' }),
           ]),
         ]),
         el(
@@ -608,6 +635,7 @@ export function mount(context) {
               el('td', { text: `${formatNumber(row.residual_deg, 3)}°` }),
               el('td', { text: `V${row.variant}` }),
               el('td', { text: `${formatNumber(row.distance_deg, 3)}°` }),
+              el('td', { text: row.weight === 0 ? 'Excluded (0)' : formatNumber(row.weight, 3) }),
             ]),
           ),
         ),

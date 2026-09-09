@@ -41,6 +41,11 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
   $\langle 0.968\;0.178\;0.178 \rangle$ pinned) and `or_deviation` with best-variant assignment.
 - **F6 (fitting):** `fit_orientation_relationship` — symmetry-aligned quaternion eigen-mean
   with iterative realignment; recovers GT exactly from a KS nominal.
+  Both measured-pair fitting entry points accept declared scalar evidence weights,
+  retain excluded-pair residuals, and align in bounded memory blocks. Naming requires
+  convergence and acceptable weighted scatter. The objective is chordal (Markley),
+  not a geodesic Karcher mean; see the
+  {doc}`weighted examples </examples/generated/weighted-or-fitting>`.
 - **F6b (OR determination from measured pairs, TX1):**
   `characterize_orientation_relationship` / `orientation_relationship_from_euler` — fit
   (seeded from the data, no nominal required), catalog ranking through

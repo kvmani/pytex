@@ -90,7 +90,9 @@ _DEFAULT_PAIRS = """# parent phi1 Phi phi2   |   child phi1 Phi phi2   (degrees,
 30 40 10     91.7913 111.6347 189.7671"""
 
 
-def _parse_pairs(text: str) -> list[tuple[tuple[float, float, float], tuple[float, float, float]]]:
+def _parse_pairs(text: str) -> tuple[
+    list[tuple[tuple[float, float, float], tuple[float, float, float]]], list[float]
+]:
     """Read the grain-pair table: six numbers a line, parent then child.
 
     The format is what a user actually has — six columns pasted out of a
@@ -105,14 +107,16 @@ def _parse_pairs(text: str) -> list[tuple[tuple[float, float, float], tuple[floa
     """
 
     pairs: list[tuple[tuple[float, float, float], tuple[float, float, float]]] = []
+    weights: list[float] = []
     for number, raw in enumerate(str(text).splitlines(), start=1):
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
         fields = [field for field in line.replace(",", " ").replace("\t", " ").split() if field]
-        if len(fields) != 6:
+        if len(fields) not in (6, 7):
             raise InvalidInputError(
-                f"Line {number} has {len(fields)} numbers; a grain pair needs six.",
+                f"Line {number} has {len(fields)} numbers; a grain pair needs six "
+                "Euler angles and an optional seventh weight.",
                 field="pairs",
                 hint=(
                     "One pair per line: the parent's three Euler angles, then the child's "
@@ -134,13 +138,21 @@ def _parse_pairs(text: str) -> list[tuple[tuple[float, float, float], tuple[floa
         pairs.append(
             ((values[0], values[1], values[2]), (values[3], values[4], values[5]))
         )
+        weight = values[6] if len(values) == 7 else 1.0
+        if weight < 0:
+            raise InvalidInputError(
+                f"Line {number}: pair weight must be non-negative.", field="pairs"
+            )
+        weights.append(weight)
     if not pairs:
         raise InvalidInputError(
             "No grain pairs were given, so there is nothing to fit.",
             field="pairs",
             hint="Enter at least one line of six Euler angles: parent, then child.",
         )
-    return pairs
+    if not any(weight > 0 for weight in weights):
+        raise InvalidInputError("At least one pair must have a positive weight.", field="pairs")
+    return pairs, weights
 
 
 def _statement_rows(
@@ -253,6 +265,10 @@ _PARAMETERS: tuple[Any, ...] = (
             "One pair per line: the parent grain's three Euler angles, then the product "
             "grain's three, in degrees. Blank lines and `#` comments are ignored, and commas "
             "count as separators so a pasted CSV works.\n\n"
+            "An optional seventh column is the pair weight (default 1). Use zero to "
+            "exclude a suspect pair from fitting while retaining its residual. Other "
+            "weights need an independent measurement-quality justification; they do not "
+            "create uncertainty estimates.\n\n"
             "Several pairs are worth far more than one. A single pair fits any rotation "
             "exactly, so its scatter is zero by construction and proves nothing; several "
             "pairs give a scatter that can contradict the fit. Pairs from *different* "
@@ -371,7 +387,7 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
     child_spec, child_phase = phase_from_request(request["child_phase"])
     convention = _euler_convention(request["euler_convention"])
     frame = specimen_frame()
-    pairs = _parse_pairs(str(request["pairs"]))
+    pairs, weights = _parse_pairs(str(request["pairs"]))
     tolerance = float(request["catalog_tolerance_deg"])
     max_index = int(request["max_index"])
     max_statements = int(request["max_statements"])
@@ -398,6 +414,7 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
             catalog_tolerance_deg=tolerance,
             max_index=max_index,
             max_statements=max_statements,
+            pair_weights=weights,
         )
     except ValueError as error:
         raise InvalidInputError(
@@ -495,7 +512,7 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
         ),
         summary=(
             f"Fitted to {report.pair_count} pair(s) with a scatter of "
-            f"{report.mean_residual_deg:.3f} degrees; the fit is "
+            f"{report.weighted_mean_residual_deg:.3f} degrees (weighted); the fit is "
             f"{report.best_catalog_deviation_deg:.3f} degrees from "
             f"{best_label or 'no catalogued relationship'} and leads the runner-up by "
             f"{report.margin_deg:.3f} degrees, so the verdict is {verdict}. The scatter, the "
@@ -538,6 +555,9 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
                     for row in report.relationship.parent_to_child_rotation.as_matrix()
                 ],
                 "mean_residual_deg": float(report.mean_residual_deg),
+                "weighted_mean_residual_deg": report.weighted_mean_residual_deg,
+                "effective_pair_count": report.effective_pair_count,
+                "included_pair_count": int(np.count_nonzero(weights)),
                 "max_residual_deg": float(report.max_residual_deg),
                 "pair_count": int(report.pair_count),
                 "converged": bool(report.converged),
@@ -561,6 +581,8 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
                     "variant_count": row["variant_count"],
                     "distance_deg": row["distance_deg"],
                     "residual_deg": row["residual_deg"],
+                    "weight": weights[row["pair"] - 1],
+                    "normalized_weight": float(np.asarray(report.pair_weights)[row["pair"] - 1]),
                     "parent_euler": list(pairs[row["pair"] - 1][0]),
                     "child_euler": list(pairs[row["pair"] - 1][1]),
                 }

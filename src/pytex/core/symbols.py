@@ -148,7 +148,7 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             ),
             _entry(
                 "semiangle_cutoff",
-                "α_obj",
+                "αₒ",
                 r"\alpha_{\mathrm{obj}}",
                 "Objective aperture semiangle cutoff in HRTEM.",
             ),

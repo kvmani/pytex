@@ -9,6 +9,37 @@ Every release entry must state scientific behavior changes explicitly —
 "fixed" for correctness, "changed" for convention or semantics — because
 downstream analyses depend on them.
 
+## [Unreleased]
+
+### Added
+
+- Measured-pair orientation-relationship fitting accepts explicit non-negative evidence
+  weights. Zero-weight pairs remain in the residual report for inspection. Both fitting
+  reports expose normalized weights, weighted mean residuals and effective pair counts;
+  the characterization JSON summary carries the evidence alongside existing fields.
+- The **OR from grains** workbench accepts an optional seventh weight column, provides
+  per-row weight controls, and shows excluded pairs and weighted scatter. Existing
+  six-angle input retains equal weights.
+- Two executable examples verify the weighted fit against the analytic common-axis
+  circular mean and an imposed residual retained after exclusion. Theory and workflow
+  guidance explain evidence selection, the objective and the limits of interpretation.
+
+### Fixed
+
+- OR fitting bounds symmetry-expanded temporary storage and recomputes residuals against
+  the final estimate. Shared `atan2` angle recovery preserves precision near zero.
+- Characterization rejects catalog/nominal phase mismatches and invalid fitting settings.
+  A nonconverged fit, or weighted scatter above the naming tolerance, cannot be conclusive,
+  including when the catalog has only one entry.
+- Malformed OR pastes reject the complete paste and preserve its text for correction,
+  instead of silently dropping incomplete rows. Euler labels use the central registry.
+- The examples CLI command again returns a successful integer exit status. HREM adapter
+  tests no longer assume optional packages exist on every development machine.
+- Corrected OR documentation that called the chordal quaternion eigen-mean a Karcher mean
+  or described independently reducing all measurements before averaging. Refreshed the
+  class atlas, added missing source notebook cell IDs, and shortened the objective-aperture
+  control symbol to satisfy the shared compact-label rule.
+
 ## [0.8.1] - 2026-09-07
 
 **A test-precondition fix, cut so that the tag deployments pin is one CI proved.**

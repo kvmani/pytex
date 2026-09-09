@@ -153,6 +153,8 @@ The complete set of computed-versus-expected values at a glance:
 | `hrem-ctf-scherzer-zero-crossing` | < 1e-12 | 0.00e+00 | &mdash; | ✅ |
 | `hrem-double-corrected-information-limit` | 0.00e+00 | 0.00e+00 | &mdash; | ✅ |
 | `hrem-ncsi-contrast-inversion` | [1, 1] | [1, 1] | &mdash; | ✅ |
+| `or-weighted-fit-circular-identity` | 0.0000 | 0.0000 | deg | ✅ |
+| `or-weighted-fit-excluded-residual` | 2.0000 | 2.0000 | deg | ✅ |
 
 ## Example groups
 
@@ -183,6 +185,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, a scene bond-length measurement checked against the exact NaCl-type a/2 distance, and the OR stereogram plotting a parallelism as one point and one circle for every variant.
 - {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share.
 - {doc}`HRTEM simulation and contrast transfer function optics <generated/hrem-simulation-and-ctf>` &mdash; Optics and contrast transfer of high-resolution transmission electron microscopy: relativistic electron wavelength, Scherzer defocus and resolution, analytical zero-crossing of the CTF, chromatic aberration damping reduction in double-corrected TEM, and phase contrast sign inversion in Negative Cs Imaging (NCSI).
+- {doc}`Weighted orientation-relationship fitting <generated/weighted-or-fitting>` &mdash; Retain every measured pair while controlling its influence with declared evidence weights. These checks use a common-axis circular identity and an exact exclusion.
 
 ```{toctree}
 :maxdepth: 1
@@ -215,4 +218,5 @@ generated/transformation
 generated/visualization
 generated/workbench-service-layer
 generated/hrem-simulation-and-ctf
+generated/weighted-or-fitting
 ```
