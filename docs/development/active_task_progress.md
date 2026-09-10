@@ -5,7 +5,58 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Repository scientific review and capability release — ACTIVE (2026-09-09)
+## Repository-wide future-development vision — ACTIVE (2026-09-10)
+
+**Objective.** Audit the whole repository and author a source-controlled, Sphinx-discoverable
+vision covering feature scope, impact, difficulty, publication potential, use cases, testing,
+and independent validation. This is planning/documentation work, not implementation of the
+proposed features or a new release.
+
+**Baseline.** Main at `e497c8a`, PyTex 0.9.0. The preceding review/release is complete as recorded
+in its closing entry below. Untracked `tests/test_data/` predates this task and is excluded.
+
+**Decisions and evidence.** Read mission, specifications, governance, OR foundation, core model,
+testing and notation/documentation standards; inventoried all package modules and current CI.
+Older roadmap missing-feature lists are historical: current XRD, HREM, weighted OR fitting and
+ghost correction must be credited. Keep this vision subordinate to the governing development
+guide; distinguish tested implementation, external validation gaps, and proposed research.
+Publication novelty is a hypothesis requiring primary-source comparison, not a guarantee.
+
+**Completed draft.** Authored `docs/roadmap/future_development_vision.md`: current capability
+assessment across all subsystems, 24 feature cards, four publication programs, eight quantitative
+validation protocols, data-acquisition gates, effort/dependency sequencing and explicit deferrals.
+Linked it through the docs index, Sphinx toctree/include and governing guide. Checked primary
+sources for MTEX reconstruction/variant graphs/habit planes, pymatgen interfaces, GSAS-II/MAUD,
+abTEM, pyxem, DAMASK, NeXus and NIST. Novelty is conditional and proposed targets are labeled.
+All 24 cards have scope/use cases, impact/difficulty/novelty, and tests/validation; local links
+resolve. Counts were computed from tracked source at the baseline, not copied from older guides.
+
+**Verification in progress.** Ruff, strict mypy (172 modules), repository integrity and
+`git diff --check` passed (Git reports normal LF/CRLF conversion notices). Documentation-policy
+and repository-integrity pytest checks completed successfully; exact totals are in
+`outputs/vision_documentation_tests.log`. Full base suite with coverage is running as session
+29617 (`outputs/vision_base_tests.log`, `outputs/vision_coverage.json`), with fail-under fixed
+at the preceding release's 91.5180669597191%. The first Sphinx build caught ten links to
+repository-only pages rather than published pages. Corrected those to site targets or explicit
+source links. The intermediate retry exposed five include-relative validation links; switched
+those to absolute Sphinx document references. Final full Sphinx build passed with **zero warnings**
+(`outputs/vision_sphinx_verified.log`, session 69804). Focused documentation/integrity tests:
+**39 passed**. Rendered HTML has no broken local file links, missing section anchors or duplicate
+IDs. All 24 feature IDs match the priority table and all requested card fields are present.
+These outputs are ignored. Runtime sources are unchanged and frozen.
+
+**Documentation increment ready to land.** All documentation-specific gates, Ruff/mypy and
+integrity pass. The package, tests, scripts and pyproject at baseline `e497c8a` are identical to
+the already-green release `233f638`; this increment changes documentation only. Commit/push the
+reviewed vision now for durable progress. The additional full-suite rerun is still active and
+must not be reported as a completed verification until its final output is checked.
+
+**Exact next actions.** Explicitly stage the six named documentation files and commit/push main;
+inspect the active full-suite outcome and exact coverage; record actual totals/limitations in
+a closing ledger commit and push; verify upstream agreement and report the deliverable.
+Preserve `tests/test_data/`. Sphinx and rendered-page verification are already complete.
+
+## Repository scientific review and capability release — historical record (2026-09-09)
 
 **Objective.** Review the repository, deliver substantive scientific core/GUI improvements and
 user documentation, test, bump the version, and commit/push green increments to main.

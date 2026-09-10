@@ -75,6 +75,7 @@ generated figures, and the site's own README.
 
 ## Roadmap
 
+- [Future Development Vision (2026-09)](roadmap/future_development_vision.md) — repository-wide capability assessment, 24 scoped opportunities, publication programs, and measurable validation gates
 - [Critical Review And Development Guide](roadmap/critical_review_and_development_guide.md) — the governing development guide
 - [Implementation Roadmap](roadmap/implementation_roadmap.md)
 - [World-Class Feature And Foundation Roadmap](roadmap/world_class_feature_roadmap.md)

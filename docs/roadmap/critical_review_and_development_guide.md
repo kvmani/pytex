@@ -10,6 +10,12 @@ Precedence: this guide sits directly below `mission.md` and `specifications.md` 
 roadmap documents. Where an older roadmap or working note conflicts with this guide, this guide
 wins until the conflict is reconciled in writing.
 
+For the 2026-09-10 capability assessment and proposed next research programs, see the
+[Future Development Vision](future_development_vision.md). It credits the shipped measured-XRD,
+bounded single-phase refinement, ghost-correction, weighted-OR and HREM surfaces, and separates
+their remaining scope from genuinely new features. Its 24 feature cards and publication gates
+are proposals subordinate to this guide, not a replacement for the standing priority doctrine.
+
 Companion documents introduced with this guide:
 
 - [Orientation Relationship Analysis Foundation](../architecture/orientation_relationship_analysis_foundation.md)

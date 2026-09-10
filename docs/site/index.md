@@ -97,6 +97,7 @@ standards/index
 benchmarks/index
 api/index
 roadmap/critical_review_and_development_guide
+roadmap/future_development_vision
 roadmap/implementation_roadmap
 roadmap/world_class_feature_roadmap
 roadmap/vision_interface_crystallography_and_texture_quantification
