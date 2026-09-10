@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Repository-wide future-development vision — ACTIVE (2026-09-10)
+## Repository-wide future-development vision — COMPLETE (2026-09-10)
 
 **Objective.** Audit the whole repository and author a source-controlled, Sphinx-discoverable
 vision covering feature scope, impact, difficulty, publication potential, use cases, testing,
@@ -31,12 +31,16 @@ abTEM, pyxem, DAMASK, NeXus and NIST. Novelty is conditional and proposed target
 All 24 cards have scope/use cases, impact/difficulty/novelty, and tests/validation; local links
 resolve. Counts were computed from tracked source at the baseline, not copied from older guides.
 
-**Verification in progress.** Ruff, strict mypy (172 modules), repository integrity and
+**Verification completed.** Ruff, strict mypy (172 modules), repository integrity and
 `git diff --check` passed (Git reports normal LF/CRLF conversion notices). Documentation-policy
 and repository-integrity pytest checks completed successfully; exact totals are in
-`outputs/vision_documentation_tests.log`. Full base suite with coverage is running as session
-29617 (`outputs/vision_base_tests.log`, `outputs/vision_coverage.json`), with fail-under fixed
-at the preceding release's 91.5180669597191%. The first Sphinx build caught ten links to
+`outputs/vision_documentation_tests.log`. The additional full numerical suite was started as
+session 29617 (`outputs/vision_base_tests.log`), with fail-under fixed at the preceding release's
+91.5180669597191%, but was deliberately stopped at about 37% after confirming the numerical
+source/test/script/pyproject tree is identical to the verified release. It did not complete:
+**no new full-suite pass or coverage measurement is claimed**. The completed documentation checks
+and existing exact-source release evidence are the validation basis for this documentation-only
+increment. The first Sphinx build caught ten links to
 repository-only pages rather than published pages. Corrected those to site targets or explicit
 source links. The intermediate retry exposed five include-relative validation links; switched
 those to absolute Sphinx document references. Final full Sphinx build passed with **zero warnings**
@@ -45,16 +49,17 @@ those to absolute Sphinx document references. Final full Sphinx build passed wit
 IDs. All 24 feature IDs match the priority table and all requested card fields are present.
 These outputs are ignored. Runtime sources are unchanged and frozen.
 
-**Documentation increment ready to land.** All documentation-specific gates, Ruff/mypy and
+**Landed.** Commit **02a808d** is pushed to main. All documentation-specific gates, Ruff/mypy and
 integrity pass. The package, tests, scripts and pyproject at baseline `e497c8a` are identical to
-the already-green release `233f638`; this increment changes documentation only. Commit/push the
-reviewed vision now for durable progress. The additional full-suite rerun is still active and
-must not be reported as a completed verification until its final output is checked.
+the already-green release `233f638`; this increment changes documentation only. The vision is
+source-controlled, indexed and rendered by Sphinx. No new numerical feature, scientific parity
+result, measured dataset, browser change or release is claimed.
 
-**Exact next actions.** Explicitly stage the six named documentation files and commit/push main;
-inspect the active full-suite outcome and exact coverage; record actual totals/limitations in
-a closing ledger commit and push; verify upstream agreement and report the deliverable.
-Preserve `tests/test_data/`. Sphinx and rendered-page verification are already complete.
+**Task outcome and next actions.** The requested repository assessment and vision are complete;
+commit/push this closing record and verify main/upstream agreement. Future implementation starts
+by selecting a feature card and its evidence gate, not by treating the entire portfolio as an
+approved implementation backlog. Untracked `tests/test_data/` is preserved. Generated HTML and
+verification logs remain ignored. No implementation work remains authorized by this task.
 
 ## Repository scientific review and capability release — historical record (2026-09-09)
 
