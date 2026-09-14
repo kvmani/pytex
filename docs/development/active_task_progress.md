@@ -40,8 +40,8 @@ specimen thickness. (4) HRTEM must accept `.xyz` atomic structures from simulati
 | 1 | Stage contract + renderer + exports; lattice-parameter stages (scan, peaks, passes, assignment, least squares with correlation, cell, cross-check; Le Bail: scan, whole pattern, cell); phase-identification stages (scan, peaks, cell search, best/runner-up assignment, weighted criterion contributions, decision); tests | Landed `7bca769` |
 | 2 | HRTEM: SVG micrograph/spectrum with zoom, pan and physical cursor; thickness control; `.xyz` (incl. extended-XYZ `Lattice=`) upload; tests | Landed `dde7131` |
 | 3 | Docs: "Reading the report" sections for lattice parameters, phase identification and HRTEM; workbench/theory/changelog | Landed `dde7131`; Sphinx **zero warnings** after replacing two `{eq}` refs to list-item equations |
-| 4 | Browser verification, full suite, Sphinx | In-app browser verified (below); targeted Playwright 2/2; full suites pending |
-| 5 | Version 0.10.0, tag, GitHub release; `ml_server_deploy` suite 1.11.0 | Pending |
+| 4 | Browser verification, full suite, Sphinx | Done: in-app browser (zoom 212%, pan, Å cursor, `.xyz` import, 7 stage cards); targeted Playwright 2/2; full unit suite green, coverage **91.60%** (floor 91.518%); Sphinx zero warnings |
+| 5 | Version 0.10.0, tag, GitHub release; `ml_server_deploy` suite 1.11.0 | Version bumped in `_version.py`, `CITATION.cff`, changelog cut `[0.10.0] - 2026-09-14`; deploy manifest edited (72 tests, validate, hygiene green), commit after the tag |
 
 ## Repository-wide future-development vision — COMPLETE (2026-09-10)
 

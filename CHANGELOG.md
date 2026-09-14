@@ -11,6 +11,8 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-14
+
 ### Added
 
 - **Every intermediate stage of lattice-parameter determination and phase identification is
