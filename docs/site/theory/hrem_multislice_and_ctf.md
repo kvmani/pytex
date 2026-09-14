@@ -276,6 +276,79 @@ while the radial decay of ring contrast measures the coherence envelopes $E_c(q)
 
 ---
 
+## Specimen Thickness, Imported Structures and the Micrograph Viewer
+
+### Thickness of a crystal slab
+
+A thickness $t$ is what an experimenter knows about a foil; a supercell builder needs repeat counts
+along the lattice vectors. With the direct basis vectors $\mathbf{b}_i$ and the unit beam direction
+$\hat{\mathbf{n}} = [uvw]\mathbf{B}/|[uvw]\mathbf{B}|$, one repeat along $\mathbf{b}_i$ adds
+$|\mathbf{b}_i\cdot\hat{\mathbf{n}}|$ to the slab's extent along the beam.
+`AtomicSnapshot.repeats_for_thickness` gives the thickness to the vector $k$ most nearly parallel to
+the beam, keeps the lateral repeat count $m$ on the other two, and chooses
+
+$$
+n_k = \max\!\left(1,\ \left\lceil \frac{t - m\sum_{i \ne k}|\mathbf{b}_i\cdot\hat{\mathbf{n}}|}{|\mathbf{b}_k\cdot\hat{\mathbf{n}}|} \right\rceil\right),
+\qquad
+t_{\mathrm{slab}} = n_k|\mathbf{b}_k\cdot\hat{\mathbf{n}}| + m\sum_{i \ne k}|\mathbf{b}_i\cdot\hat{\mathbf{n}}|.
+$$ (eq-hrem-slab-thickness)
+
+The slab is a whole number of periods and never thinner than requested, so $t_{\mathrm{slab}} \ge t$;
+the workbench reports both, together with the repeats and the atom count. Along a zone axis
+parallel to $\mathbf{c}$ this is simply $n_c = \lceil t/c \rceil$ and $t_{\mathrm{slab}} = n_c c$. The
+amorphous foil takes $t$ directly as its depth.
+
+What the thickness does depends on the engine. In multislice ({eq}`eq-hrem-trans`,
+{eq}`eq-hrem-prop`) a thicker specimen is more slices of transmission and Fresnel propagation, so
+dynamical scattering and the channelling of the wave along atom columns develop with depth. The
+pure-Python fallback is a single phase object: every atom is projected into one plane, so thickness
+only scales the projected potential and the phase shift $\sigma v(x, y)$. That approximation holds
+for a thin weak phase object and fails as $\sigma v$ approaches order one (Kirkland, 2010); results
+from the fallback at large $t$ should be read as qualitative, and the workbench says so in a note.
+
+### Imported atomic structures
+
+A structure from a molecular-dynamics, density-functional or structure-building code is read with
+`AtomicSnapshot.from_xyz`. Each atom line holds an element symbol and Cartesian $x$, $y$, $z$ in
+ångströms, with the beam along $+z$. When the comment line follows the extended-XYZ convention
+written by ASE and OVITO, two keys are read: `Lattice="ax ay az bx by bz cx cy cz"`, the periodic
+cell as three row vectors, and `Properties=name:type:count:...`, which locates the `species` and
+`pos` columns among any others (an atom id, forces, charges). The rest of the comment becomes the
+label.
+
+Both engines need an orthogonal box $[0, L_x) \times [0, L_y) \times [0, L_z)$.
+`AtomicSnapshot.prepared_for_imaging` provides one. With a declared lattice the lateral coordinates
+are wrapped modulo the cell lengths, because an atom just outside a periodic boundary is the image
+of one just inside it. Without one the atoms are shifted so the lowest coordinate sits 1 Å inside
+the box and the box is enlarged to hold them with that margin. Along $z$ the atoms are always
+shifted and the box grown, because the specimen is a foil with vacuum above and below. A sheared
+(non-orthogonal) cell is refused rather than squared, since squaring it would simulate a different
+crystal. In the workbench every species must be an element: a molecular-dynamics dump that numbers
+atom types must map them to elements before export, and the report names any species that is not.
+An imported structure keeps the thickness of its own coordinates, reported as the span of atom
+centres along the beam.
+
+### Reading the micrograph viewer
+
+The micrograph and the power spectrum are drawn as images in physical coordinates, so the plot
+frame's zoom (scroll wheel, $+$/$-$), pan (Shift-drag, middle-drag or the pan tool) and **Fit** act
+on them as on every other figure. Each PNG holds one pixel per simulated pixel; **Pixels** shows
+those pixels as squares instead of interpolating between them, which is the honest view when
+judging whether a feature is resolved by the sampling or only by the display.
+
+| Readout | Meaning |
+| --- | --- |
+| Micrograph cursor $x$, $y$ | Position in the specimen in ångströms, from the bottom-left corner of the field of view, $y$ increasing upwards. |
+| Scale bar | A round length close to a quarter of the field width, in ångströms. |
+| Spectrum cursor $q_x$, $q_y$, $\lvert q \rvert$, $d$ | Spatial frequency in Å⁻¹ with zero frequency at the centre, its magnitude, and the spacing $d = 1/\lvert q \rvert$. |
+| Spectrum extent | $\pm 1/(2\Delta x)$ on each axis, the Nyquist frequency of the pixel pitch $\Delta x$. |
+| Dashed rings | Green at $\lvert q \rvert = 1/d_0$, the point resolution; red at the information limit. A ring is drawn only when it lies inside the sampled band. |
+
+A re-run of the same view keeps the zoom, so the contrast of one column can be followed while the
+defocus is changed.
+
+---
+
 ## PyTex Implementation Architecture
 
 The HREM capability is partitioned into decoupled layers:
@@ -323,10 +396,15 @@ multislice specimen models or validation against measured micrographs.
 
 For imported structures, `AtomicSnapshot.from_xyz` accepts a multiline single-frame XYZ
 string or a file path. A blank comment line is valid. Atom counts must match the frame,
-and coordinates must be finite. Supply the simulation cell explicitly when its dimensions
-are known: a plain XYZ file carries Cartesian angstrom coordinates, not a periodic lattice.
-`tests/unit/test_hrem_xyz.py` checks text/file equivalence and malformed input independently
-of ASE and operating-system filename limits.
+and coordinates must be finite. A plain XYZ file carries Cartesian angstrom coordinates, not a
+periodic lattice, so supply the simulation cell explicitly when its dimensions are known, or write
+an extended-XYZ `Lattice` entry (the
+[ASE extended-XYZ format](https://wiki.fysik.dtu.dk/ase/ase/io/formatoptions.html#extxyz)).
+The workbench always passes the uploaded *text* with its line breaks, so an upload can never be
+read as a path on the server. `tests/unit/test_hrem_xyz.py` checks text/file equivalence and
+malformed input independently of ASE and operating-system filename limits;
+`tests/unit/test_app_hrem_specimen.py` checks extended-XYZ columns and lattices, box preparation,
+the thickness rule of {eq}`eq-hrem-slab-thickness`, and the native-resolution viewer images.
 
 ### Scientific sources
 

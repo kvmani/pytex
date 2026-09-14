@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any
 
+import numpy as np
+
 from pytex.adapters.abtem import is_abtem_available, simulate_hrem
+from pytex.app.errors import InvalidInputError
 from pytex.app.phases import phase_from_request
 from pytex.app.registry import (
     REGISTRY,
@@ -15,14 +20,145 @@ from pytex.app.registry import (
     IndicesParameter,
     IntegerParameter,
     NumberParameter,
+    ObjectParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import phase_parameter
+from pytex.app.uploads import describe_upload, uploaded_name_and_text
+from pytex.core._chemistry import atomic_number
 from pytex.diffraction.hrem import (
     AtomicSnapshot,
     DoubleCorrectionMode,
     MicroscopeAberrations,
 )
+
+#: File kinds the imported-structure specimen reads.
+STRUCTURE_FILE_SUFFIXES = (".xyz", ".extxyz")
+
+#: The largest specimen the workbench simulates. The phase-object fallback
+#: places atoms one at a time, and a request that would run for many minutes
+#: is refused with a hint rather than left to time out.
+MAX_SPECIMEN_ATOMS = 20000
+
+
+def _specimen_from_request(
+    request: Mapping[str, Any], phase: Any
+) -> tuple[AtomicSnapshot, dict[str, Any]]:
+    """Build the specimen a simulation request describes, and say how it was built.
+
+    Returns the snapshot and a record of the specimen for the report: where it
+    came from, the thickness asked for, the thickness delivered and the repeats
+    used. A crystal slab is a whole number of unit cells, so the delivered
+    thickness is generally a little more than the request, and the report says
+    so rather than quoting the request as though it were exact.
+    """
+
+    sample_type = str(request.get("sample_type", "crystalline"))
+    raw_zone = [int(x) for x in request.get("zone_axis", [0, 0, 1])]
+    zone_axis = (raw_zone[0], raw_zone[1], raw_zone[2]) if len(raw_zone) >= 3 else (0, 0, 1)
+    lateral = int(request.get("supercell_xy", 2))
+    thickness = float(request.get("thickness_angstrom", 10.0))
+    info: dict[str, Any] = {
+        "sample_type": sample_type,
+        "requested_thickness_angstrom": thickness,
+        "unit_cell_repeats": None,
+        "structure_file": None,
+    }
+
+    if sample_type == "imported":
+        name, text = uploaded_name_and_text(
+            request.get("structure_file"), field="structure_file", suffixes=STRUCTURE_FILE_SUFFIXES
+        )
+        lines = text.splitlines()
+        if len(lines) < 3:
+            raise InvalidInputError(
+                f"{name} is too short to be an XYZ structure.",
+                field="structure_file",
+                hint="An XYZ file holds an atom count, a comment line, then one line per atom.",
+            )
+        try:
+            # Rejoined with newlines so the reader always receives content: a
+            # single-line upload must never be mistaken for a path on the server.
+            snapshot = AtomicSnapshot.from_xyz("\n".join(lines) + "\n").prepared_for_imaging(
+                periodic_xy="lattice=" in lines[1].lower()
+            )
+        except ValueError as error:
+            raise InvalidInputError(
+                f"{name} could not be read as an XYZ structure: {error}",
+                field="structure_file",
+                hint=(
+                    "Check the atom count on the first line, one 'element x y z' line per atom, "
+                    "and an orthogonal Lattice entry if the comment line carries one."
+                ),
+            ) from error
+        unknown = []
+        for species in sorted(set(snapshot.species)):
+            try:
+                atomic_number(species)
+            except ValueError:
+                unknown.append(species)
+        if unknown:
+            raise InvalidInputError(
+                f"{name} names species that are not elements: {', '.join(unknown)}.",
+                field="structure_file",
+                hint=(
+                    "Write element symbols in the first column. A molecular-dynamics dump that "
+                    "numbers atom types needs them mapped to elements before export."
+                ),
+            )
+        label = snapshot.label if snapshot.label != "Imported XYZ snapshot" else ""
+        snapshot = replace(snapshot, label=f"{name}: {label}" if label else name)
+        info["structure_file"] = describe_upload(name, text)
+        info["slab_thickness_angstrom"] = float(np.ptp(snapshot.positions[:, 2]))
+    elif sample_type == "amorphous":
+        snapshot = AtomicSnapshot.amorphous_sample(
+            species="C",
+            density_g_cm3=1.8,
+            dimensions_angstrom=(16.0, 16.0, thickness),
+            seed=42,
+        )
+        info["slab_thickness_angstrom"] = thickness
+    else:
+        try:
+            repeats, slab = AtomicSnapshot.repeats_for_thickness(
+                phase,
+                (0, 0, 1) if sample_type == "dislocation" else zone_axis,
+                thickness,
+                lateral,
+            )
+        except ValueError as error:
+            raise InvalidInputError(
+                f"The specimen could not be built: {error}",
+                field="zone_axis",
+                hint="Give a non-zero zone axis and a positive thickness.",
+            ) from error
+        if sample_type == "vacancy":
+            snapshot = AtomicSnapshot.crystalline_with_vacancy(
+                phase, supercell=repeats, vacancy_count=1, zone_axis=zone_axis
+            )
+        elif sample_type == "dislocation":
+            snapshot = AtomicSnapshot.crystalline_with_dislocation(
+                phase, supercell=repeats, dislocation_type="edge"
+            )
+        else:
+            snapshot = AtomicSnapshot.from_phase(phase, supercell=repeats, zone_axis=zone_axis)
+        info["unit_cell_repeats"] = list(repeats)
+        info["slab_thickness_angstrom"] = slab
+
+    if snapshot.natoms > MAX_SPECIMEN_ATOMS:
+        imported = sample_type == "imported"
+        raise InvalidInputError(
+            f"The specimen holds {snapshot.natoms} atoms, more than the {MAX_SPECIMEN_ATOMS} the "
+            "workbench simulates.",
+            field="structure_file" if imported else "thickness_angstrom",
+            hint=(
+                "Crop the structure to a smaller region before exporting it."
+                if imported
+                else "Reduce the thickness or the supercell size."
+            ),
+        )
+    info["atom_count"] = snapshot.natoms
+    return snapshot, info
 
 
 def _aberrations_from_request(
@@ -130,11 +266,21 @@ def _residual_rows(aberrations: MicroscopeAberrations) -> tuple[dict[str, str], 
                     "Amorphous Carbon Foil",
                     "Dense random packing for Thon rings and envelope calibration",
                 ),
+                (
+                    "imported",
+                    "Imported structure (.xyz)",
+                    "Atomic coordinates from a simulation, opened as an .xyz file in the rail",
+                ),
             ),
             default="crystalline",
             row="specimen",
             field_width="medium",
-            help_text="Specimen microstructure morphology.",
+            help_text=(
+                "Specimen microstructure morphology. Choose the imported structure to simulate "
+                "atomic coordinates from a molecular-dynamics, DFT or structure-building code, "
+                "opened as an .xyz file; the crystal phase then serves only the other specimen "
+                "types."
+            ),
         ),
         IndicesParameter(
             name="zone_axis",
@@ -149,9 +295,30 @@ def _residual_rows(aberrations: MicroscopeAberrations) -> tuple[dict[str, str], 
             default=2,
             minimum=1,
             maximum=10,
-            row="specimen",
+            row="specimen_size",
             field_width="tiny",
             help_text="Number of unit-cell repeats along transverse x and y directions.",
+        ),
+        NumberParameter(
+            name="thickness_angstrom",
+            label="Specimen thickness",
+            default=10.0,
+            minimum=2.0,
+            maximum=500.0,
+            units="Å",
+            symbol="foil_thickness",
+            row="specimen_size",
+            field_width="short",
+            help_text=(
+                "Thickness of the specimen along the beam. A crystal slab is built from whole "
+                "unit-cell repeats along the lattice vector closest to the beam, so the "
+                "thickness simulated is the nearest whole number of repeats at or above this "
+                "value, and the result reports it. For the amorphous foil it is the foil depth. "
+                "An imported structure keeps the thickness of its own coordinates. In the "
+                "multislice engine a thicker specimen propagates the wave through more slices; "
+                "the pure-Python phase-object fallback projects every atom into one plane, so "
+                "there thickness only strengthens the projected potential."
+            ),
         ),
         NumberParameter(
             name="beam_energy_kev",
@@ -345,46 +512,35 @@ def _residual_rows(aberrations: MicroscopeAberrations) -> tuple[dict[str, str], 
             field_width="short",
             help_text="Real-space pixel sampling pitch in Angstrom per pixel.",
         ),
+        ObjectParameter(
+            name="structure_file",
+            label="Structure file",
+            help_text=(
+                "An atomic structure written by a simulation, as .xyz or extended .xyz. Each "
+                "atom line is an element symbol and Cartesian x, y, z in ångströms, with the "
+                "beam along +z. An extended-XYZ comment line may carry "
+                "`Lattice=\"ax ay az bx by bz cx cy cz\"`, which sets an orthogonal periodic box, "
+                "and `Properties=species:S:1:pos:R:3:...`, which locates the columns. Without a "
+                "lattice a box is fitted around the atoms with a 1 Å margin. Opened through "
+                "**Open a structure file** in the workbench rail; used when the sample morphology "
+                "is the imported structure."
+            ),
+            required=False,
+        ),
     ),
 )
 def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
     _phase_spec, phase = phase_from_request(request["phase"])
-    sample_type = str(request.get("sample_type", "crystalline"))
-    raw_zone = [int(x) for x in request.get("zone_axis", [0, 0, 1])]
-    zone_axis = (raw_zone[0], raw_zone[1], raw_zone[2]) if len(raw_zone) >= 3 else (0, 0, 1)
-    supercell_xy = int(request.get("supercell_xy", 2))
     voltage = float(request.get("beam_energy_kev", 200.0))
     mode_str = str(request.get("mode", "double_corrected"))
     defocus = float(request.get("defocus_angstrom", -30.0))
     cs_um = float(request.get("cs_um", 0.0))
     sampling = float(request.get("sampling_angstrom", 0.2))
 
-    if sample_type == "amorphous":
-        snap = AtomicSnapshot.amorphous_sample(
-            species="C",
-            density_g_cm3=1.8,
-            dimensions_angstrom=(16.0, 16.0, 8.0),
-            seed=42,
-        )
-    elif sample_type == "vacancy":
-        snap = AtomicSnapshot.crystalline_with_vacancy(
-            phase,
-            supercell=(supercell_xy, supercell_xy, 2),
-            vacancy_count=1,
-            zone_axis=zone_axis,
-        )
-    elif sample_type == "dislocation":
-        snap = AtomicSnapshot.crystalline_with_dislocation(
-            phase,
-            supercell=(supercell_xy, supercell_xy, 2),
-            dislocation_type="edge",
-        )
-    else:
-        snap = AtomicSnapshot.from_phase(
-            phase,
-            supercell=(supercell_xy, supercell_xy, 2),
-            zone_axis=zone_axis,
-        )
+    snap, specimen = _specimen_from_request(request, phase)
+    imported = specimen["sample_type"] == "imported"
+    slab_thickness = float(specimen["slab_thickness_angstrom"])
+    repeats = specimen["unit_cell_repeats"]
 
     mode = DoubleCorrectionMode(mode_str)
     aberr = _aberrations_from_request(request, voltage, defocus, cs_um, mode)
@@ -411,6 +567,34 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             },
             {"metric": "Spherical aberration Cs", "value": f"{aberr.cs_um:.2f}", "units": "µm"},
             *_residual_rows(aberr),
+            {
+                "metric": "Specimen source",
+                "value": (
+                    specimen["structure_file"]["name"] if imported else str(specimen["sample_type"])
+                ),
+                "units": "",
+            },
+            {
+                "metric": (
+                    "Specimen thickness (atom-centre span along the beam)"
+                    if imported
+                    else "Specimen thickness along the beam"
+                ),
+                "value": f"{slab_thickness:.2f}",
+                "units": "Å",
+            },
+            *(
+                ()
+                if repeats is None
+                else (
+                    {
+                        "metric": "Unit-cell repeats along a × b × c",
+                        "value": " × ".join(str(value) for value in repeats),
+                        "units": "",
+                    },
+                )
+            ),
+            {"metric": "Atoms in the specimen", "value": str(snap.natoms), "units": ""},
             {
                 "metric": "First zero point resolution",
                 "value": f"{result.point_resolution_angstrom:.3f}",
@@ -468,6 +652,23 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
         f"Michelson contrast of {result.michelson_contrast * 100.0:.1f}% across a field of view of "
         f"{result.extent_angstrom[0]:.1f} × {result.extent_angstrom[1]:.1f} Å."
     )
+    if imported:
+        summary_text += (
+            f" The specimen is the {snap.natoms}-atom structure read from "
+            f"{specimen['structure_file']['name']}, whose atom centres span "
+            f"{slab_thickness:.1f} Å along the beam; the thickness control does not apply to it."
+        )
+    elif repeats is not None:
+        summary_text += (
+            f" The slab is {slab_thickness:.1f} Å thick along the beam "
+            f"({' × '.join(str(value) for value in repeats)} unit cells, {snap.natoms} atoms), "
+            f"the nearest whole number of repeats at or above the "
+            f"{specimen['requested_thickness_angstrom']:.1f} Å requested."
+        )
+    else:
+        summary_text += (
+            f" The amorphous foil is {slab_thickness:.1f} Å thick ({snap.natoms} atoms)."
+        )
     if aberr.has_azimuthal_aberrations:
         residual_written = ", ".join(
             f"{symbol} = {amplitude:.1f} Å at {angle:.1f}°"
@@ -479,13 +680,38 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             "azimuthal spread."
         )
 
+    image_rows, image_columns = result.image.shape
+    notes: list[str] = [engine_note]
+    if not is_abtem_available():
+        notes.append(
+            "The phase-object fallback projects every atom into a single plane, so the specimen "
+            "thickness strengthens the projected potential but no propagation of the wave "
+            "within the specimen is modelled; install abTEM for multislice."
+        )
+    inputs = dict(request)
+    if imported:
+        # The provenance of the file, not its text: a saved result names what was
+        # read without carrying a second copy of a possibly large structure.
+        inputs["structure_file"] = specimen["structure_file"]
+
     app_res = AppResult(
         title=f"HRTEM Simulation: {snap.label}",
         summary=summary_text,
         table=table,
         data={
-            "image_png": result.to_png_base64(),
-            "power_spectrum_png": result.to_power_spectrum_base64(),
+            # One PNG pixel per simulation pixel, row 0 at the bottom, so zooming
+            # in the viewer shows the real sampling rather than a resampling.
+            "image_png": result.to_png_base64(native_resolution=True),
+            "power_spectrum_png": result.to_power_spectrum_base64(native_resolution=True),
+            "image_shape_px": [int(image_rows), int(image_columns)],
+            "nyquist_inv_angstrom": [
+                0.5 * image_columns / float(result.extent_angstrom[0]),
+                0.5 * image_rows / float(result.extent_angstrom[1]),
+            ],
+            "specimen_thickness_angstrom": slab_thickness,
+            "requested_thickness_angstrom": float(specimen["requested_thickness_angstrom"]),
+            "unit_cell_repeats": repeats,
+            "structure_file": specimen["structure_file"],
             "michelson_contrast": result.michelson_contrast,
             "weber_contrast": result.weber_contrast,
             "point_resolution_angstrom": result.point_resolution_angstrom,
@@ -506,8 +732,8 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             ],
             "description": result.describe(),
         },
-        inputs=dict(request),
-        notes=(engine_note,),
+        inputs=inputs,
+        notes=tuple(notes),
         citations=(
             "Kirkland (2010), Advanced Computing in Electron Microscopy, 2nd ed.",
             "Cowley & Moodie (1957), Acta Crystallogr. 10, 609-619.",

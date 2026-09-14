@@ -37,9 +37,9 @@ specimen thickness. (4) HRTEM must accept `.xyz` atomic structures from simulati
 
 | Step | Scope | State |
 | --- | --- | --- |
-| 1 | Stage contract + renderer + exports; lattice-parameter stages (scan, peaks, passes, assignment, least squares with correlation, cell, cross-check; Le Bail: scan, whole pattern, cell); phase-identification stages (scan, peaks, cell search, best/runner-up assignment, weighted criterion contributions, decision); tests | Implemented, 100 tests green |
-| 2 | HRTEM: SVG micrograph/spectrum with zoom, pan and physical cursor; thickness control; `.xyz` (incl. extended-XYZ `Lattice=`) upload; tests | Next |
-| 3 | Docs: "Reading the report" sections for lattice parameters, phase identification and HRTEM; workbench/theory/changelog | Pending |
+| 1 | Stage contract + renderer + exports; lattice-parameter stages (scan, peaks, passes, assignment, least squares with correlation, cell, cross-check; Le Bail: scan, whole pattern, cell); phase-identification stages (scan, peaks, cell search, best/runner-up assignment, weighted criterion contributions, decision); tests | Landed `7bca769` |
+| 2 | HRTEM: SVG micrograph/spectrum with zoom, pan and physical cursor; thickness control; `.xyz` (incl. extended-XYZ `Lattice=`) upload; tests | Implemented; `test_app_hrem_specimen.py` + HRTEM/XYZ/manifest tests green |
+| 3 | Docs: "Reading the report" sections for lattice parameters, phase identification and HRTEM; workbench/theory/changelog | Written; Sphinx build pending |
 | 4 | Browser verification, full suite, Sphinx | Pending |
 | 5 | Version 0.10.0, tag, GitHub release; `ml_server_deploy` suite 1.11.0 | Pending |
 

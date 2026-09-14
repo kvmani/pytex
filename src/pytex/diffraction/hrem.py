@@ -37,6 +37,7 @@ from __future__ import annotations
 import base64
 import io
 import math
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -45,6 +46,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from pytex.core._arrays import as_float_array
+from pytex.core._chemistry import atomic_number
 from pytex.core.lattice import Phase
 from pytex.core.progress import report, tracking
 
@@ -1278,19 +1280,25 @@ class AtomicSnapshot:
         if natoms <= 0 or len(atom_lines) != natoms:
             raise ValueError("XYZ atom count must be positive and match exactly one frame.")
         comment = lines[1].strip()
+        lattice, species_column, position_column, label = _parse_extended_xyz_comment(comment)
+        needed = max(species_column + 1, position_column + 3)
         species_list: list[str] = []
         pos_list: list[list[float]] = []
         for line in atom_lines:
             parts = line.split()
-            if len(parts) < 4:
+            if len(parts) < max(needed, 4):
                 raise ValueError("Each XYZ atom needs a species and three coordinates.")
-            species_list.append(parts[0])
-            pos_list.append([float(parts[1]), float(parts[2]), float(parts[3])])
+            species_list.append(parts[species_column])
+            pos_list.append(
+                [float(parts[position_column + offset]) for offset in range(3)]
+            )
         pos_arr = np.array(pos_list, dtype=np.float64)
         if not np.all(np.isfinite(pos_arr)):
             raise ValueError("XYZ coordinates must be finite.")
         if cell is not None:
             box = as_float_array(cell)
+        elif lattice is not None:
+            box = lattice
         else:
             min_p = np.min(pos_arr, axis=0)
             max_p = np.max(pos_arr, axis=0)
@@ -1300,7 +1308,136 @@ class AtomicSnapshot:
             positions=pos_arr,
             cell=box,
             periodicity=(True, True, False),
-            label=comment or "Imported XYZ snapshot",
+            label=label or "Imported XYZ snapshot",
+        )
+
+    @staticmethod
+    def repeats_for_thickness(
+        phase: Phase,
+        zone_axis: tuple[int, int, int],
+        thickness_angstrom: float,
+        lateral_repeats: int,
+    ) -> tuple[tuple[int, int, int], float]:
+        """Choose unit-cell repeats that give a crystal slab at least a given thickness.
+
+        Purpose
+        -------
+        A thickness is what an experimenter knows about a specimen; a count of
+        unit cells along each lattice vector is what the supercell builder
+        needs. This converts one into the other for the beam direction the
+        snapshot will be rotated to.
+
+        Method
+        ------
+        With the direct basis vectors as the rows of ``B`` and the unit beam
+        direction ``n = [uvw] B / |[uvw] B|``, each repeat along lattice vector
+        ``i`` adds ``|b_i . n|`` to the slab's extent along the beam. The vector
+        most nearly parallel to the beam carries the thickness; the other two
+        keep ``lateral_repeats`` and their (usually zero) projections are
+        counted first. The count along the beam is the smallest integer whose
+        extent reaches the requested thickness, so the slab is a whole number
+        of periods and never thinner than asked for.
+
+        Parameters
+        ----------
+        phase
+            The crystal, whose direct basis is used.
+        zone_axis
+            The beam direction ``[uvw]`` in the direct basis.
+        thickness_angstrom
+            Requested minimum thickness along the beam, strictly positive.
+        lateral_repeats
+            Repeats along the two lattice vectors not chosen for the thickness.
+
+        Returns
+        -------
+        tuple
+            ``((na, nb, nc), slab_thickness_angstrom)``: the repeats along
+            ``a``, ``b`` and ``c``, and the periodic extent of that slab along
+            the beam.
+
+        Raises
+        ------
+        ValueError
+            For a non-positive thickness or lateral count, or a zero zone axis.
+        """
+
+        if not thickness_angstrom > 0.0:
+            raise ValueError("The specimen thickness must be strictly positive.")
+        if lateral_repeats < 1:
+            raise ValueError("The lateral repeat count must be at least one.")
+        basis = phase.lattice.direct_basis()
+        basis_matrix = np.vstack([basis.vector(0), basis.vector(1), basis.vector(2)])
+        beam = np.asarray(zone_axis, dtype=np.float64) @ basis_matrix
+        norm = float(np.linalg.norm(beam))
+        if norm <= 0.0:
+            raise ValueError("The zone axis must not be the zero vector.")
+        along = np.abs(basis_matrix @ (beam / norm))
+        axis = int(np.argmax(along))
+        repeats = [int(lateral_repeats)] * 3
+        repeats[axis] = 1
+        lateral_depth = float(
+            sum(repeats[index] * along[index] for index in range(3) if index != axis)
+        )
+        count = max(1, math.ceil((thickness_angstrom - lateral_depth) / along[axis] - 1.0e-9))
+        repeats[axis] = count
+        slab = lateral_depth + count * float(along[axis])
+        return (repeats[0], repeats[1], repeats[2]), slab
+
+    def prepared_for_imaging(
+        self, *, periodic_xy: bool, margin_angstrom: float = 1.0
+    ) -> AtomicSnapshot:
+        """Return a copy whose atoms lie inside an orthogonal box starting at the origin.
+
+        Purpose
+        -------
+        Both imaging engines assume a box spanning ``[0, L)`` on each axis with
+        the beam along +z. A structure written by a simulation code rarely
+        satisfies that: coordinates can be negative, atoms can have drifted a
+        little outside a periodic cell, and a cluster may carry no cell at all.
+
+        Method
+        ------
+        With ``periodic_xy`` true the file declared a periodic cell, so x and y
+        are wrapped modulo the cell lengths -- an atom just across a boundary
+        is the image of one just inside it. Otherwise the atoms are shifted so
+        the lowest coordinate sits ``margin_angstrom`` inside the box, and the
+        box is enlarged if needed to hold them with that margin on both sides.
+        Along z the atoms are always shifted and the box grown, because the
+        specimen is a foil and has vacuum above and below it.
+
+        Raises
+        ------
+        ValueError
+            If the cell is not orthogonal. The multislice potential is built on
+            an orthogonal grid, and silently squaring a sheared cell would
+            simulate a different crystal.
+        """
+
+        cell = self.cell
+        scale = max(1.0, float(np.max(np.abs(cell))))
+        if np.any(np.abs(cell - np.diag(np.diag(cell))) > 1.0e-6 * scale):
+            raise ValueError(
+                "The structure's cell is not orthogonal. Image simulation needs an orthogonal "
+                "box with the beam along z; export the structure in an orthogonal supercell."
+            )
+        lengths = np.abs(np.diag(cell)).astype(np.float64)
+        positions = np.array(self.positions, dtype=np.float64, copy=True)
+        lower = positions.min(axis=0)
+        span = positions.max(axis=0) - lower
+        for axis in range(3):
+            wrap = periodic_xy and axis < 2 and lengths[axis] > 0.0
+            if wrap:
+                positions[:, axis] = np.mod(positions[:, axis], lengths[axis])
+            else:
+                positions[:, axis] -= lower[axis] - margin_angstrom
+                lengths[axis] = max(lengths[axis], span[axis] + 2.0 * margin_angstrom)
+        return AtomicSnapshot(
+            species=self.species,
+            positions=positions,
+            cell=np.diag(lengths),
+            periodicity=self.periodicity,
+            label=self.label,
         )
 
     def to_xyz(self) -> str:
@@ -1344,6 +1481,68 @@ class AtomicSnapshot:
             f"Foil thickness: {self.thickness_angstrom:.2f} Å. "
             f"PBC: ({self.periodicity[0]}, {self.periodicity[1]}, {self.periodicity[2]})."
         )
+
+
+def _parse_extended_xyz_comment(
+    comment: str,
+) -> tuple[np.ndarray | None, int, int, str]:
+    """Read the extended-XYZ keys an imaging simulation needs from a comment line.
+
+    The extended-XYZ convention written by ASE, OVITO and many molecular-dynamics
+    codes stores ``key=value`` pairs in the comment line. Two matter here:
+    ``Lattice="ax ay az bx by bz cx cy cz"`` gives the periodic cell as three row
+    vectors, and ``Properties=name:type:count:...`` gives the column layout of
+    each atom line. Returns the cell (or ``None``), the column of the species,
+    the first column of the three positions, and the comment with the key-value
+    pairs removed, for use as a label. A plain comment returns the classic
+    layout: species in column 0, positions in columns 1-3.
+    """
+
+    pairs = {
+        match.group(1).lower(): (match.group(3) if match.group(3) is not None else match.group(2))
+        for match in re.finditer(r'(\w+)=("([^"]*)"|\S+)', comment)
+    }
+    label = re.sub(r'\s*\w+=("[^"]*"|\S+)', "", comment).strip()
+    lattice: np.ndarray | None = None
+    if "lattice" in pairs:
+        values = pairs["lattice"].split()
+        if len(values) != 9:
+            raise ValueError("An extended-XYZ Lattice entry needs nine numbers.")
+        lattice = np.array([float(value) for value in values], dtype=np.float64).reshape(3, 3)
+        if not np.all(np.isfinite(lattice)):
+            raise ValueError("An extended-XYZ Lattice entry must be finite.")
+    species_column, position_column = 0, 1
+    if "properties" in pairs:
+        fields = pairs["properties"].split(":")
+        if len(fields) % 3 != 0:
+            raise ValueError(
+                "An extended-XYZ Properties entry must come in name:type:count triples."
+            )
+        column = 0
+        found: dict[str, int] = {}
+        for index in range(0, len(fields), 3):
+            name, count = fields[index].lower(), int(fields[index + 2])
+            found.setdefault(name, column)
+            column += count
+        if "species" not in found or "pos" not in found:
+            raise ValueError("An extended-XYZ Properties entry must declare species and pos.")
+        species_column, position_column = found["species"], found["pos"]
+    return lattice, species_column, position_column, label
+
+
+def _array_png_data_url(array: np.ndarray, colormap: str) -> str:
+    """Encode a 2-D array as a PNG data URL, one pixel per element, row 0 at the bottom."""
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    buf = io.BytesIO()
+    plt.imsave(
+        buf, np.asarray(array, dtype=np.float64), cmap=colormap, origin="lower", format="png"
+    )
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1465,8 +1664,17 @@ class HREMSimulationResult:
         dist_px = np.hypot(x_coords - x0, y_coords - y0)
         return dist_px * self.pixel_size_angstrom, intensities
 
-    def to_png_base64(self, colormap: str = "gray") -> str:
-        """Render the simulated image as a base64-encoded PNG data URL."""
+    def to_png_base64(self, colormap: str = "gray", *, native_resolution: bool = False) -> str:
+        """Render the simulated image as a base64-encoded PNG data URL.
+
+        With ``native_resolution`` the PNG holds exactly one pixel per
+        simulation pixel, row 0 at the bottom (``y`` increasing upwards), so a
+        viewer that zooms shows the real sampling rather than a resampled
+        rendering of it. Without it, the image is drawn through matplotlib at
+        a fixed figure size, as before.
+        """
+        if native_resolution:
+            return _array_png_data_url(self.image, colormap)
         import matplotlib
 
         matplotlib.use("Agg")
@@ -1488,8 +1696,15 @@ class HREMSimulationResult:
         encoded = base64.b64encode(buf.read()).decode("ascii")
         return f"data:image/png;base64,{encoded}"
 
-    def to_power_spectrum_base64(self) -> str:
-        """Render the 2D FFT power spectrum (Thon rings) as a base64 PNG data URL."""
+    def to_power_spectrum_base64(self, *, native_resolution: bool = False) -> str:
+        """Render the 2D FFT power spectrum (Thon rings) as a base64 PNG data URL.
+
+        ``native_resolution`` writes one PNG pixel per spectrum sample, zero
+        frequency at the centre and ``q_y`` increasing upwards, spanning
+        ``+/- 1 / (2 dx)`` on each axis.
+        """
+        if native_resolution:
+            return _array_png_data_url(self.power_spectrum, "inferno")
         import matplotlib
 
         matplotlib.use("Agg")
@@ -1580,18 +1795,11 @@ def pure_python_phase_object_simulation(
     xx, yy = np.meshgrid(x_grid, y_grid)
     v_proj = np.zeros((ny, nx), dtype=np.float64)
 
-    atomic_z = {
-        "H": 1,
-        "C": 6,
-        "N": 7,
-        "O": 8,
-        "Al": 13,
-        "Si": 14,
-        "Fe": 26,
-        "Ni": 28,
-        "Zr": 40,
-        "Au": 79,
-    }
+    # Every element, not a short list with a silent default: an imported
+    # structure can hold any species, and scattering it as silicon would give a
+    # plausible image of the wrong specimen. A symbol that is not an element
+    # raises here rather than being guessed at.
+    atomic_z = {species: atomic_number(species) for species in set(snapshot.species)}
 
     # The projected potential is accumulated atom by atom and dominates the cost
     # of this simulation, so the fraction of atoms placed is a fair measure of
@@ -1601,7 +1809,7 @@ def pure_python_phase_object_simulation(
         list(zip(snapshot.species, snapshot.positions, strict=True)),
         stage="Projecting the atomic potential",
     ):
-        z_num = atomic_z.get(s, 14)
+        z_num = atomic_z[s]
         peak_v = 40.0 * (z_num**0.7)  # in Volt*Angstrom
         width2 = 0.35**2  # radius squared in Angstrom^2
 

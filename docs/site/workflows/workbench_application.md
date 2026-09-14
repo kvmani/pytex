@@ -384,6 +384,16 @@ still exports as a report, because the prose and the provenance are the point.
 The buttons are generated from the manifest, like everything else here, so a format added in Python
 appears on every result at once.
 
+**The intermediate stages behind a result.** An analysis made of several steps also reports each
+step, under **How this result was reached** below the data table: its own quantities, its own
+table, a status mark (✓ done, ! check this before believing what follows, i an input) and a note
+on how to read it. The first stage with a warning opens itself, because that is the one to look at
+first. The Report writes every stage as a section and the XLSX adds a `Stages` sheet plus one sheet
+per stage table, so the chain of evidence survives export. Lattice-parameter determination and
+phase identification report their stages today; every stage, quantity and column is defined in
+{doc}`../algorithms/precise_lattice_parameter_determination` and
+{doc}`../algorithms/phase_identification`, in the sections headed *Reading the workbench report*.
+
 ```{note}
 In the desktop shell every export goes through a native save dialog, because an embedded web view
 silently discards a browser download. Both shells announce where the file went. An export that

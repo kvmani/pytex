@@ -128,6 +128,7 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry("s_3", "s₃", "s_{3}", "Deviation parameter of the third CBED fringe minimum."),
             _entry("s_4", "s₄", "s_{4}", "Deviation parameter of the fourth CBED fringe minimum."),
             _entry("s_5", "s₅", "s_{5}", "Deviation parameter of the fifth CBED fringe minimum."),
+            _entry("foil_thickness", "t", "t", "Foil thickness along the beam."),
             _entry(
                 "defocus",
                 "Δf",

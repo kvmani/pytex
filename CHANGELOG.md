@@ -11,6 +11,60 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **Every intermediate stage of lattice-parameter determination and phase identification is
+  reported.** A cell or a ranking is only as believable as the steps behind it, and the
+  workbench showed only the final answer. Results now carry an ordered list of stages under
+  **How this result was reached**, each with its own quantities, its own table, a status
+  mark and a note on how to read it; the first stage with a warning opens itself.
+  - *Determine lattice parameters*: the scan as read; every peak fit (position and its
+    uncertainty, width, η, χ²ν, convergence); each index-then-determine pass and the
+    reflections re-indexing recovered; the final assignment with de Wolff M_N and
+    Smith–Snyder F_N; the least squares with its degrees of freedom, drift coefficient and
+    its significance, largest systematic shift and the correlation matrix of the refined
+    parameters; the determined cell with a precision grade; and a cross-check of the same
+    assignment through the alternative methods, in parts per million. Le Bail runs report
+    the scan, the whole-pattern decomposition and the cell.
+  - *Identify the phase*: the peaks every candidate is scored against; each candidate's cell
+    dilation and whether it hit the search limit; the assignments of the leading candidate and
+    the runner-up, with observed against calculated intensities; each criterion's weighted
+    contribution to each score; and the decision against its two thresholds.
+  - The Markdown export gains a "How the result was reached" section, and the Excel export a
+    `Stages` sheet plus one sheet per stage table.
+  - The algorithm pages for both operations gain a "Reading the workbench report" section that
+    defines every stage, quantity, column and warning rule.
+- `pytex.app.results.ResultStage` and `ResultMetric`, and an optional `AppResult.stages`,
+  serialized only when present so every other result keeps its wire form.
+- `pytex.diffraction.lattice_parameter_pipeline` returns the peak table and the pass history
+  alongside the result and indexing; `determine_lattice_parameters_from_pattern` delegates to it.
+  `LatticeParameterResult` gains `parameter_correlation` and `correlation_parameter_names` for
+  Cohen fits, also in its JSON contract.
+- **HRTEM specimen thickness.** A thickness control (symbol $t$) builds a crystal slab of whole
+  unit-cell repeats along the lattice vector closest to the beam, never thinner than requested,
+  and reports the thickness delivered, the repeats and the atom count; the amorphous foil takes
+  it as its depth. `AtomicSnapshot.repeats_for_thickness` is the rule.
+- **Imported atomic structures for HRTEM.** An `.xyz` or extended `.xyz` file from a simulation
+  can be opened in the rail as the specimen. `AtomicSnapshot.from_xyz` reads extended-XYZ
+  `Lattice` and `Properties` entries, and `AtomicSnapshot.prepared_for_imaging` wraps a periodic
+  structure or boxes a cluster with a margin, refusing sheared cells. Species that are not
+  elements are named in the error, and specimens above 20 000 atoms are refused with a hint.
+- `HREMSimulationResult.to_png_base64` and `to_power_spectrum_base64` take
+  `native_resolution=True` for one PNG pixel per simulated pixel.
+
+### Fixed
+
+- **The HRTEM micrograph and power spectrum could not be zoomed or panned.** They were placed in
+  the plot frame as `<img>` elements, and the frame's zoom, pan, Fit and cursor attach only to
+  SVG. They are now SVG images in ångströms and inverse ångströms: the shared viewport works, the
+  cursor reads specimen position or spatial frequency and spacing, a scale bar and the
+  point-resolution and information-limit rings are drawn, a **Pixels** toggle shows the true
+  sampling, and a re-run keeps the zoom.
+- **The pure-Python HRTEM fallback scattered unlisted elements as silicon.** Its atomic-number
+  table held ten elements with a silent default of Z = 14, which gave a plausible image of the
+  wrong specimen for anything else. Atomic numbers now come from the element table, and a species
+  that is not an element raises.
+
 ## [0.9.0] - 2026-09-09
 
 ### Added

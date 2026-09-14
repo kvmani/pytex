@@ -177,6 +177,97 @@ When `is_decisive=False`, the experimental scan cannot distinguish between candi
 structures with statistical confidence, indicating the need for extended high-angle
 counting, wavelength variation, or complementary chemical analysis.
 
+## 8. Reading the workbench report
+
+The workbench operation **XRD → Identify the phase** returns the ranking table and the overlay
+plot, and, under **How this result was reached**, one section for each stage of the pipeline
+above. The ranking alone cannot say whether a candidate lost on its cell size, its centring or its
+intensities; the stages show which. Each carries a status mark — **✓** the stage did its job,
+**!** it left something to check first (the first such stage opens itself), **i** it records an
+input — and all of them are written into the Markdown report and the Excel workbook (a `Stages`
+sheet plus one sheet per stage table).
+
+### Stage 1 — The scan as read
+
+Points, 2θ range, median step, radiation and wavelength $\lambda$, exactly as for
+{doc}`precise_lattice_parameter_determination`. Every candidate's lines are computed at this
+wavelength.
+
+### Stage 2 — Peak detection and profile fitting
+
+The single list of measured lines every candidate is scored against: the converged fits kept above
+the detection threshold `prominence_sigma` and the angular floor `minimum_two_theta_deg`, and their
+total integrated intensity $\sum_p A_p$, which is the denominator of the explained-intensity
+criterion. The table has the columns 2θ, σ(2θ), height, integrated intensity, FWHM, η, χ²ν and
+converged, with the meanings given in {doc}`precise_lattice_parameter_determination` §8. A
+background ripple promoted to a peak lowers every candidate's explained intensity; a weak line
+lost below the threshold can hide a second phase. The stage is marked **!** when fewer than three
+peaks were kept.
+
+### Stage 3 — Cell dilation search
+
+| Column | Meaning |
+| --- | --- |
+| Candidate | The candidate phase. |
+| Cell dilation | $100\,(s-1)$, in per cent, for the scale $s$ that minimized $\Phi(s)$ of §3. |
+| At the search limit | *yes* when $|s-1| \ge 0.98\,\delta$: the candidate was stretched as far as `cell_scale_range` allowed. |
+| Peaks indexed | *k of n* after dilation, or the reason a candidate could not be indexed at all. |
+
+A dilation of a few hundredths of a per cent is the ordinary difference between a tabulated cell
+and a real solid solution. Because a uniform dilation preserves every ratio of spacings it cannot
+make a wrong structure fit, but a value at the limit means the lattice mismatch exceeds the search
+bracket. The stage is marked **!** when any indexed candidate reached the limit.
+
+### Stages 4 and 5 — Assignment of the leading candidate and of the runner-up
+
+The one-to-one assignment of the two highest-ranked candidates that could be indexed (the
+runner-up stage appears only when there are two). Reading them side by side is how the ranking is
+checked rather than trusted.
+
+| Column | Meaning |
+| --- | --- |
+| Reflection | Miller indices of the calculated line. |
+| 2θ observed, 2θ calculated | Fitted peak centre, and the line position from the candidate's dilated cell. |
+| Δ2θ | Observed minus calculated, in millidegrees. Scatter about zero is a good match; a trend with angle means the cell or a zero error is still off. |
+| I observed | Integrated intensity divided by that of the strongest indexed peak. |
+| I calculated | Calculated relative intensity of the reflection. Preferred orientation moves intensities without moving positions, so disagreement between these two columns is weaker evidence than a missing strong line. |
+
+Beside the table: peaks indexed and unindexed; the **strongest unexplained peak**, the largest
+unindexed integrated intensity as a percentage of the strongest measured peak (near 100 % means
+the most prominent feature of the scan is unexplained); the **strongest unobserved line**, the
+largest calculated relative intensity among the candidate's strong lines inside the scan that were
+not observed; and de Wolff's $M_N$. The stage is marked **!** when any peak stayed unindexed.
+
+### Stage 6 — Criterion scores
+
+One row per candidate, in rank order. The columns *From intensity explained*, *From lines seen*,
+*From position* and *From intensity agreement* are each criterion's contribution
+
+$$
+c_k = \frac{w_k\,x_k}{\sum_{j \in \mathcal{D}} w_j}, \qquad \text{FOM} = \sum_{k \in \mathcal{D}} c_k,
+$$
+
+where $x_k$ is the criterion value of §5, $w_k$ its weight in the chosen preset, and
+$\mathcal{D}$ the set of criteria defined for that candidate. An undefined criterion — intensity
+agreement with fewer than two indexed lines — is left blank rather than counted as zero, and the
+contributions of each row sum to its score. The weights of the preset are listed beside the table.
+Read which column a losing candidate falls short in: *position* points to the wrong cell size,
+*lines seen* to the wrong centring or basis, *intensity explained* to a phase missing from the
+candidate list (§6).
+
+### Stage 7 — Decision
+
+| Quantity | Meaning |
+| --- | --- |
+| Best score, Minimum score | $\text{FOM}_{\text{top}}$ and `minimum_score`; *Conclusive* is $\text{FOM}_{\text{top}} \ge$ `minimum_score`. |
+| Runner-up score, Margin, Required margin | $\text{FOM}_{\text{runner-up}}$, $\text{FOM}_{\text{top}} - \text{FOM}_{\text{runner-up}}$ and `decisive_margin`; *Decisive* additionally requires margin $\ge$ `decisive_margin`. |
+| Conclusive, Decisive | The two qualifications of §7. |
+
+The stage is **✓** only when the identification is both conclusive and decisive. A conclusive but
+indecisive result says the scan cannot separate the two leaders; a single candidate is a check of
+that phase rather than an identification, and a low best score is as likely to mean the right
+structure is missing from the list as that the scan is poor.
+
 ## Verification
 
 - `tests/unit/test_xrd_phase_identification.py`: Verifies ranking correctness on synthetic

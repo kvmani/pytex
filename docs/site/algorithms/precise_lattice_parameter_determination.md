@@ -201,6 +201,160 @@ All least-squares weights reflect experimental Poisson uncertainties: $w_i = 1 /
 | Severe peak overlap or low symmetry | **Le Bail Method** | Whole-pattern refinement with refined displacement parameter |
 | Calibrated external zero standard | **Cohen Method** | Calibrate zero offset first, then refine displacement only |
 
+## 8. Reading the workbench report
+
+The workbench operation **XRD → Determine lattice parameters** returns the answer three ways —
+the summary sentence, the residual table and the plot — and, under **How this result was
+reached**, one section for every stage of the computation described above. A final cell is only
+as believable as the steps behind it, and each of those steps can fail in its own way: a missed
+peak, a wrong assignment, a systematic error absorbed into the cell. The stages put that chain of
+evidence on the page.
+
+Each stage carries a status mark. **✓** means the stage did its job. **!** means it completed but
+left something that must be checked before the stages after it are believed; the first such stage
+opens itself. **i** marks a stage that records an input rather than a computation. The same
+stages are written into the Markdown report, and into the Excel workbook as a `Stages` sheet of
+every stage quantity plus one sheet per stage table. In the library they come from
+`lattice_parameter_pipeline`, which returns the peak table and the pass history together with the
+`LatticeParameterResult` and the final `PeakIndexing`;
+`determine_lattice_parameters_from_pattern` is the same computation returning only the last two.
+
+### Stage 1 — The scan as read
+
+| Quantity | Meaning and what to check |
+| --- | --- |
+| Points, first 2θ, last 2θ | The profile that was analysed. A range that stops short of back-reflection forfeits the reflections with the smallest $\cot\theta$, which carry most of the precision. |
+| Median step | Sampling interval in degrees. A centre can be located to a small fraction of a step only with roughly five or more points across a peak's FWHM. |
+| Radiation, wavelength $\lambda$ | Every spacing is computed from $\lambda$; the wrong radiation scales every cell edge by the ratio of the two wavelengths. |
+| Injected specimen displacement | Demonstration scans only: the known aberration added so the methods can be judged against it. |
+
+### Stage 2 — Peak detection and profile fitting
+
+The headline quantities are the number of peaks detected, how many fits converged, the detection
+threshold (in robust noise standard deviations, `prominence_sigma`), the expected width, and the
+median $\sigma(2\theta)$ and FWHM. The table has one row per peak:
+
+| Column | Meaning |
+| --- | --- |
+| 2θ | Fitted Kα₁ centre, in degrees. |
+| σ(2θ) | Standard uncertainty of that centre, in millidegrees, from the fit covariance of Stage 2 above. It becomes the weight of the reflection in the least squares, so an imprecise peak counts for little. |
+| Height, Integrated intensity | Fitted peak height and area above the local linear background. |
+| FWHM | Fitted full width at half maximum, in degrees. |
+| η | Lorentzian fraction of the pseudo-Voigt: 0 is Gaussian, 1 is Lorentzian. |
+| χ²ν | Reduced chi-squared of that peak's profile fit. Near 1, the profile describes the peak to within counting noise; far above 1 flags an overlapped, asymmetric or badly backgrounded peak whose position deserves suspicion. |
+| Converged | Whether the optimizer converged. A non-converged fit stays in the table but should not be trusted. |
+
+The stage is marked **!** when any fit failed to converge, or when there are no more peaks than
+refined parameters, since the least squares then has no redundancy to detect an error with.
+
+### Stage 3 — Index-then-determine passes
+
+One row per pass of the re-indexing loop of Stage 3 above.
+
+| Column | Meaning |
+| --- | --- |
+| Pass | Pass number; pass 1 indexes against the tabulated cell of the selected phase. |
+| a | The cell edge determined from that pass's assignment, in ångströms. For a pass that was not taken, the cell it was indexed against. |
+| Indexed, Unindexed | Peaks assigned and left over in that pass. |
+| M | de Wolff's figure of merit of that pass's assignment (defined in Stage 4 below). |
+| Mean \|Δ2θ\| | Mean absolute position discrepancy of the assignment, in millidegrees. |
+| Outcome | *taken*, or *not taken: indexed no more* — the pass that ends the loop. |
+
+The metric *Reflections recovered by re-indexing* is the final indexed count minus the first. A
+positive value is the direct evidence that the starting cell misplaced high-angle reflections by
+$\Delta(2\theta) = 2e\tan\theta$ and that re-indexing recovered them.
+
+### Stage 4 — Reflection assignment
+
+The final one-to-one assignment the cell is fitted to.
+
+| Column | Meaning |
+| --- | --- |
+| Reflection | Miller indices of the calculated line (Miller–Bravais for hexagonal phases). |
+| 2θ observed, σ(2θ) | The fitted peak centre and its uncertainty. |
+| 2θ calculated | Where the cell of the final pass puts the reflection, **before** any systematic correction. |
+| Δ2θ | Observed minus calculated, in millidegrees. A smooth trend with angle is expected when a zero or displacement error is present, and Stage 5 removes it; a single reflection far off the trend is a misassignment. |
+| d observed, d calculated | Interplanar spacings from $\lambda/(2\sin\theta)$ and from the cell. |
+| Multiplicity | Number of symmetry-equivalent planes contributing to the line. |
+| I calculated | Calculated relative intensity. It ranks lines for matching and is never used to fit the cell. |
+
+The quantities beside the table are the indexed fraction, de Wolff's
+$M_N = Q_N / (2\langle|\Delta Q|\rangle N_{\text{poss}})$ with $Q = 1/d^2$, Smith and Snyder's
+$F_N = N / (\langle|\Delta 2\theta|\rangle N_{\text{poss}})$, the number of unindexed peaks, and the
+number of calculated lines above the intensity threshold that were not observed. $N$ is 20 for
+$M$ and 30 for $F$ unless fewer lines were indexed, and the subscript always shows the $N$ used,
+because $M_7$ and $M_{20}$ are not comparable. $M_N > 10$ is a plausible cell and $M_N > 20$ a
+convincing one. The stage is marked **!** when $M_N < 10$ or any peak stayed unindexed; an
+unindexed strong peak belongs to something the phase does not describe — a second phase, a Kβ or
+tungsten line, or the sample holder. When every Δ2θ carries the same sign, the summary says so:
+that is the signature of an uncorrected zero or displacement error, not of a wrong cell.
+
+### Stage 5 — Least-squares determination
+
+For Cohen's method, the quantities are:
+
+| Quantity | Meaning |
+| --- | --- |
+| Method, Extrapolation function | The chosen method and the function $f(\theta)$ of Stage 4 above. |
+| Refined parameters | The free reciprocal-metric components the crystal system allows (for example `a*^2`, `c*^2`) and, when a systematic term is refined, `D`. |
+| Observations, Degrees of freedom | $N$ reflections and $N - p$ for $p$ refined parameters. |
+| Drift coefficient D, σ(D), \|D\|/σ(D) | The refined systematic-error coefficient, its standard uncertainty and their ratio; above about 2 the term is significantly different from zero. |
+| Largest systematic shift | The largest angular correction $D$ applied to any reflection, in millidegrees. Compare it with σ(2θ): a correction much larger than the position uncertainties did real work. |
+| Reduced χ² | $\chi^2_\nu = \sum_i (r_i/\sigma_i)^2/(N-p)$ in $\sin^2\theta$. About 1: the residuals match the position uncertainties. Much larger: an unmodelled error or a misassignment. Much smaller: the uncertainties are overstated. |
+| Angular floor, Reflections discarded by the floor | The `minimum_two_theta_deg` restriction and how many assigned reflections it removed after the passes converged. |
+
+The table is the correlation matrix of the refined parameters,
+$r_{jk} = V_{jk}/\sqrt{V_{jj}V_{kk}}$ with
+$\mathbf{V} = (\mathbf{X}^{\mathsf{T}}\mathbf{W}\mathbf{X})^{-1}\chi^2_\nu$. Its diagonal is 1 and
+every entry lies in $[-1, 1]$. A cell parameter correlated with $D$ beyond about $\pm 0.95$ means
+the scan's angular range barely separates a change of cell from the systematic error, which is why
+that parameter's uncertainty is larger than the scatter alone suggests. The stage is marked **!**
+when $\chi^2_\nu > 3$ or any off-diagonal $|r| > 0.98$.
+
+For the average method there is no joint fit: the stage reports the number of reflections and
+the reduced χ² of the per-reflection values, and states that no systematic term could be refined.
+
+### Stage 6 — The determined cell
+
+The cell edges and their standard uncertainties that the crystal system leaves free — $a$ for
+cubic; $a$, $c$ and $c/a$ for hexagonal and tetragonal; also $b$ for orthorhombic and lower; and
+the angles for monoclinic and triclinic — then the relative uncertainty $\sigma(a)/a$, the
+reference $a$ of the selected phase, and the lattice strain $(a - a_{\text{ref}})/a_{\text{ref}}$.
+The summary grades the relative uncertainty: below $5\times10^{-5}$ is strain-grade, below
+$5\times10^{-4}$ composition-grade, and anything larger identification-grade. The uncertainty is
+the precision of this determination on this scan, not the accuracy of the instrument; calibrate
+against a certified standard such as NIST SRM 640 (silicon) or SRM 660 (lanthanum hexaboride)
+before quoting an absolute value. The strain is along the scattering vector of a symmetric scan,
+normal to the surface, and is not a stress.
+
+### Stage 7 — Cross-check against the other methods
+
+The same assignment of Stage 4, and the same angular floor, pushed through the alternative
+methods: Cohen with no systematic term, Cohen with the Nelson–Riley term (when that is not already
+the reported method), and, for a cubic cell, the average over reflections.
+
+| Column | Meaning |
+| --- | --- |
+| Method | The first row is the reported determination; the others are alternatives. |
+| a, σ(a) | Cell edge and its standard uncertainty from that method. |
+| Difference from reported a | $10^6\,(a_{\text{method}} - a_{\text{reported}})/a_{\text{reported}}$, in parts per million. |
+| χ²ν | Reduced chi-squared of that method's fit. |
+
+Because the peaks and the assignment are shared, every difference is due to the method alone. A
+large gap between the fits with and without a systematic term says the term did real work; a gap
+within a few $\sigma(a)$ says the specimen was well aligned. Prefer the method whose $\chi^2_\nu$ is
+closest to 1.
+
+### Le Bail runs
+
+A whole-pattern decomposition forms no peak list, so its report has three stages: the scan; the
+**whole-pattern decomposition**, reporting the reflections modelled, the reduced χ², $R_{wp}$ and
+the refined systematic term (specimen displacement in millimetres or detector zero in degrees 2θ);
+and the determined cell. $R_{wp}$ is computed on the background-subtracted profile, so it is
+systematically higher than a Rietveld program's $R_{wp}$ on the raw scan and must not be compared
+with one. The stage is marked **!** when $\chi^2_\nu > 3$; its diagnostic is the difference curve
+in the plot, not a per-reflection residual.
+
 ## Verification
 
 - `tests/unit/test_xrd_peaks.py`: Validates doublet deconvolution, ESD calculation,
