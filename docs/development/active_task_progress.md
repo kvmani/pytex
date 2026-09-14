@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## XRD reports, HRTEM viewer, thickness and XYZ input; release 0.10.0 — IN PROGRESS (2026-09-14)
+## XRD reports, HRTEM viewer, thickness and XYZ input; release 0.10.0 — COMPLETE (2026-09-14)
 
 **Objective (user goal).** (1) Lattice-parameter determination, indexing and phase identification
 must show their intermediate results in a detailed report, and their documentation must describe
@@ -41,7 +41,10 @@ specimen thickness. (4) HRTEM must accept `.xyz` atomic structures from simulati
 | 2 | HRTEM: SVG micrograph/spectrum with zoom, pan and physical cursor; thickness control; `.xyz` (incl. extended-XYZ `Lattice=`) upload; tests | Landed `dde7131` |
 | 3 | Docs: "Reading the report" sections for lattice parameters, phase identification and HRTEM; workbench/theory/changelog | Landed `dde7131`; Sphinx **zero warnings** after replacing two `{eq}` refs to list-item equations |
 | 4 | Browser verification, full suite, Sphinx | Done: in-app browser (zoom 212%, pan, Å cursor, `.xyz` import, 7 stage cards); targeted Playwright 2/2; full unit suite green, coverage **91.60%** (floor 91.518%); Sphinx zero warnings |
-| 5 | Version 0.10.0, tag, GitHub release; `ml_server_deploy` suite 1.11.0 | Version bumped in `_version.py`, `CITATION.cff`, changelog cut `[0.10.0] - 2026-09-14`; deploy manifest edited (72 tests, validate, hygiene green), commit after the tag |
+| 5 | Version 0.10.0, tag, GitHub release; `ml_server_deploy` suite 1.11.0 | Done. Release commit `32054e5`, CI green on all 8 jobs; tag `v0.10.0` and GitHub Release published; wheel/sdist built into ignored `outputs/release-0.10.0/`. Suite **v1.11.0** (`41fb6eb`): 72 manifest tests, validation, hygiene, rehearsal **30/30**; bundle workflow succeeded with `ml-server-suite-v1.11.0.tar.gz` + `.sha256`. No server-side step. |
+
+**CI note.** `dde7131` failed Docs build (two `{eq}` refs to list-item equations) and one browser test
+(still waited for the old `<img>`); both fixed in `186bfd3`, which was green before the release commit.
 
 ## Repository-wide future-development vision — COMPLETE (2026-09-10)
 
