@@ -262,6 +262,7 @@ from pytex.diffraction.xrd_lattice_parameter import (
     determine_lattice_parameters_from_pattern,
     determine_lattice_parameters_le_bail,
     extrapolation_values,
+    lattice_parameter_pipeline,
     nelson_riley_extrapolation,
 )
 from pytex.diffraction.xrd_measurement import (
@@ -497,6 +498,7 @@ __all__ = [
     "index_saed_pattern",
     "is_hexagonal_phase",
     "kalpha2_partner_two_theta_deg",
+    "lattice_parameter_pipeline",
     "lorentz_polarization_factor",
     "march_dollase_factors",
     "monochromator_polarization_factor",

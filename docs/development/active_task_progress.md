@@ -5,6 +5,44 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## XRD reports, HRTEM viewer, thickness and XYZ input; release 0.10.0 — IN PROGRESS (2026-09-14)
+
+**Objective (user goal).** (1) Lattice-parameter determination, indexing and phase identification
+must show their intermediate results in a detailed report, and their documentation must describe
+every part of that report. (2) The HRTEM micrograph must zoom and pan. (3) HRTEM must offer a
+specimen thickness. (4) HRTEM must accept `.xyz` atomic structures from simulations as well as
+`.cif`. Then bump the minor version (0.9.0 → **0.10.0**), tag and release it, and cut a new
+`ml_server_deploy` suite (current suite tag there is v1.10.0, so **1.11.0**).
+
+**Baseline.** Main at `6963ce3`. Untracked `PyTex_Comprehensive_Review.pptx`,
+`generate_pytex_ppt.py`, `tests/test_data/` and the modified
+`docs/roadmap/future_development_vision.md` predate this task and are **not** staged.
+
+**Decisions.**
+
+- A generic, optional `stages` list on `AppResult` (`ResultStage`, `ResultMetric` in
+  `pytex.app.results`), serialized only when present so every other result keeps its wire form.
+  One renderer (`core/result.js` "How this result was reached" card, first warning stage opens
+  itself) and both human exports (Markdown section, XLSX `Stages` sheet plus one sheet per stage
+  table) serve every operation.
+- No new public *library* class: `lattice_parameter_pipeline` is a function returning
+  `(result, indexing, peak_table, passes)`; `determine_lattice_parameters_from_pattern` delegates
+  to it. `LatticeParameterResult` gained optional `parameter_correlation` /
+  `correlation_parameter_names` (Cohen fits), in `to_json` too.
+- HRTEM zoom/pan root cause: `hrem.js` put an `<img>` in the plot frame, and `plotFrame` wires
+  zoom, pan and the cursor only to an SVG. Fix is to draw the micrograph and spectrum as SVG
+  `<image>` elements in physical units (Å and Å⁻¹), not a panel-local zoom.
+
+**Plan.**
+
+| Step | Scope | State |
+| --- | --- | --- |
+| 1 | Stage contract + renderer + exports; lattice-parameter stages (scan, peaks, passes, assignment, least squares with correlation, cell, cross-check; Le Bail: scan, whole pattern, cell); phase-identification stages (scan, peaks, cell search, best/runner-up assignment, weighted criterion contributions, decision); tests | Implemented, 100 tests green |
+| 2 | HRTEM: SVG micrograph/spectrum with zoom, pan and physical cursor; thickness control; `.xyz` (incl. extended-XYZ `Lattice=`) upload; tests | Next |
+| 3 | Docs: "Reading the report" sections for lattice parameters, phase identification and HRTEM; workbench/theory/changelog | Pending |
+| 4 | Browser verification, full suite, Sphinx | Pending |
+| 5 | Version 0.10.0, tag, GitHub release; `ml_server_deploy` suite 1.11.0 | Pending |
+
 ## Repository-wide future-development vision — COMPLETE (2026-09-10)
 
 **Objective.** Audit the whole repository and author a source-controlled, Sphinx-discoverable

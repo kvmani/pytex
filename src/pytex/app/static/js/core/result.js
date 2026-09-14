@@ -67,6 +67,80 @@ export function renderResult(container, result, { extra = [], teaches = null } =
   if (result.table?.rows?.length) {
     container.append(tableCard(result));
   }
+
+  if (result.stages?.length) {
+    container.append(stagesCard(result.stages));
+  }
+}
+
+/**
+ * The intermediate stages behind a result, one disclosure per stage.
+ *
+ * A final number is only as believable as the steps that produced it, and an
+ * analysis can fail at any of them — a missed peak, a wrong assignment, a
+ * fit that absorbed an aberration into the cell. Each stage therefore shows
+ * its own numbers, its own rows and a note on how to read them. The first
+ * stage that reports a warning opens itself, because that is the one a reader
+ * has to look at before believing anything below it.
+ */
+function stagesCard(stages) {
+  const firstWarning = stages.findIndex((stage) => stage.status === 'warning');
+  return el('section.card.stages', { 'data-stages': String(stages.length) }, [
+    el('div.card__header', {}, [
+      el('h2.card__title', { text: 'How this result was reached' }),
+      el('p.card__subtitle', {
+        text: `${stages.length} intermediate stage${stages.length === 1 ? '' : 's'}, in the order `
+          + 'they ran. Each is included in the Markdown and Excel exports.',
+      }),
+    ]),
+    el('div.card__body.stages__list', {}, stages.map((stage, index) =>
+      stageSection(stage, index === firstWarning)),
+    ),
+  ]);
+}
+
+function stageSection(stage, open) {
+  const metrics = stage.metrics?.length
+    ? el('dl.stage__metrics', {}, stage.metrics.flatMap((metric) => {
+        const value = typeof metric.value === 'number'
+          ? formatNumber(metric.value)
+          : formatCell(metric.value);
+        return [
+          el('dt', { text: metric.label, title: metric.help ?? null }),
+          el('dd', { text: metric.units ? `${value} ${metric.units}` : value }),
+        ];
+      }))
+    : null;
+  const table = stage.table?.rows?.length
+    ? el('div.stage__table', {}, [
+        stage.table.caption ? el('p.card__subtitle', { text: stage.table.caption }) : null,
+        el('div.table-wrap', {}, [buildTable(stage.table.columns, stage.table.rows)]),
+      ])
+    : null;
+  return el(
+    `details.stage.stage--${stage.status ?? 'ok'}`,
+    { open, 'data-stage': stage.key },
+    [
+      el('summary.stage__summary', {}, [
+        el('span.stage__status', {
+          text: stage.status === 'warning' ? '!' : stage.status === 'info' ? 'i' : '✓',
+          'aria-label': stage.status ?? 'ok',
+        }),
+        el('span.stage__title', { text: stage.title }),
+      ]),
+      el('div.stage__body', {}, [
+        el('p.stage__text', { text: stage.summary }),
+        metrics,
+        table,
+        stage.explanation
+          ? el('p.stage__explanation', {}, [
+              el('strong', { text: 'How to read this: ' }),
+              stage.explanation,
+            ])
+          : null,
+      ]),
+    ],
+  );
 }
 
 /**

@@ -28,13 +28,14 @@ from pytex.app.registry import (
     ObjectParameter,
     TextParameter,
 )
-from pytex.app.results import AppResult, Column, ResultTable
+from pytex.app.results import AppResult, Column, ResultMetric, ResultStage, ResultTable
 from pytex.app.services.calculator import phase_parameter, plane_label
 from pytex.app.uploads import uploaded_file
 from pytex.diffraction.rietveld import _scaled_phase, refine_rietveld
 from pytex.diffraction.xrd import RadiationSpec, generate_xrd_pattern
 from pytex.diffraction.xrd_background import estimate_background
 from pytex.diffraction.xrd_corrections import specimen_displacement_shift_deg
+from pytex.diffraction.xrd_indexing import PeakIndexing
 from pytex.diffraction.xrd_instrument import (
     InstrumentBroadening,
     calibrate_instrument_broadening,
@@ -43,9 +44,11 @@ from pytex.diffraction.xrd_instrument import (
     williamson_hall,
 )
 from pytex.diffraction.xrd_lattice_parameter import (
+    LatticeParameterResult,
     crystal_system_of,
-    determine_lattice_parameters_from_pattern,
+    determine_lattice_parameters,
     extrapolation_values,
+    lattice_parameter_pipeline,
 )
 from pytex.diffraction.xrd_measurement import MeasuredPowderPattern, read_powder_pattern
 from pytex.diffraction.xrd_phase_identification import identify_phase_from_pattern
@@ -2043,7 +2046,7 @@ def _lattice_parameters(request: dict[str, Any]) -> dict[str, Any]:
 
     floor = float(request["minimum_two_theta_deg"])
     try:
-        result, indexing = determine_lattice_parameters_from_pattern(
+        result, indexing, peak_table, passes = lattice_parameter_pipeline(
             measured,
             phase,
             method=method,
@@ -2302,6 +2305,20 @@ def _lattice_parameters(request: dict[str, Any]) -> dict[str, Any]:
         },
         notes=tuple(notes),
         citations=(_CITATION_CULLITY_CH11, _CITATION_COHEN_LS, _CITATION_NELSON_RILEY_FN),
+        stages=_lattice_stages(
+            request=request,
+            measured=measured,
+            generated=generated,
+            radiation=radiation,
+            displacement=displacement,
+            spec=spec,
+            phase=phase,
+            system=system,
+            result=result,
+            indexing=indexing,
+            peak_table=peak_table,
+            passes=passes,
+        ),
     )
     return result_payload.to_json()
 
@@ -2326,6 +2343,748 @@ _EXTRAPOLATION_LABELS = {
     "bradley_jay": "cos\u00b2\u03b8",
     "none": "cos\u00b2\u03b8 / sin\u03b8",
 }
+
+_METHOD_LABELS = {
+    "cohen": "Cohen least squares",
+    "average": "Average over reflections",
+    "le_bail": "Le Bail whole-pattern decomposition",
+}
+
+_STAGE_PEAK_COLUMNS = (
+    Column("two_theta_deg", "2θ", units="°", numeric=True, digits=4),
+    Column(
+        "sigma_mdeg",
+        "σ(2θ)",
+        units="m°",
+        numeric=True,
+        digits=2,
+        help_text="Standard uncertainty of the fitted centre, from the fit covariance.",
+    ),
+    Column("height", "Height", numeric=True, digits=1),
+    Column("integrated_intensity", "Integrated intensity", numeric=True, digits=1),
+    Column("fwhm_deg", "FWHM", units="°", numeric=True, digits=4),
+    Column(
+        "eta",
+        "η",
+        numeric=True,
+        digits=3,
+        help_text="Lorentzian fraction of the pseudo-Voigt: 0 is Gaussian, 1 is Lorentzian.",
+    ),
+    Column(
+        "reduced_chi_squared",
+        "χ²ν",
+        numeric=True,
+        digits=2,
+        help_text="Reduced chi-squared of this peak's profile fit; about 1 is ideal.",
+    ),
+    Column("converged", "Converged"),
+)
+
+_STAGE_PASS_COLUMNS = (
+    Column("pass", "Pass", numeric=True),
+    Column(
+        "a_angstrom",
+        "a",
+        units="Å",
+        numeric=True,
+        digits=6,
+        help_text=(
+            "Cell edge determined from this pass's assignment. For a pass that was not taken, "
+            "the cell it was indexed against."
+        ),
+    ),
+    Column("indexed_count", "Indexed", numeric=True),
+    Column("unindexed_count", "Unindexed", numeric=True),
+    Column(
+        "figure_of_merit_m",
+        "M",
+        numeric=True,
+        digits=1,
+        help_text=(
+            "de Wolff's figure of merit for the pass: above 10 plausible, above 20 convincing."
+        ),
+    ),
+    Column("mean_delta_mdeg", "Mean |Δ2θ|", units="m°", numeric=True, digits=1),
+    Column("outcome", "Outcome"),
+)
+
+_STAGE_ASSIGNMENT_COLUMNS = (
+    Column("hkl_label", "Reflection"),
+    Column("two_theta_observed_deg", "2θ observed", units="°", numeric=True, digits=4),
+    Column("sigma_mdeg", "σ(2θ)", units="m°", numeric=True, digits=2),
+    Column(
+        "two_theta_calculated_deg",
+        "2θ calculated",
+        units="°",
+        numeric=True,
+        digits=4,
+        help_text="From the cell of the final indexing pass, before any systematic correction.",
+    ),
+    Column("delta_mdeg", "Δ2θ", units="m°", numeric=True, digits=1),
+    Column("d_observed_angstrom", "d observed", units="Å", numeric=True, digits=5),
+    Column("d_calculated_angstrom", "d calculated", units="Å", numeric=True, digits=5),
+    Column("multiplicity", "Multiplicity", numeric=True),
+    Column(
+        "relative_intensity",
+        "I calculated",
+        numeric=True,
+        digits=3,
+        help_text="Calculated relative intensity; used to rank lines, never to fit the cell.",
+    ),
+)
+
+_STAGE_CROSS_CHECK_COLUMNS = (
+    Column("method", "Method"),
+    Column("a_angstrom", "a", units="Å", numeric=True, digits=6),
+    Column("sigma_angstrom", "σ(a)", units="Å", numeric=True, digits=6),
+    Column(
+        "difference_ppm",
+        "Difference from reported a",
+        units="ppm",
+        numeric=True,
+        digits=0,
+        help_text="(a_method − a_reported) / a_reported, in parts per million.",
+    ),
+    Column("reduced_chi_squared", "χ²ν", numeric=True, digits=3),
+)
+
+
+def _scan_stage(
+    *,
+    request: Mapping[str, Any],
+    measured: MeasuredPowderPattern,
+    generated: bool,
+    radiation: RadiationSpec,
+    displacement: float | None,
+) -> ResultStage:
+    """The first stage of every scan analysis: what was read, and at what wavelength."""
+
+    wavelength = float(radiation.wavelength_angstrom)
+    axis = np.asarray(measured.two_theta_deg, dtype=float)
+    step = float(np.median(np.diff(axis))) if axis.size > 1 else float("nan")
+    if generated:
+        source = "Generated demonstration scan"
+    else:
+        kind = {"file": "Pattern file", "paste": "Pasted scan"}.get(
+            str(request.get("data_source")), "Measured scan"
+        )
+        source = f"{kind} '{measured.name}'"
+    metrics = [
+        ResultMetric("Points", int(axis.size)),
+        ResultMetric("First 2θ", float(axis[0]), "°"),
+        ResultMetric("Last 2θ", float(axis[-1]), "°"),
+        ResultMetric(
+            "Median step",
+            step,
+            "°",
+            "Needs to be several times smaller than the peak width for a centre to be located "
+            "to a small fraction of a step.",
+        ),
+        ResultMetric("Radiation", str(radiation.name)),
+        ResultMetric("Wavelength λ", wavelength, "Å"),
+    ]
+    if displacement is not None:
+        metrics.append(ResultMetric("Injected specimen displacement", displacement, "mm"))
+    return ResultStage(
+        key="scan",
+        title="1. The scan as read",
+        summary=(
+            f"{source}: {axis.size} points from {axis[0]:.3f}° to {axis[-1]:.3f}° 2θ in steps "
+            f"of {step:.4f}°, referred to {radiation.name} (λ = {wavelength:.6f} Å)."
+        ),
+        metrics=tuple(metrics),
+        explanation=(
+            "Every spacing below is computed from this wavelength, so the wrong radiation "
+            "scales every cell edge by the ratio of the two wavelengths. The step matters "
+            "because a profile fit can only place a centre to a small fraction of a step "
+            "when there are at least about five points across a peak's full width at half "
+            "maximum."
+        ),
+        status="info",
+    )
+
+
+def _peak_stage_rows(peaks: Any) -> tuple[dict[str, Any], ...]:
+    """One row per fitted peak, in the columns of :data:`_STAGE_PEAK_COLUMNS`."""
+
+    return tuple(
+        {
+            "two_theta_deg": float(peak.two_theta_deg),
+            "sigma_mdeg": 1000.0 * float(peak.two_theta_standard_uncertainty_deg),
+            "height": float(peak.height),
+            "integrated_intensity": float(peak.integrated_intensity),
+            "fwhm_deg": float(peak.fwhm_deg),
+            "eta": float(peak.eta),
+            "reduced_chi_squared": float(peak.reduced_chi_squared),
+            "converged": bool(peak.converged),
+        }
+        for peak in peaks
+    )
+
+
+def _lattice_stages(
+    *,
+    request: Mapping[str, Any],
+    measured: MeasuredPowderPattern,
+    generated: bool,
+    radiation: RadiationSpec,
+    displacement: float,
+    spec: Any,
+    phase: Any,
+    system: str,
+    result: LatticeParameterResult,
+    indexing: PeakIndexing | None,
+    peak_table: Any,
+    passes: tuple[Mapping[str, float | bool], ...],
+) -> tuple[ResultStage, ...]:
+    """Report every step of a lattice-parameter determination as its own stage.
+
+    The stages follow the computation: the scan as read, the peaks detection
+    found, each index-then-determine pass, the final assignment, the least
+    squares, the cell, and a cross-check of the same assignment through the
+    alternative methods. Each carries its own numbers and a note on how to read
+    them, because the step that went wrong is not visible from the cell alone.
+    """
+
+    stages: list[ResultStage] = [
+        _scan_stage(
+            request=request,
+            measured=measured,
+            generated=generated,
+            radiation=radiation,
+            displacement=displacement if generated else None,
+        )
+    ]
+
+    if result.method == "le_bail":
+        systematic = str(request.get("systematic", "none"))
+        units = {"displacement": "mm", "zero": "° 2θ"}.get(systematic)
+        whole_metrics = [
+            ResultMetric("Reflections modelled", int(result.reflection_count)),
+            ResultMetric("Reduced χ²", float(result.reduced_chi_squared)),
+            ResultMetric(
+                "R_wp (background removed)",
+                result.weighted_profile_r,
+                None,
+                "Computed on the background-subtracted profile, so it is systematically higher "
+                "than a Rietveld program's R_wp on the raw scan and must not be compared with it.",
+            ),
+            ResultMetric("Systematic term refined", systematic),
+        ]
+        if units is not None:
+            whole_metrics.append(
+                ResultMetric("Refined systematic value", float(result.drift_coefficient), units)
+            )
+        stages.append(
+            ResultStage(
+                key="whole_pattern",
+                title="2. Whole-pattern decomposition",
+                summary=(
+                    f"The Le Bail fit modelled {result.reflection_count} reflections against "
+                    f"every measured point and converged to a reduced χ² of "
+                    f"{result.reduced_chi_squared:.3f}"
+                    + (
+                        ""
+                        if result.weighted_profile_r is None
+                        else f" with R_wp = {100.0 * result.weighted_profile_r:.2f} %"
+                    )
+                    + "."
+                ),
+                metrics=tuple(whole_metrics),
+                explanation=(
+                    "No individual peak is located. Reflection intensities are extracted "
+                    "iteratively from the observed profile while the cell, peak shapes and the "
+                    "one systematic term are refined, so neither texture nor the atomic basis "
+                    "can bias the cell. The diagnostic is therefore the difference curve in the "
+                    "plot, not a per-reflection residual: structure left in it is structure the "
+                    "model did not describe."
+                ),
+                status="warning" if result.reduced_chi_squared > 3.0 else "ok",
+            )
+        )
+    else:
+        assert indexing is not None
+        assert peak_table is not None
+        peaks = list(peak_table)
+        converged = int(peak_table.converged_count)
+        parameter_count = len(result.free_parameter_names) + (
+            0 if result.extrapolation == "none" else 1
+        )
+        shape = str(peak_table.settings.get("shape", "pseudo_voigt")).replace("_", "-")
+        doublet = bool(peak_table.settings.get("model_doublet", False))
+        sigmas = np.array([1000.0 * peak.two_theta_standard_uncertainty_deg for peak in peaks])
+        widths = np.array([peak.fwhm_deg for peak in peaks])
+        stages.append(
+            ResultStage(
+                key="peaks",
+                title="2. Peak detection and profile fitting",
+                summary=(
+                    f"{len(peaks)} peaks rose above {float(request['prominence_sigma']):g} "
+                    f"robust noise standard deviations of the matched-filter response and were "
+                    f"each fitted with a {shape} profile"
+                    + (" including the Kα₂ partner" if doublet else "")
+                    + f"; {converged} of {len(peaks)} fits converged. The median position "
+                    f"uncertainty is {float(np.median(sigmas)):.2f} m° and the median width "
+                    f"{float(np.median(widths)):.4f}°."
+                ),
+                metrics=(
+                    ResultMetric("Peaks detected", len(peaks)),
+                    ResultMetric("Fits converged", converged),
+                    ResultMetric(
+                        "Detection threshold", float(request["prominence_sigma"]), "σ"
+                    ),
+                    ResultMetric("Expected width", float(request["expected_fwhm_deg"]), "°"),
+                    ResultMetric("Median σ(2θ)", float(np.median(sigmas)), "m°"),
+                    ResultMetric("Median FWHM", float(np.median(widths)), "°"),
+                ),
+                table=ResultTable(
+                    columns=_STAGE_PEAK_COLUMNS,
+                    rows=tuple(
+                        {
+                            "two_theta_deg": float(peak.two_theta_deg),
+                            "sigma_mdeg": 1000.0 * float(peak.two_theta_standard_uncertainty_deg),
+                            "height": float(peak.height),
+                            "integrated_intensity": float(peak.integrated_intensity),
+                            "fwhm_deg": float(peak.fwhm_deg),
+                            "eta": float(peak.eta),
+                            "reduced_chi_squared": float(peak.reduced_chi_squared),
+                            "converged": bool(peak.converged),
+                        }
+                        for peak in peaks
+                    ),
+                    caption="Every peak detection kept, in ascending 2θ.",
+                ),
+                explanation=(
+                    "Detection convolves the variance-stabilized scan with a Ricker filter "
+                    "matched to the expected width and keeps maxima above the threshold. Each "
+                    "survivor is fitted in its own window by a pseudo-Voigt on a linear local "
+                    "background. σ(2θ) is the standard uncertainty of the fitted centre; it "
+                    "becomes that reflection's weight in the least squares, so an imprecise peak "
+                    "counts for little. η is the Lorentzian fraction of the profile. χ²ν near 1 "
+                    "means the profile describes the peak to within counting noise; a value far "
+                    "above 1 flags an overlapped, asymmetric or badly backgrounded peak whose "
+                    "position deserves suspicion. A fit that did not converge is listed but "
+                    "should not be trusted. Too few peaks, or a threshold that admits background "
+                    "ripples, is where a wrong cell starts."
+                ),
+                status=(
+                    "warning"
+                    if converged < len(peaks) or len(peaks) <= parameter_count
+                    else "ok"
+                ),
+            )
+        )
+
+        first = int(passes[0]["indexed_count"]) if passes else indexing.indexed_count
+        final = indexing.indexed_count
+        recovered = final - first
+        stages.append(
+            ResultStage(
+                key="passes",
+                title="3. Index-then-determine passes",
+                summary=(
+                    f"{len(passes)} pass{'es' if len(passes) != 1 else ''} ran. The first "
+                    f"indexed {first} reflections against the tabulated cell of {spec.name}; the "
+                    f"final assignment holds {final}. "
+                    + (
+                        f"Re-indexing against the determined cell recovered {recovered} "
+                        "reflections the starting cell had misplaced beyond the tolerance — "
+                        "typically the high-angle ones that carry most of the precision."
+                        if recovered > 0
+                        else "Re-indexing found nothing the first pass had missed, so the "
+                        "starting cell was already close enough to the specimen's."
+                    )
+                ),
+                metrics=(
+                    ResultMetric("Indexing tolerance", float(request["tolerance_deg"]), "°"),
+                    ResultMetric("Largest Miller index", int(request["max_index"])),
+                    ResultMetric("Reflections recovered by re-indexing", recovered),
+                ),
+                table=ResultTable(
+                    columns=_STAGE_PASS_COLUMNS,
+                    rows=tuple(
+                        {
+                            "pass": int(item["pass"]),
+                            "a_angstrom": float(item["a_angstrom"]),
+                            "indexed_count": int(item["indexed_count"]),
+                            "unindexed_count": int(item["unindexed_count"]),
+                            "figure_of_merit_m": float(item["figure_of_merit_m"]),
+                            "mean_delta_mdeg": 1000.0
+                            * float(item["mean_absolute_delta_two_theta_deg"]),
+                            "outcome": (
+                                "taken" if item["accepted"] else "not taken: indexed no more"
+                            ),
+                        }
+                        for item in passes
+                    ),
+                ),
+                explanation=(
+                    "A starting cell wrong by a fraction e misplaces a reflection by "
+                    "Δ(2θ) = 2e·tanθ, which grows without bound towards back-reflection, so the "
+                    "first pass can silently drop exactly the high-angle lines that matter most. "
+                    "Each later pass indexes against the cell the previous one determined, and "
+                    "the loop stops at the first pass that indexes no more reflections than the "
+                    "one before it. M is de Wolff's figure of merit of each pass's assignment."
+                ),
+            )
+        )
+
+        merit_m, count_m = indexing.figure_of_merit_m()
+        merit_f, count_f = indexing.figure_of_merit_f()
+        unindexed = [float(peak.two_theta_deg) for peak in indexing.unindexed_peaks]
+        residuals = indexing.delta_two_theta_deg
+        same_sign = residuals.size >= 3 and bool(
+            np.all(residuals > 0.0) or np.all(residuals < 0.0)
+        )
+        assignment_summary = (
+            f"{indexing.indexed_count} of {indexing.indexed_count + len(unindexed)} measured "
+            f"peaks were assigned one-to-one to reflections of {spec.name} within "
+            f"±{indexing.tolerance_deg:.3f}°. de Wolff M_{count_m} = {merit_m:.1f} and "
+            f"Smith–Snyder F_{count_f} = {merit_f:.1f}, with a mean |Δ2θ| of "
+            f"{1000.0 * indexing.mean_absolute_delta_two_theta_deg:.1f} m°."
+        )
+        if same_sign:
+            assignment_summary += (
+                " Every Δ2θ has the same sign: the signature of an uncorrected zero or "
+                "displacement error, which the next stage refines rather than of a wrong cell."
+            )
+        if unindexed:
+            assignment_summary += (
+                f" {len(unindexed)} peak{'s' if len(unindexed) != 1 else ''} at "
+                + ", ".join(f"{value:.3f}°" for value in unindexed)
+                + " stayed unindexed; a strong one belongs to something the phase does not "
+                "describe — a second phase, a Kβ or tungsten line, or the sample holder."
+            )
+        if indexing.unobserved_indices:
+            assignment_summary += (
+                f" {len(indexing.unobserved_indices)} calculated reflections above the intensity "
+                "threshold were not observed."
+            )
+        stages.append(
+            ResultStage(
+                key="assignment",
+                title="4. Reflection assignment",
+                summary=assignment_summary,
+                metrics=(
+                    ResultMetric("Indexed fraction", 100.0 * indexing.indexed_fraction, "%"),
+                    ResultMetric(
+                        f"de Wolff M_{count_m}",
+                        float(merit_m),
+                        None,
+                        "Above 10 is a plausible cell, above 20 a convincing one.",
+                    ),
+                    ResultMetric(f"Smith–Snyder F_{count_f}", float(merit_f)),
+                    ResultMetric("Unindexed peaks", len(unindexed)),
+                    ResultMetric("Unobserved strong lines", len(indexing.unobserved_indices)),
+                ),
+                table=ResultTable(
+                    columns=_STAGE_ASSIGNMENT_COLUMNS,
+                    rows=tuple(
+                        {
+                            "hkl_label": _powder_label(item.miller_indices, spec=spec),
+                            "two_theta_observed_deg": float(item.peak.two_theta_deg),
+                            "sigma_mdeg": 1000.0
+                            * float(item.peak.two_theta_standard_uncertainty_deg),
+                            "two_theta_calculated_deg": float(item.two_theta_calculated_deg),
+                            "delta_mdeg": 1000.0 * float(item.delta_two_theta_deg),
+                            "d_observed_angstrom": float(item.d_observed_angstrom),
+                            "d_calculated_angstrom": float(item.d_calculated_angstrom),
+                            "multiplicity": int(item.multiplicity),
+                            "relative_intensity": float(item.relative_intensity_calculated),
+                        }
+                        for item in indexing.reflections
+                    ),
+                    caption="The final assignment, one row per indexed peak.",
+                ),
+                explanation=(
+                    "Δ2θ is observed minus calculated against the cell of the final pass, before "
+                    "any systematic correction, so a smooth trend with angle is expected when a "
+                    "zero or displacement error is present — the least squares removes it. What "
+                    "must not appear is a single reflection far off that trend: that is a "
+                    "misassignment. M and F both penalize a cell that fits only because it "
+                    "predicts many lines. Multiplicity counts the symmetry-equivalent planes in "
+                    "the line; I calculated ranks lines and is never used to fit the cell."
+                ),
+                status="warning" if (merit_m < 10.0 or unindexed) else "ok",
+            )
+        )
+
+        floor_value = float(request["minimum_two_theta_deg"])
+        dropped = indexing.indexed_count - result.reflection_count
+        if result.method == "average":
+            ls_summary = (
+                f"The lattice parameter was computed separately from each of "
+                f"{result.reflection_count} reflections and averaged. No systematic term can be "
+                "refined this way, so any θ-dependent error is inside the mean."
+            )
+            ls_metrics: tuple[ResultMetric, ...] = (
+                ResultMetric("Method", _METHOD_LABELS[result.method]),
+                ResultMetric("Reflections", int(result.reflection_count)),
+                ResultMetric("Reduced χ²", float(result.reduced_chi_squared)),
+            )
+            ls_table = None
+            strongest = 0.0
+        else:
+            names = result.correlation_parameter_names
+            degrees = result.reflection_count - len(names)
+            significance = (
+                abs(result.drift_coefficient) / result.drift_standard_uncertainty
+                if result.drift_standard_uncertainty > 0.0
+                else float("nan")
+            )
+            shifts = 1000.0 * np.abs(result.systematic_shift_deg)
+            largest_shift = float(np.max(shifts)) if shifts.size else 0.0
+            matrix = result.parameter_correlation
+            strongest = 0.0
+            if matrix is not None and matrix.shape[0] > 1:
+                off = np.abs(matrix - np.eye(matrix.shape[0]))
+                strongest = float(np.max(off))
+            drift_text = (
+                "No systematic-error term was refined, so any zero, displacement or transparency "
+                "error is inside the cell."
+                if result.extrapolation == "none"
+                else (
+                    f"The {_EXTRAPOLATION_LABELS[result.extrapolation]} term refined to "
+                    f"D = {result.drift_coefficient:.3e} ± "
+                    f"{result.drift_standard_uncertainty:.1e} ({significance:.1f} σ), moving "
+                    f"reflections by up to {largest_shift:.1f} m°."
+                )
+            )
+            ls_summary = (
+                f"Weighted least squares in sin²θ solved for {len(names)} parameter"
+                f"{'s' if len(names) != 1 else ''} ({', '.join(names)}) from "
+                f"{result.reflection_count} reflections, leaving {degrees} degree"
+                f"{'s' if degrees != 1 else ''} of freedom. {drift_text} The reduced χ² is "
+                f"{result.reduced_chi_squared:.3f}"
+                + (
+                    f", and the strongest correlation between two refined parameters is "
+                    f"{strongest:.3f}."
+                    if matrix is not None and matrix.shape[0] > 1
+                    else "."
+                )
+            )
+            ls_metrics = (
+                ResultMetric("Method", _METHOD_LABELS[result.method]),
+                ResultMetric("Extrapolation function", result.extrapolation),
+                ResultMetric("Refined parameters", ", ".join(names)),
+                ResultMetric("Observations", int(result.reflection_count)),
+                ResultMetric("Degrees of freedom", int(degrees)),
+                ResultMetric("Drift coefficient D", float(result.drift_coefficient)),
+                ResultMetric("σ(D)", float(result.drift_standard_uncertainty)),
+                ResultMetric(
+                    "|D| / σ(D)",
+                    significance,
+                    None,
+                    "Above about 2, the systematic term is significantly different from zero.",
+                ),
+                ResultMetric("Largest systematic shift", largest_shift, "m°"),
+                ResultMetric(
+                    "Reduced χ²",
+                    float(result.reduced_chi_squared),
+                    None,
+                    "About 1: residuals match the position uncertainties. Much larger: an "
+                    "unmodelled error or a misassignment. Much smaller: overstated uncertainties.",
+                ),
+                ResultMetric("Angular floor", floor_value, "°"),
+                ResultMetric("Reflections discarded by the floor", int(dropped)),
+            )
+            ls_table = None
+            if matrix is not None:
+                keys = [f"p{index}" for index in range(len(names))]
+                ls_table = ResultTable(
+                    columns=(
+                        Column("parameter", "Parameter"),
+                        *(
+                            Column(key, name, numeric=True, digits=3)
+                            for key, name in zip(keys, names, strict=True)
+                        ),
+                    ),
+                    rows=tuple(
+                        {
+                            "parameter": name,
+                            **{
+                                key: float(matrix[row, column])
+                                for column, key in enumerate(keys)
+                            },
+                        }
+                        for row, name in enumerate(names)
+                    ),
+                    caption="Correlation matrix of the refined parameters (−1 to +1).",
+                )
+        stages.append(
+            ResultStage(
+                key="least_squares",
+                title="5. Least-squares determination",
+                summary=ls_summary,
+                metrics=ls_metrics,
+                table=ls_table,
+                explanation=(
+                    "Bragg's law is linear in the reciprocal metric tensor G*: "
+                    "sin²θ = (λ²/4)·hᵀG*h. Each reflection gives one linear equation in the "
+                    "components the crystal system leaves free, and one more column, "
+                    "D·sin²θ·f(θ), carries the systematic error through the extrapolation "
+                    "function f, which vanishes at θ = 90°. Equations are weighted by "
+                    "1/σ(sin²θ), propagated from each peak's σ(2θ), so the precise high-angle "
+                    "reflections dominate. The covariance is the inverse normal matrix scaled by "
+                    "the reduced χ². A correlation beyond about ±0.95 between a cell parameter "
+                    "and D means the scan's angular range barely separates a change of cell from "
+                    "the systematic error, which is why that cell parameter's uncertainty is "
+                    "larger than the scatter alone would suggest."
+                ),
+                status=(
+                    "warning"
+                    if result.reduced_chi_squared > 3.0 or strongest > 0.98
+                    else "ok"
+                ),
+            )
+        )
+
+    strain = result.strain_relative_to_reference
+    cell_metrics = [
+        ResultMetric("a", float(result.a), "Å"),
+        ResultMetric("σ(a)", float(result.a_standard_uncertainty), "Å"),
+    ]
+    if system != "cubic":
+        cell_metrics += [
+            ResultMetric("c", float(result.c), "Å"),
+            ResultMetric("σ(c)", float(result.c_standard_uncertainty), "Å"),
+            ResultMetric("c/a", float(result.axial_ratio)),
+        ]
+    if system in {"orthorhombic", "monoclinic", "triclinic"}:
+        cell_metrics += [
+            ResultMetric("b", float(result.b), "Å"),
+            ResultMetric("σ(b)", float(result.b_standard_uncertainty), "Å"),
+        ]
+    if system in {"monoclinic", "triclinic"}:
+        cell_metrics += [
+            ResultMetric("α", float(result.alpha_deg), "°"),
+            ResultMetric("β", float(result.beta_deg), "°"),
+            ResultMetric("γ", float(result.gamma_deg), "°"),
+        ]
+    cell_metrics.append(
+        ResultMetric(
+            "Relative uncertainty σ(a)/a",
+            float(result.relative_uncertainty),
+            None,
+            "About 1e-5 is strain-grade; 1e-4 composition-grade; 1e-3 identification-grade.",
+        )
+    )
+    if result.reference_lattice is not None:
+        cell_metrics.append(
+            ResultMetric(
+                "Reference a of the selected phase", float(result.reference_lattice.a), "Å"
+            )
+        )
+    if strain is not None:
+        cell_metrics.append(ResultMetric("Lattice strain along a", float(strain)))
+    grade = (
+        "strain-grade (about 1e-5)"
+        if result.relative_uncertainty < 5.0e-5
+        else (
+            "composition-grade (about 1e-4)"
+            if result.relative_uncertainty < 5.0e-4
+            else "identification-grade (about 1e-3)"
+        )
+    )
+    number = len(stages) + 1
+    stages.append(
+        ResultStage(
+            key="cell",
+            title=f"{number}. The determined cell",
+            summary=(
+                f"a = {result.a:.6f} ± {result.a_standard_uncertainty:.6f} Å for the {system} "
+                f"cell, a relative uncertainty of {result.relative_uncertainty:.1e}, which is "
+                f"{grade}."
+                + ("" if strain is None else f" Against the selected phase that is a strain of "
+                   f"{strain:+.3e} along a.")
+            ),
+            metrics=tuple(cell_metrics),
+            explanation=(
+                "The standard uncertainty is one standard deviation propagated from the fit "
+                "covariance through the reciprocal-to-direct cell inversion. It is the precision "
+                "of this determination on this scan, not the accuracy of the instrument: "
+                "calibrate against a certified standard such as NIST SRM 640 silicon or SRM 660 "
+                "lanthanum hexaboride before quoting an absolute value. The strain is "
+                "(a − a_ref)/a_ref against the phase you selected, along the scattering vector "
+                "of a symmetric scan — normal to the surface — and is not a stress."
+            ),
+        )
+    )
+
+    if indexing is not None and result.method != "le_bail":
+        floor_arg = float(request["minimum_two_theta_deg"]) or None
+        alternatives: list[tuple[str, LatticeParameterResult]] = []
+        attempts: list[tuple[str, str, str]] = [
+            ("Cohen, no systematic term", "cohen", "none"),
+            ("Cohen, Nelson–Riley term", "cohen", "nelson_riley"),
+        ]
+        if system == "cubic":
+            attempts.append(("Average over reflections", "average", "none"))
+        for label, alt_method, alt_extrapolation in attempts:
+            if alt_method == result.method and alt_extrapolation == result.extrapolation:
+                continue
+            try:
+                alternatives.append(
+                    (
+                        label,
+                        determine_lattice_parameters(
+                            indexing,
+                            phase,
+                            method=cast(Any, alt_method),
+                            extrapolation=cast(Any, alt_extrapolation),
+                            minimum_two_theta_deg=floor_arg,
+                        ),
+                    )
+                )
+            except ValueError:
+                continue
+        if alternatives:
+            reported = float(result.a)
+            rows_cross: list[dict[str, Any]] = [
+                {
+                    "method": f"Reported: {_METHOD_LABELS[result.method]}, {result.extrapolation}",
+                    "a_angstrom": reported,
+                    "sigma_angstrom": float(result.a_standard_uncertainty),
+                    "difference_ppm": 0.0,
+                    "reduced_chi_squared": float(result.reduced_chi_squared),
+                }
+            ]
+            rows_cross += [
+                {
+                    "method": label,
+                    "a_angstrom": float(item.a),
+                    "sigma_angstrom": float(item.a_standard_uncertainty),
+                    "difference_ppm": 1.0e6 * (float(item.a) - reported) / reported,
+                    "reduced_chi_squared": float(item.reduced_chi_squared),
+                }
+                for label, item in alternatives
+            ]
+            widest = max(abs(float(row["difference_ppm"])) for row in rows_cross)
+            stages.append(
+                ResultStage(
+                    key="cross_check",
+                    title=f"{number + 1}. Cross-check against the other methods",
+                    summary=(
+                        f"The same {indexing.indexed_count} assigned reflections through "
+                        f"{len(alternatives)} alternative method"
+                        f"{'s' if len(alternatives) != 1 else ''} give values of a up to "
+                        f"{widest:.0f} ppm from the reported one."
+                    ),
+                    metrics=(ResultMetric("Largest difference", widest, "ppm"),),
+                    table=ResultTable(columns=_STAGE_CROSS_CHECK_COLUMNS, rows=tuple(rows_cross)),
+                    explanation=(
+                        "These alternatives reuse this run's peaks and assignment, so every "
+                        "difference is due to the method alone. A large gap between the fits "
+                        "with and without a systematic term says the term did real work; a gap "
+                        "within a few σ(a) says the specimen was well aligned. The average is "
+                        "shown for a cubic cell as a teaching comparison: it cannot remove a "
+                        "θ-dependent error, so its disagreement grows with the aberration. "
+                        "Prefer the method whose χ²ν is closest to 1."
+                    ),
+                    status="info",
+                )
+            )
+    return tuple(stages)
 
 
 # ---------------------------------------------------------------------------
@@ -2969,4 +3728,405 @@ def _phase_identification(request: dict[str, Any]) -> dict[str, Any]:
             _CITATION_DOLLASE_MARCH,
             _CITATION_CULLITY_CH14,
         ),
+        stages=_identification_stages(
+            request=request,
+            measured=measured,
+            generated=generated,
+            radiation=radiation,
+            spec=spec,
+            identification=identification,
+            table=table,
+        ),
     ).to_json()
+
+
+_CRITERION_LABELS = {
+    "explained_intensity_fraction": "Intensity explained",
+    "completeness": "Lines seen",
+    "position_score": "Position",
+    "intensity_agreement": "Intensity agreement",
+}
+
+_STAGE_CELL_SEARCH_COLUMNS = (
+    Column("phase_name", "Candidate"),
+    Column(
+        "cell_dilation_percent",
+        "Cell dilation",
+        units="%",
+        numeric=True,
+        digits=3,
+        help_text="Uniform scale applied to the candidate's cell before matching, minus one.",
+    ),
+    Column(
+        "at_edge",
+        "At the search limit",
+        help_text="A dilation at the limit means the candidate had to be stretched to fit.",
+    ),
+    Column("indexed", "Peaks indexed"),
+)
+
+_STAGE_MATCH_COLUMNS = (
+    Column("hkl_label", "Reflection"),
+    Column("two_theta_observed_deg", "2θ observed", units="°", numeric=True, digits=4),
+    Column("two_theta_calculated_deg", "2θ calculated", units="°", numeric=True, digits=4),
+    Column("delta_mdeg", "Δ2θ", units="m°", numeric=True, digits=1),
+    Column(
+        "intensity_observed",
+        "I observed",
+        numeric=True,
+        digits=3,
+        help_text="Integrated intensity relative to the strongest indexed peak.",
+    ),
+    Column(
+        "intensity_calculated",
+        "I calculated",
+        numeric=True,
+        digits=3,
+        help_text="Calculated relative intensity of the reflection.",
+    ),
+)
+
+_STAGE_SCORE_COLUMNS = (
+    Column("rank", "Rank", numeric=True),
+    Column("phase_name", "Candidate"),
+    *(
+        Column(
+            f"from_{name}",
+            f"From {label.lower()}",
+            numeric=True,
+            digits=3,
+            help_text=(
+                "This criterion's weighted contribution to the score: weight × value, divided by "
+                "the total weight of the criteria defined for this candidate."
+            ),
+        )
+        for name, label in _CRITERION_LABELS.items()
+    ),
+    Column("score", "Score", numeric=True, digits=3),
+)
+
+
+def _identification_stages(
+    *,
+    request: Mapping[str, Any],
+    measured: MeasuredPowderPattern,
+    generated: bool,
+    radiation: RadiationSpec,
+    spec: Any,
+    identification: Any,
+    table: Any,
+) -> tuple[ResultStage, ...]:
+    """Report every step of a phase identification as its own stage.
+
+    Detection, the per-candidate cell search, the assignment of the leading
+    candidates, the criterion-by-criterion scores, and the decision against its
+    thresholds. The ranking alone cannot say whether a candidate lost on its
+    cell, its centring or its intensities; the stages can.
+    """
+
+    stages: list[ResultStage] = [
+        _scan_stage(
+            request=request,
+            measured=measured,
+            generated=generated,
+            radiation=radiation,
+            displacement=None,
+        )
+    ]
+    peaks = list(table)
+    prominence = float(request["prominence_sigma"])
+    floor = float(request["minimum_two_theta_deg"])
+    stages.append(
+        ResultStage(
+            key="peaks",
+            title="2. Peak detection and profile fitting",
+            summary=(
+                f"{len(peaks)} converged peak fits were kept above {prominence:g} robust noise "
+                "standard deviations"
+                + (f" and above {floor:.2f}° 2θ" if floor > 0.0 else "")
+                + ". Every candidate is judged against this one list, so a missed or spurious "
+                "peak affects all of them alike."
+            ),
+            metrics=(
+                ResultMetric("Peaks kept", len(peaks)),
+                ResultMetric("Detection threshold", prominence, "σ"),
+                ResultMetric("Angular floor", floor, "°"),
+                ResultMetric(
+                    "Total integrated intensity",
+                    float(np.sum(table.integrated_intensity)) if peaks else 0.0,
+                ),
+            ),
+            table=ResultTable(
+                columns=_STAGE_PEAK_COLUMNS,
+                rows=_peak_stage_rows(peaks),
+                caption="The measured lines every candidate is scored against.",
+            ),
+            explanation=(
+                "Peaks are found by a width-matched Ricker filter on the variance-stabilized "
+                "scan and each is fitted with a pseudo-Voigt on a linear local background; only "
+                "converged fits are kept. The integrated intensity of each peak is what the "
+                "'intensity explained' criterion sums, so a background ripple promoted to a peak "
+                "lowers every candidate's score, and a weak line lost below the threshold can "
+                "hide a second phase."
+            ),
+            status="warning" if len(peaks) < 3 else "ok",
+        )
+    )
+
+    candidates = list(identification.candidates)
+    search = float(request["cell_scale_range"])
+    cell_rows = []
+    at_edge_count = 0
+    for candidate in candidates:
+        dilation = float(candidate.cell_scale) - 1.0
+        at_edge = search > 0.0 and abs(dilation) >= 0.98 * search
+        if at_edge and candidate.indexing is not None:
+            at_edge_count += 1
+        unindexed = 0 if candidate.indexing is None else len(candidate.indexing.unindexed_peaks)
+        cell_rows.append(
+            {
+                "phase_name": candidate.phase_name,
+                "cell_dilation_percent": 100.0 * dilation,
+                "at_edge": "yes" if at_edge else "no",
+                "indexed": (
+                    candidate.rejection
+                    if candidate.indexing is None
+                    else f"{candidate.indexed_count} of {candidate.indexed_count + unindexed}"
+                ),
+            }
+        )
+    stages.append(
+        ResultStage(
+            key="cell_search",
+            title="3. Cell dilation search",
+            summary=(
+                (
+                    f"Each candidate's cell was scaled uniformly within ±{100.0 * search:.2f} % "
+                    "to place its lines best before matching."
+                    if search > 0.0
+                    else "No cell dilation was searched: every candidate was matched at its "
+                    "tabulated cell."
+                )
+                + (
+                    f" {at_edge_count} indexed candidate"
+                    f"{'s' if at_edge_count != 1 else ''} reached the limit of the search."
+                    if at_edge_count
+                    else ""
+                )
+            ),
+            metrics=(ResultMetric("Search half-range", 100.0 * search, "%"),),
+            table=ResultTable(columns=_STAGE_CELL_SEARCH_COLUMNS, rows=tuple(cell_rows)),
+            explanation=(
+                "A tabulated cell belongs to someone else's specimen; a real solid solution, "
+                "temperature or residual stress shifts it by a fraction of a per cent, which "
+                "displaces back-reflection lines by more than any sensible tolerance. The search "
+                "tries a grid of uniform scales and keeps the one minimizing the total "
+                "tolerance-clipped distance from each measured peak to its nearest calculated "
+                "line. A uniform scale preserves every ratio of d spacings, so it cannot make a "
+                "wrong structure fit; a dilation at the limit of the range, however, means the "
+                "candidate was stretched as far as allowed and should be read with suspicion."
+            ),
+            status="warning" if at_edge_count else "ok",
+        )
+    )
+
+    def match_stage(key: str, title: str, candidate: Any) -> ResultStage:
+        indexing = candidate.indexing
+        reflections = list(indexing.reflections)
+        strongest = max(
+            (float(item.peak.integrated_intensity) for item in reflections), default=0.0
+        )
+        unindexed = [float(peak.two_theta_deg) for peak in indexing.unindexed_peaks]
+        merit_m, count_m = indexing.figure_of_merit_m()
+        summary = (
+            f"{candidate.phase_name} indexed {indexing.indexed_count} of "
+            f"{indexing.indexed_count + len(unindexed)} peaks within "
+            f"±{indexing.tolerance_deg:.3f}°, with a mean |Δ2θ| of "
+            f"{1000.0 * indexing.mean_absolute_delta_two_theta_deg:.1f} m° and de Wolff "
+            f"M_{count_m} = {merit_m:.1f}."
+        )
+        if unindexed:
+            summary += (
+                " Unindexed: " + ", ".join(f"{value:.3f}°" for value in unindexed) + "."
+            )
+        if candidate.strongest_unobserved_relative_intensity > 0.0:
+            summary += (
+                f" The strongest predicted line that was not observed has "
+                f"{100.0 * candidate.strongest_unobserved_relative_intensity:.0f} % relative "
+                "intensity."
+            )
+        return ResultStage(
+            key=key,
+            title=title,
+            summary=summary,
+            metrics=(
+                ResultMetric("Peaks indexed", int(indexing.indexed_count)),
+                ResultMetric("Peaks unindexed", len(unindexed)),
+                ResultMetric(
+                    "Strongest unexplained peak",
+                    100.0 * float(candidate.strongest_unexplained_fraction),
+                    "% of strongest",
+                    "Near 100 % means the most prominent feature of the scan is unexplained.",
+                ),
+                ResultMetric(
+                    "Strongest unobserved line",
+                    100.0 * float(candidate.strongest_unobserved_relative_intensity),
+                    "% relative",
+                    "A strong predicted line that is absent argues against the candidate.",
+                ),
+                ResultMetric(f"de Wolff M_{count_m}", float(merit_m)),
+            ),
+            table=ResultTable(
+                columns=_STAGE_MATCH_COLUMNS,
+                rows=tuple(
+                    {
+                        "hkl_label": _powder_label(item.miller_indices, spec=spec),
+                        "two_theta_observed_deg": float(item.peak.two_theta_deg),
+                        "two_theta_calculated_deg": float(item.two_theta_calculated_deg),
+                        "delta_mdeg": 1000.0 * float(item.delta_two_theta_deg),
+                        "intensity_observed": (
+                            float(item.peak.integrated_intensity) / strongest
+                            if strongest > 0.0
+                            else 0.0
+                        ),
+                        "intensity_calculated": float(item.relative_intensity_calculated),
+                    }
+                    for item in reflections
+                ),
+                caption=f"How {candidate.phase_name}'s dilated cell accounts for the peaks.",
+            ),
+            explanation=(
+                "Peaks are assigned one-to-one to calculated reflections within the tolerance, "
+                "after the cell dilation of the previous stage. Δ2θ that scatters about zero is "
+                "a good match; a trend with angle means the cell or a zero error is still off. "
+                "Compare the two intensity columns row by row: preferred orientation moves "
+                "intensities without moving positions, so disagreement there is weaker evidence "
+                "than a missing strong line."
+            ),
+            status="warning" if unindexed else "ok",
+        )
+
+    indexed = [candidate for candidate in candidates if candidate.indexing is not None]
+    if indexed:
+        stages.append(
+            match_stage("best_match", "4. Assignment of the leading candidate", indexed[0])
+        )
+    if len(indexed) > 1:
+        stages.append(match_stage("runner_up_match", "5. Assignment of the runner-up", indexed[1]))
+
+    weights = dict(candidates[0].weights) if candidates else {}
+    score_rows = []
+    for position, candidate in enumerate(candidates, start=1):
+        criteria = dict(candidate.criteria)
+        defined = {
+            name: value for name, value in criteria.items() if np.isfinite(value)
+        }
+        total_weight = sum(float(candidate.weights[name]) for name in defined)
+        row: dict[str, Any] = {"rank": position, "phase_name": candidate.phase_name}
+        for name in _CRITERION_LABELS:
+            if candidate.indexing is None or name not in defined or total_weight <= 0.0:
+                row[f"from_{name}"] = None
+            else:
+                row[f"from_{name}"] = (
+                    float(candidate.weights[name]) * float(defined[name]) / total_weight
+                )
+        row["score"] = float(candidate.score)
+        score_rows.append(row)
+    number = len(stages) + 1
+    weighting = str(request.get("weighting", "standard"))
+    best = identification.best
+    stages.append(
+        ResultStage(
+            key="scoring",
+            title=f"{number}. Criterion scores",
+            summary=(
+                f"Scores combine four criteria with the '{weighting}' weighting ("
+                + ", ".join(
+                    f"{_CRITERION_LABELS[name].lower()} {100.0 * float(value):.0f} %"
+                    for name, value in weights.items()
+                )
+                + f"). {best.phase_name} leads at {best.score:.3f}."
+            ),
+            metrics=tuple(
+                ResultMetric(f"Weight: {_CRITERION_LABELS[name]}", float(value))
+                for name, value in weights.items()
+            ),
+            table=ResultTable(
+                columns=_STAGE_SCORE_COLUMNS,
+                rows=tuple(score_rows),
+                caption=(
+                    "Each criterion's weighted contribution; the contributions sum to the score."
+                ),
+            ),
+            explanation=(
+                "Intensity explained is the share of the measured integrated intensity carried "
+                "by the peaks the candidate indexed. Lines seen is the share of the candidate's "
+                "own strong reflections inside the scan that were observed — the criterion that "
+                "separates two cells differing only by a centring. Position is "
+                "1 − mean|Δ2θ| / tolerance. Intensity agreement is one minus the Bray–Curtis "
+                "dissimilarity of observed and calculated relative intensities. A criterion that "
+                "cannot be measured for a candidate — intensity agreement with fewer than two "
+                "indexed lines — is left out and the remaining weights renormalized, rather than "
+                "counted as a failure. Read which column a losing candidate falls short in: "
+                "position points to the wrong cell size, lines seen to the wrong centring or "
+                "basis, intensity explained to a phase that is missing from the list."
+            ),
+        )
+    )
+
+    runner = identification.runner_up
+    stages.append(
+        ResultStage(
+            key="decision",
+            title=f"{number + 1}. Decision",
+            summary=(
+                f"The best score {best.score:.3f} "
+                + (
+                    "reaches"
+                    if identification.is_conclusive
+                    else "falls short of"
+                )
+                + f" the {identification.minimum_score:.2f} threshold"
+                + (
+                    ""
+                    if runner is None
+                    else f", and leads {runner.phase_name} by {identification.margin:.3f} "
+                    f"against a required margin of {identification.decisive_margin:.3f}"
+                )
+                + ". The identification is "
+                + (
+                    "conclusive and decisive."
+                    if identification.is_conclusive and identification.is_decisive
+                    else "conclusive but not decisive."
+                    if identification.is_conclusive
+                    else "not conclusive."
+                )
+            ),
+            metrics=(
+                ResultMetric("Best score", float(best.score)),
+                ResultMetric("Minimum score", float(identification.minimum_score)),
+                ResultMetric(
+                    "Runner-up score", None if runner is None else float(runner.score)
+                ),
+                ResultMetric("Margin", float(identification.margin)),
+                ResultMetric("Required margin", float(identification.decisive_margin)),
+                ResultMetric("Conclusive", bool(identification.is_conclusive)),
+                ResultMetric("Decisive", bool(identification.is_decisive)),
+            ),
+            explanation=(
+                "Conclusive means the best candidate explains the pattern well enough to be "
+                "believed at all; decisive means, in addition, that no other candidate comes "
+                "within the margin. A conclusive but indecisive result says the scan cannot "
+                "separate the two leaders — extend the angular range, count longer, or add a "
+                "technique that can. With a single candidate this is a check of that phase, not "
+                "an identification, and a low best score is as likely to mean the right "
+                "structure is missing from the list as that the scan is poor."
+            ),
+            status=(
+                "ok"
+                if identification.is_conclusive and identification.is_decisive
+                else "warning"
+            ),
+        )
+    )
+    return tuple(stages)

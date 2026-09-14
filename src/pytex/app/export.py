@@ -147,12 +147,46 @@ def result_to_xlsx(result: Mapping[str, Any]) -> bytes:
             [f"Input: {key}", value if isinstance(value, str | int | float) else json.dumps(value)]
         )
 
-    return write_xlsx(
-        {
-            "Data": {"headers": headers, "rows": rows},
-            "Provenance": {"headers": ["Field", "Value"], "rows": provenance},
-        }
-    )
+    sheets: dict[str, Mapping[str, Any]] = {
+        "Data": {"headers": headers, "rows": rows},
+        "Provenance": {"headers": ["Field", "Value"], "rows": provenance},
+    }
+    # Every intermediate stage is written too: one sheet of stage metrics, and
+    # one sheet per stage table. A workbook holding only the final table would
+    # drop exactly the evidence the stages exist to make reviewable.
+    stages = list(result.get("stages") or ())
+    if stages:
+        metric_rows: list[list[Any]] = []
+        for stage in stages:
+            metric_rows.append([stage.get("title", ""), "Summary", stage.get("summary", ""), ""])
+            for metric in stage.get("metrics") or ():
+                metric_rows.append(
+                    [
+                        stage.get("title", ""),
+                        metric.get("label", ""),
+                        _cell(metric.get("value")),
+                        metric.get("units", ""),
+                    ]
+                )
+        sheets["Stages"] = {"headers": ["Stage", "Quantity", "Value", "Units"], "rows": metric_rows}
+        for number, stage in enumerate(stages, start=1):
+            stage_table = stage.get("table") or {}
+            stage_columns = stage_table.get("columns") or []
+            if not stage_columns:
+                continue
+            sheets[f"Stage {number} {stage.get('key', '')}"] = {
+                "headers": [
+                    f"{column['label']} ({column['units']})"
+                    if column.get("units")
+                    else column["label"]
+                    for column in stage_columns
+                ],
+                "rows": [
+                    [_cell(row.get(column["key"])) for column in stage_columns]
+                    for row in stage_table.get("rows") or ()
+                ],
+            }
+    return write_xlsx(sheets)
 
 
 def result_to_markdown(result: Mapping[str, Any]) -> bytes:
@@ -205,6 +239,52 @@ def result_to_markdown(result: Mapping[str, Any]) -> bytes:
                 "| " + " | ".join(_markdown_cell(row.get(column["key"])) for column in columns) + " |"
             )
         lines.append("")
+
+    stages = list(result.get("stages") or ())
+    if stages:
+        lines += ["## How the result was reached", ""]
+        for stage in stages:
+            lines += [f"### {stage.get('title', '')}", ""]
+            stage_summary = str(stage.get("summary") or "").strip()
+            if stage_summary:
+                lines += [stage_summary, ""]
+            metrics = list(stage.get("metrics") or ())
+            if metrics:
+                lines += ["| Quantity | Value | Units |", "| --- | --- | --- |"]
+                for metric in metrics:
+                    lines.append(
+                        f"| {_markdown_cell(metric.get('label'))} | "
+                        f"{_markdown_cell(metric.get('value'))} | "
+                        f"{_markdown_cell(metric.get('units'))} |"
+                    )
+                lines.append("")
+            stage_table = stage.get("table") or {}
+            stage_columns = stage_table.get("columns") or []
+            stage_rows = stage_table.get("rows") or []
+            if stage_columns and stage_rows:
+                stage_caption = str(stage_table.get("caption") or "").strip()
+                if stage_caption:
+                    lines += [stage_caption, ""]
+                stage_headers = [
+                    f"{column['label']} / {column['units']}"
+                    if column.get("units")
+                    else column["label"]
+                    for column in stage_columns
+                ]
+                lines.append("| " + " | ".join(stage_headers) + " |")
+                lines.append("| " + " | ".join("---" for _ in stage_headers) + " |")
+                for row in stage_rows:
+                    lines.append(
+                        "| "
+                        + " | ".join(
+                            _markdown_cell(row.get(column["key"])) for column in stage_columns
+                        )
+                        + " |"
+                    )
+                lines.append("")
+            explanation = str(stage.get("explanation") or "").strip()
+            if explanation:
+                lines += [f"*How to read this stage.* {explanation}", ""]
 
     inputs = result.get("inputs") or {}
     if inputs:

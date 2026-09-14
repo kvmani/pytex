@@ -4590,3 +4590,91 @@ dl.detail dd {
     display: none;
   }
 }
+
+/* Intermediate stages behind a result (core/result.js stagesCard). */
+.stages__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stage {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.stage__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.stage__status {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.stage--warning > .stage__summary .stage__status {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.stage--info > .stage__summary .stage__status {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.stage__body {
+  padding: 0 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stage__text {
+  margin: 0;
+  line-height: 1.55;
+  max-width: 76ch;
+}
+
+.stage__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.stage__metrics dt {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.stage__metrics dd {
+  margin: 0 0 0.35rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.stage__table .table-wrap {
+  max-height: 20rem;
+}
+
+.stage__explanation {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}

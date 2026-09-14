@@ -18,7 +18,21 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-__all__ = ["APP_RESULT_SCHEMA", "AppResult", "Column", "ResultTable"]
+__all__ = [
+    "APP_RESULT_SCHEMA",
+    "STAGE_STATUSES",
+    "AppResult",
+    "Column",
+    "ResultMetric",
+    "ResultStage",
+    "ResultTable",
+]
+
+#: How a stage judged its own outcome. ``"ok"`` means the stage did what it is
+#: for; ``"warning"`` means it completed but left something a reader must check
+#: before believing what follows; ``"info"`` is a stage that records a setting
+#: or an input rather than a computation.
+STAGE_STATUSES = ("ok", "warning", "info")
 
 #: Schema identifier of the result payload.
 APP_RESULT_SCHEMA = "pytex.app_result/1"
@@ -95,6 +109,103 @@ class ResultTable:
 
 
 @dataclass(frozen=True)
+class ResultMetric:
+    """One named number a stage produced, with its units and what it means.
+
+    Attributes
+    ----------
+    label : str
+        What the number is, in words a reader already has.
+    value : Any
+        The value, kept at full precision; the renderer rounds for display.
+    units : str, optional
+        Units of ``value``.
+    help_text : str, optional
+        How to judge the number: what a good value looks like, and what a bad
+        one says about the analysis.
+    """
+
+    label: str
+    value: Any
+    units: str | None = None
+    help_text: str | None = None
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the wire form of this metric."""
+
+        payload: dict[str, Any] = {"label": self.label, "value": self.value}
+        if self.units is not None:
+            payload["units"] = self.units
+        if self.help_text is not None:
+            payload["help"] = self.help_text
+        return payload
+
+
+@dataclass(frozen=True)
+class ResultStage:
+    """One intermediate step on the way to a result, reported in its own right.
+
+    Purpose
+    -------
+    A final number is only as believable as the steps behind it. An analysis
+    that detects peaks, indexes them, and then fits a cell can go wrong at any
+    of the three, and a reader who sees only the cell cannot tell which. A
+    stage carries what that step produced — its own numbers, its own table —
+    and a sentence saying how to read them, so the chain of evidence is on the
+    page rather than inside the program.
+
+    Attributes
+    ----------
+    key : str
+        Stable identifier, unique within a result, so tests and exports can
+        refer to a stage without depending on its title.
+    title : str
+        Heading, normally numbered in the order the stages ran.
+    summary : str
+        What the stage found, as prose.
+    metrics : tuple of ResultMetric
+        The stage's headline numbers.
+    table : ResultTable, optional
+        The stage's rows, for instance every detected peak.
+    explanation : str, optional
+        How to read the stage: what each number means and what to look for.
+    status : str
+        One of :data:`STAGE_STATUSES`.
+    """
+
+    key: str
+    title: str
+    summary: str
+    metrics: tuple[ResultMetric, ...] = ()
+    table: ResultTable | None = None
+    explanation: str | None = None
+    status: str = "ok"
+
+    def __post_init__(self) -> None:
+        if not self.key.strip() or not self.title.strip():
+            raise ValueError("A result stage needs a non-empty key and title.")
+        if self.status not in STAGE_STATUSES:
+            raise ValueError(f"A result stage status must be one of {STAGE_STATUSES}.")
+        object.__setattr__(self, "metrics", tuple(self.metrics))
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the wire form of this stage."""
+
+        payload: dict[str, Any] = {
+            "key": self.key,
+            "title": self.title,
+            "summary": self.summary,
+            "status": self.status,
+            "metrics": [metric.to_json() for metric in self.metrics],
+        }
+        if self.table is not None:
+            payload["table"] = self.table.to_json()
+        if self.explanation is not None:
+            payload["explanation"] = self.explanation
+        return payload
+
+
+@dataclass(frozen=True)
 class AppResult:
     """A complete answer: what it is, what it says, and the numbers behind it.
 
@@ -118,6 +229,10 @@ class AppResult:
         degenerate family, a tolerance that was hit.
     citations : sequence of str
         Sources for the science behind this particular answer.
+    stages : sequence of ResultStage
+        The intermediate steps behind the answer, in the order they ran. Empty
+        for a result that is a single computation. Serialized only when
+        present, so a result without stages keeps its existing wire form.
     """
 
     title: str
@@ -127,6 +242,12 @@ class AppResult:
     inputs: Mapping[str, Any] = field(default_factory=dict)
     notes: Sequence[str] = ()
     citations: Sequence[str] = ()
+    stages: Sequence[ResultStage] = ()
+
+    def __post_init__(self) -> None:
+        keys = [stage.key for stage in self.stages]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Result stage keys must be unique within one result.")
 
     def to_json(self) -> dict[str, Any]:
         """Return the wire form of this result."""
@@ -142,6 +263,8 @@ class AppResult:
         }
         if self.table is not None:
             payload["table"] = self.table.to_json()
+        if self.stages:
+            payload["stages"] = [stage.to_json() for stage in self.stages]
         return payload
 
     def describe(self) -> str:
@@ -152,6 +275,9 @@ class AppResult:
         """
 
         lines = [self.title, "", self.summary]
+        if self.stages:
+            lines.extend(["", "How the result was reached:"])
+            lines.extend(f"- {stage.title}: {stage.summary}" for stage in self.stages)
         if self.notes:
             lines.extend(["", *(f"Note: {note}" for note in self.notes)])
         if self.citations:

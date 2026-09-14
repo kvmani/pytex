@@ -498,6 +498,15 @@ class LatticeParameterResult:
         column instead.
     settings : Mapping[str, float | str]
         The settings the determination ran with.
+    parameter_correlation : np.ndarray | None
+        Correlation matrix of every refined least-squares parameter -- the free
+        reciprocal-cell parameters and, when refined, the drift coefficient
+        ``D`` last -- or ``None`` when no joint fit was made. A correlation near
+        +/-1 between a cell parameter and ``D`` means the scan cannot tell a
+        change of cell from a systematic error, and the quoted uncertainty is
+        then the honest price of refining both.
+    correlation_parameter_names : tuple[str, ...]
+        Labels of the rows and columns of :attr:`parameter_correlation`.
     """
 
     method: LatticeMethod
@@ -526,8 +535,24 @@ class LatticeParameterResult:
     profile_observed: np.ndarray | None = None
     profile_calculated: np.ndarray | None = None
     settings: Mapping[str, float | str] = field(default_factory=dict)
+    parameter_correlation: np.ndarray | None = None
+    correlation_parameter_names: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
+        if self.parameter_correlation is not None:
+            matrix = as_float_array(self.parameter_correlation)
+            size = len(self.correlation_parameter_names)
+            if matrix.shape != (size, size):
+                raise ValueError(
+                    "parameter_correlation must be square and labelled by "
+                    "correlation_parameter_names."
+                )
+            object.__setattr__(self, "parameter_correlation", matrix)
+        elif self.correlation_parameter_names:
+            raise ValueError("correlation_parameter_names needs a parameter_correlation matrix.")
+        object.__setattr__(
+            self, "correlation_parameter_names", tuple(self.correlation_parameter_names)
+        )
         if self.method not in LATTICE_METHODS:
             raise ValueError(f"LatticeParameterResult.method must be one of {LATTICE_METHODS}.")
         if self.extrapolation not in EXTRAPOLATION_FUNCTIONS:
@@ -715,6 +740,14 @@ class LatticeParameterResult:
             "reduced_chi_squared": float(self.reduced_chi_squared),
             "weighted_profile_r": self.weighted_profile_r,
             "strain_relative_to_reference": self.strain_relative_to_reference,
+            "parameter_correlation": (
+                None
+                if self.parameter_correlation is None
+                else {
+                    "names": list(self.correlation_parameter_names),
+                    "matrix": self.parameter_correlation.tolist(),
+                }
+            ),
             "reflections": [
                 {
                     "miller_indices": list(indices),
@@ -1034,6 +1067,8 @@ def determine_lattice_parameters(
     sigma = 0.5 * np.abs(np.sin(2.0 * theta)) * np.deg2rad(uncertainties)
     sigma = np.maximum(sigma, 1.0e-12)
 
+    correlation: np.ndarray | None = None
+    correlation_names: tuple[str, ...] = ()
     if method == "average":
         if len(names) != 1:
             raise ValueError(
@@ -1090,6 +1125,16 @@ def determine_lattice_parameters(
                 "determine every free cell parameter. This happens when, for example, no "
                 "reflection with a non-zero l index was indexed in a hexagonal pattern."
             ) from error
+        # The correlation, not only the variances: a cell parameter strongly
+        # correlated with D is one the scan cannot separate from the systematic
+        # error, which the per-parameter uncertainty states only implicitly.
+        scale = np.sqrt(np.maximum(np.diag(full_covariance), 0.0))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            correlation = full_covariance / np.outer(scale, scale)
+        correlation = np.where(np.isfinite(correlation), correlation, 0.0)
+        np.fill_diagonal(correlation, 1.0)
+        correlation = np.clip(correlation, -1.0, 1.0)
+        correlation_names = tuple(names) + (("D",) if extrapolation != "none" else ())
         if extrapolation != "none":
             parameters = solution[:-1]
             covariance = full_covariance[:-1, :-1]
@@ -1139,6 +1184,8 @@ def determine_lattice_parameters(
             "source_indexing": indexing.name,
             "minimum_two_theta_deg": float(minimum_two_theta_deg or 0.0),
         },
+        parameter_correlation=correlation,
+        correlation_parameter_names=correlation_names,
     )
 
 
@@ -1757,6 +1804,87 @@ def determine_lattice_parameters_from_pattern(
         Propagated from any stage; the message names the stage that failed.
     """
 
+    result, indexing, _table, _passes = lattice_parameter_pipeline(
+        measured,
+        phase,
+        method=method,
+        extrapolation=extrapolation,
+        radiation=radiation,
+        instrument=instrument,
+        systematic=systematic,
+        tolerance_deg=tolerance_deg,
+        max_index=max_index,
+        prominence_sigma=prominence_sigma,
+        minimum_two_theta_deg=minimum_two_theta_deg,
+        indexing_passes=indexing_passes,
+        phase_name=phase_name,
+    )
+    return (result, indexing)
+
+
+def lattice_parameter_pipeline(
+    measured: MeasuredPowderPattern,
+    phase: Phase,
+    *,
+    method: LatticeMethod = "cohen",
+    extrapolation: ExtrapolationFunction = "nelson_riley",
+    radiation: RadiationSpec | None = None,
+    instrument: InstrumentBroadening | None = None,
+    systematic: SystematicTerm = "zero",
+    tolerance_deg: float = 0.3,
+    max_index: int = 6,
+    prominence_sigma: float = 5.0,
+    minimum_two_theta_deg: float | None = None,
+    indexing_passes: int = 3,
+    phase_name: str | None = None,
+) -> tuple[
+    LatticeParameterResult,
+    PeakIndexing | None,
+    PeakTable | None,
+    tuple[Mapping[str, float | bool], ...],
+]:
+    """Run the lattice-parameter pipeline and keep every intermediate result.
+
+    Purpose
+    -------
+    :func:`determine_lattice_parameters_from_pattern` returns the answer and
+    the final indexing. A report that is to be *checked* needs the rest of the
+    chain as well: the peaks that detection found (a missed or spurious peak is
+    where a wrong cell starts), and what each index-then-determine pass
+    achieved (a pass that recovered high-angle reflections is the evidence
+    that re-indexing mattered). This is the same computation, returning those
+    stages instead of discarding them.
+
+    When and where to use it
+    ------------------------
+    Behind an explainable report -- the workbench's lattice-parameter operation
+    uses it to show each stage. For the answer alone, call
+    :func:`determine_lattice_parameters_from_pattern`, which delegates here.
+
+    Parameters
+    ----------
+    measured, phase, method, extrapolation, radiation, instrument, systematic,
+    tolerance_deg, max_index, prominence_sigma, minimum_two_theta_deg,
+    indexing_passes, phase_name
+        As for :func:`determine_lattice_parameters_from_pattern`.
+
+    Returns
+    -------
+    tuple
+        ``(result, indexing, peak_table, passes)``. ``indexing`` and
+        ``peak_table`` are ``None`` for ``"le_bail"``, which forms no peak
+        list. ``passes`` holds one read-only mapping per index-then-determine
+        pass, with keys ``pass``, ``indexed_count``, ``unindexed_count``,
+        ``a_angstrom``, ``c_angstrom``, ``figure_of_merit_m``,
+        ``mean_absolute_delta_two_theta_deg`` and ``accepted`` -- whether the
+        pass indexed more reflections than the one before and so replaced it.
+
+    Raises
+    ------
+    ValueError
+        Propagated from any stage; the message names the stage that failed.
+    """
+
     if indexing_passes < 1:
         raise ValueError("determine_lattice_parameters_from_pattern needs at least one pass.")
     if method == "le_bail":
@@ -1770,7 +1898,28 @@ def determine_lattice_parameters_from_pattern(
                 max_index=max_index,
             ),
             None,
+            None,
+            (),
         )
+
+    def record(
+        number: int, candidate: PeakIndexing, determined: LatticeParameterResult, accepted: bool
+    ) -> Mapping[str, float | bool]:
+        return MappingProxyType(
+            {
+                "pass": float(number),
+                "indexed_count": float(candidate.indexed_count),
+                "unindexed_count": float(len(candidate.unindexed_peaks)),
+                "a_angstrom": float(determined.a),
+                "c_angstrom": float(determined.c),
+                "figure_of_merit_m": float(candidate.figure_of_merit_m()[0]),
+                "mean_absolute_delta_two_theta_deg": float(
+                    candidate.mean_absolute_delta_two_theta_deg
+                ),
+                "accepted": accepted,
+            }
+        )
+
     table: PeakTable = detect_and_fit_peaks(
         measured,
         radiation=radiation,
@@ -1794,7 +1943,8 @@ def determine_lattice_parameters_from_pattern(
     result = determine_lattice_parameters(
         indexing, phase, method=method, extrapolation=extrapolation
     )
-    for _ in range(indexing_passes - 1):
+    passes: list[Mapping[str, float | bool]] = [record(1, indexing, result, True)]
+    for number in range(2, indexing_passes + 1):
         working = replace(phase, lattice=result.to_lattice(), unit_cell=None)
         retried = index_peaks(
             table,
@@ -1805,6 +1955,11 @@ def determine_lattice_parameters_from_pattern(
             phase_name=phase_name,
         )
         if retried.indexed_count <= indexing.indexed_count:
+            # Recorded against the cell it was indexed with, and marked as not
+            # taken: a pass that found nothing new is what ends the loop, and
+            # the report should show that it ran rather than only that it
+            # stopped.
+            passes.append(record(number, retried, result, False))
             break
         indexing = retried
         # The determination itself keeps using the *original* phase: only its
@@ -1814,6 +1969,7 @@ def determine_lattice_parameters_from_pattern(
         result = determine_lattice_parameters(
             indexing, phase, method=method, extrapolation=extrapolation
         )
+        passes.append(record(number, indexing, result, True))
     if minimum_two_theta_deg is not None:
         result = determine_lattice_parameters(
             indexing,
@@ -1822,7 +1978,7 @@ def determine_lattice_parameters_from_pattern(
             extrapolation=extrapolation,
             minimum_two_theta_deg=minimum_two_theta_deg,
         )
-    return (result, indexing)
+    return (result, indexing, table, tuple(passes))
 
 
 __all__ = [
@@ -1839,6 +1995,7 @@ __all__ = [
     "determine_lattice_parameters_from_pattern",
     "determine_lattice_parameters_le_bail",
     "extrapolation_values",
+    "lattice_parameter_pipeline",
     "nelson_riley_extrapolation",
 ]
 
