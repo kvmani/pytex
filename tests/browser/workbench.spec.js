@@ -518,6 +518,13 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
     page.locator('#stage svg[aria-label="Lattice parameter extrapolated against the '
       + 'systematic-error function"]'),
   ).toBeVisible();
+  // The cell is reported with every step that produced it, in order, so a wrong
+  // answer can be traced to the stage where it went wrong.
+  const stages = page.locator('#stage .stages details.stage');
+  await expect(stages).toHaveCount(7);
+  await expect(stages.nth(2)).toHaveAttribute('data-stage', 'passes');
+  await expect(page.locator('#stage details.stage[data-stage="least_squares"] table.result'))
+    .toHaveCount(1);
 
   await expectNewCompletedCalculation(page, () => {
     const method = page.locator('#rail-body select').filter({ hasText: 'Cohen least squares' });
@@ -530,6 +537,7 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
     page.locator('#stage svg[aria-label="Observed, calculated and difference profiles of the '
       + 'whole-pattern fit"]'),
   ).toBeVisible();
+  await expect(stages).toHaveCount(3);
 
   await expectNewCompletedCalculation(page, () =>
     view('xrd.rietveld').then(() =>
@@ -564,6 +572,8 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   );
   await expect(status).toContainText('Nickel (fcc)');
   await expect(status).toContainText('ahead of the next by');
+  await expect(stages).toHaveCount(7);
+  await expect(page.locator('#stage details.stage[data-stage="decision"]')).toContainText('conclusive');
   await expect(
     page.locator('#stage svg[aria-label="Measured scan with each candidate phase’s '
       + 'calculated line positions"]'),
@@ -717,13 +727,28 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
   await expect(page.locator('#subtabs .viewtab')).toHaveCount(2);
   await expect(page.locator('#subtabs .viewtab[aria-selected="true"]')).toHaveText('Micrograph');
 
-  // The micrograph arrives as a raster, so the drawing to wait for is an image
-  // rather than an SVG. Its caption carries the field of view, which is the
+  // The micrograph is an SVG image in angstroms, not an <img>: the plot frame's
+  // zoom, pan and cursor attach only to SVG, and as an <img> the picture could
+  // not be zoomed at all. Its status carries the field of view, which is the
   // number that proves a simulation ran rather than a placeholder appearing.
-  const micrograph = page.locator('#stage .hrem-sim-stage img').first();
-  await expect(micrograph).toBeVisible({ timeout: 60_000 });
+  const micrograph = page.locator('#stage .hrem-sim-stage svg.hrem-figure').first();
+  await expect(micrograph.locator('image')).toHaveCount(1, { timeout: 60_000 });
+  await expect(micrograph).toBeVisible();
   await expect(page.locator('#stage .hrem-sim-stage')).toContainText('Field of view');
-  await expect(page.locator('#stage .hrem-sim-stage')).toContainText('Point resolution');
+  await expect(page.locator('#stage .hrem-sim-stage')).toContainText('thick');
+  await expect(page.locator('#stage .hrem-sim-stage')).toContainText('point resolution');
+
+  // Zoom is proved by the frame's own readout moving off 100% under the wheel,
+  // and the cursor by reading a position in angstroms rather than in pixels.
+  const microFrame = page.locator('#stage .hrem-sim-stage > .plot').first();
+  const box = await micrograph.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -600);
+  await expect(microFrame.locator('.plot__zoom')).not.toHaveText('100%');
+  await page.mouse.move(box.x + box.width / 3, box.y + box.height / 3);
+  await expect(microFrame.locator('.plot__cursor')).toContainText('Å');
+  await microFrame.getByRole('button', { name: 'Fit', exact: true }).click();
+  await expect(microFrame.locator('.plot__zoom')).toHaveText('100%');
 
   // Both figures must fit the stage: they share its height rather than each
   // claiming it, which is what the figure-layout rule asks of anything drawn
@@ -736,12 +761,28 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
       cards: cards.map(bottom),
       count: cards.length,
       stage: Math.round(stage.getBoundingClientRect().bottom),
-      drawing: Math.round(stage.querySelector('.hrem-sim-stage img')?.clientHeight ?? 0),
+      drawing: Math.round(
+        stage.querySelector('.hrem-sim-stage svg.hrem-figure')?.getBoundingClientRect().height ?? 0,
+      ),
     };
   });
   expect(fits.count).toBe(2);
   for (const cardBottom of fits.cards) expect(cardBottom).toBeLessThanOrEqual(fits.stage);
   expect(fits.drawing).toBeGreaterThan(150);
+
+  // An .xyz structure opened in the rail becomes the specimen: the result names
+  // the file and reports its atom count rather than the built-in crystal's.
+  const cluster = ['3', 'Lattice="10 0 0 0 10 0 0 0 10" cluster',
+    'Au 5 5 5', 'Au 7.9 5 5', 'Au 5 7.9 5'].join('\n');
+  await expectNewCompletedCalculation(page, () =>
+    page.locator('.rail .hrem-structure input[type="file"]').setInputFiles({
+      name: 'cluster.xyz',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(`${cluster}\n`),
+    }),
+  );
+  await expect(page.locator('.rail .hrem-structure')).toContainText('cluster.xyz: 3 atoms');
+  await expect(page.locator('#stage .summary')).toContainText('3-atom structure read from cluster.xyz');
 
   // The transfer view, on a round lens first: nothing about azimuth to say.
   await view('tem.ctf_calculator');

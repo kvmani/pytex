@@ -97,6 +97,22 @@ class TestLatticeStages:
         counts = [row["indexed_count"] for row in taken]
         assert counts == sorted(counts)
 
+    def test_re_indexing_keeps_the_centring_absences_of_the_phase(self) -> None:
+        """Every nickel line between the first and last peak is observed.
+
+        Face-centring forbids mixed-parity reflections. Re-indexing once dropped
+        the atomic basis with the old cell, so the later passes predicted (012),
+        (112) and their kin, and the report listed them as strong lines that went
+        unobserved -- a statement about the specimen that was really about the
+        program. The expectation is the fcc extinction rule itself.
+        """
+
+        stage = next(item for item in _lattice()["stages"] if item["key"] == "assignment")
+        metrics = {metric["label"]: metric["value"] for metric in stage["metrics"]}
+        assert metrics["Unobserved strong lines"] == 0
+        strongest = max(stage["table"]["rows"], key=lambda row: row["relative_intensity"])
+        assert strongest["hkl_label"] == "(111)"
+
     def test_the_correlation_matrix_is_symmetric_with_a_unit_diagonal(self, cohen: dict) -> None:
         stage = next(item for item in cohen["stages"] if item["key"] == "least_squares")
         rows = stage["table"]["rows"]

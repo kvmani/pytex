@@ -54,6 +54,13 @@ downstream analyses depend on them.
 
 ### Fixed
 
+- **Re-indexing in lattice-parameter determination discarded the atomic basis.** Every pass
+  after the first indexed against a phase rebuilt with the determined cell and no unit cell, so
+  centring and structure-factor absences were lost: a face-centred cell predicted its forbidden
+  mixed-parity reflections, the indexing listed them as strong lines that were not observed, and
+  calculated relative intensities ignored the basis. The unit cell now carries the determined
+  lattice with its sites. Determined cells on the demonstration scans are unchanged; the reported
+  unobserved lines, intensities and figures of merit of the final assignment are corrected.
 - **The HRTEM micrograph and power spectrum could not be zoomed or panned.** They were placed in
   the plot frame as `<img>` elements, and the frame's zoom, pan, Fit and cursor attach only to
   SVG. They are now SVG images in ångströms and inverse ångströms: the shared viewport works, the

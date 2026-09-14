@@ -1945,7 +1945,20 @@ def lattice_parameter_pipeline(
     )
     passes: list[Mapping[str, float | bool]] = [record(1, indexing, result, True)]
     for number in range(2, indexing_passes + 1):
-        working = replace(phase, lattice=result.to_lattice(), unit_cell=None)
+        # The atomic basis travels with the new cell. Dropping it (the unit cell
+        # holds its own copy of the lattice, so it cannot simply be kept) would
+        # remove the centring and structure-factor absences from the prediction:
+        # a face-centred cell would then predict its forbidden mixed-parity lines,
+        # which re-indexing reports as strong lines that went unobserved, and
+        # every calculated intensity after the first pass would ignore the basis.
+        determined = result.to_lattice()
+        working = replace(
+            phase,
+            lattice=determined,
+            unit_cell=(
+                None if phase.unit_cell is None else replace(phase.unit_cell, lattice=determined)
+            ),
+        )
         retried = index_peaks(
             table,
             working,

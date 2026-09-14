@@ -298,8 +298,8 @@ the workbench reports both, together with the repeats and the atom count. Along 
 parallel to $\mathbf{c}$ this is simply $n_c = \lceil t/c \rceil$ and $t_{\mathrm{slab}} = n_c c$. The
 amorphous foil takes $t$ directly as its depth.
 
-What the thickness does depends on the engine. In multislice ({eq}`eq-hrem-trans`,
-{eq}`eq-hrem-prop`) a thicker specimen is more slices of transmission and Fresnel propagation, so
+What the thickness does depends on the engine. In multislice (the phase-transmission and Fresnel
+propagation steps of the multislice algorithm above) a thicker specimen is more slices of both, so
 dynamical scattering and the channelling of the wave along atom columns develop with depth. The
 pure-Python fallback is a single phase object: every atom is projected into one plane, so thickness
 only scales the projected potential and the phase shift $\sigma v(x, y)$. That approximation holds
