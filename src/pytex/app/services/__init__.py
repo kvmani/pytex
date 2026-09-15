@@ -21,6 +21,7 @@ from pytex.app.services import kearns as kearns
 from pytex.app.services import tem as tem
 from pytex.app.services import tem_hrem as tem_hrem
 from pytex.app.services import texture as texture
+from pytex.app.services import texture_analysis as texture_analysis
 from pytex.app.services import variants as variants
 from pytex.app.services import xrd as xrd
 
@@ -36,6 +37,7 @@ __all__ = [
     "tem",
     "tem_hrem",
     "texture",
+    "texture_analysis",
     "variants",
     "xrd",
 ]

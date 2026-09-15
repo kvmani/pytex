@@ -8090,4 +8090,19 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   `tests/unit/test_texture_sections_and_sample_symmetry.py` (28). Verified: that file, test_texture,
   test_texture_components_and_fibres, test_symmetry, test_public_api_docstrings,
   test_repo_integrity, test_reference_policy, mypy on the four modules.
-- (increment 2 - service `texture.analysis` - next)
+- **Increment 2 - service `texture.analysis` (landed).** `pytex/app/services/texture_analysis.py`,
+  panel id `texture_analysis`. One request: measured figures (XRDML, or a demonstration set measured
+  from a known, orthorhombic-symmetric model texture with 3% noise when no file is open), sample
+  symmetry imposed, dictionary or harmonic inversion, recalculated figures on the measured
+  directions, difference (recalculated - measured) and fit difference (recalculated -
+  symmetrized), RP factors against both, ODF sections (phi2 / phi1 / sigma; standard, LaboTex plate
+  or chosen values; range from `euler_section_ranges`), component volume fractions with random
+  reference, six explainable stages. Inversions are cached (LRU 4) on files, phase, poles,
+  symmetry and inversion settings, so a change of view does not re-solve.
+  **Measured, not assumed:** the first demo was not sample-symmetric, which put a 20-41% RP factor
+  on figures the ODF actually fitted to 2-4%; the gap was the symmetry assumption, which is why
+  both RP factors are now reported. Rolled fcc demo, 800 orientations: RP 6.1% to inverted data,
+  6.7% to measured. Split-basal Zr with axial symmetry imposed: 7.8% vs 59.6%, symmetry change
+  3.1 m.r.d. against 0.11 with orthorhombic - the analysis flags the wrong assumption.
+  Tests: `tests/unit/test_app_texture_analysis.py`; manifest tests for the operation green.
+- (increment 3 - the Measured texture panel - next)

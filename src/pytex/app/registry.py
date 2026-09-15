@@ -150,6 +150,9 @@ _PANEL_DOCUMENTATION = {
         "theory/kearns_parameter_and_basal_pole_texture",
     ),
     "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
+    "texture_analysis": DocumentationLink(
+        "Texture analysis of measured pole figures", "workflows/texture_odf_inversion"
+    ),
     "variants": DocumentationLink(
         "Orientation relationships", "concepts/orientation_relationships"
     ),
