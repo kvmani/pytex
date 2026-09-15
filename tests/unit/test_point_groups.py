@@ -311,5 +311,11 @@ def test_specimen_symmetry_constructor() -> None:
     orthotropic = SymmetrySpec.specimen("orthotropic")
     assert orthotropic.order == 4
     assert orthotropic.specimen_symmetry == "orthotropic"
+    # Axial (fibre) symmetry is supported: the Curie group, stored as the closed
+    # dihedral group D72 where an operator array is needed.
+    axial = SymmetrySpec.specimen("axial")
+    assert axial.order == 144
+    assert axial.specimen_symmetry == "axial"
+    assert axial.point_group == "∞/mm"
     with pytest.raises(ValueError):
-        SymmetrySpec.specimen("axial")
+        SymmetrySpec.specimen("hexagonal")

@@ -8140,7 +8140,7 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   plots being squashed to their header by the stage's flex column (the old profile card was too).
   Tests: `tests/unit/test_app_kearns_sections.py` (15); `test_app_kearns.py` scoped its
   one-specimen check to the fibre examples and holds the new example to its own truth (62 green).
-- **Increment 5 - documentation and worked examples (in progress).**
+- **Increment 5 - documentation and worked examples (landed).**
   New page `docs/site/workflows/texture_analysis_workbench.md` (in the site toctree, linked from
   `docs/README.md` and from the analysis panel's help): the inputs stated once; sample symmetry
   including axial, with the ring-average equation; measured / symmetrized / recalculated /
@@ -8174,3 +8174,18 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   Verified: test_app_texture (39) green; Playwright against 8777 - every-workspace walk, CIF
   loader, both measured pole-figure tests, measured texture, table cap, and the three Kearns tests,
   9/9.
+
+### Verification of record, and status
+
+- Full unit lane (`pytest tests/unit`): one failure, `test_point_groups.py::
+  test_specimen_symmetry_constructor`, which pinned "axial" as an *unsupported* specimen symmetry.
+  Supporting it was this goal, so the test now asserts axial works (order 144, point group
+  infinity/mm) and an unknown name ("hexagonal") still raises. Every other test passed.
+- Lint: the first increment imported three component helpers into `pytex.texture` without adding
+  them to `__all__` (ruff F401); fixed in `a59ba6e`. ruff and mypy clean on every touched file.
+- Sphinx site build (`nb_execution_mode=off`): exit 0, zero warnings.
+- Playwright against a private server: every-workspace walk, CIF loader, both old measured
+  pole-figure tests, measured texture, table cap, three Kearns tests - 9/9.
+
+**Status: the goal is met.** Every item of the objective is implemented, tested, documented and
+on `main`. No planned work remains open under this goal.
