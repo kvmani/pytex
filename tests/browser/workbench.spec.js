@@ -3171,6 +3171,36 @@ test('the three Kearns routes agree on one specimen', async ({ page }) => {
  * That distinction is the whole reason the verdict is written three ways, so it
  * is asserted on screen rather than only in the service tests.
  */
+/*
+ * Kearns from three measured scans, in one go.
+ *
+ * The route exists so a reader can follow each f back to the counts. So the
+ * assertions are that one press produces the triad and one card per section,
+ * that each card draws the scan with its predicted reflections marked, and that
+ * the closure note reads the sum as an independent check rather than as rounding.
+ */
+test('Kearns from three section scans shows the triad and every scan', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Kearns parameter');
+  await page.locator('#rail-body select[aria-label="Route"]').selectOption('kearns.from_three_sections');
+  await expect(page.locator('#kearns-files')).toContainText('the demonstration scans will be analysed');
+  await page.getByRole('button', { name: 'Compute f', exact: true }).click();
+
+  await expect(page.locator('#stage [data-kearns-section]')).toHaveCount(3, { timeout: 60_000 });
+  await expect(page.locator('#stage p.summary').first()).toContainText('f_a = ');
+  await expect(page.locator('#stage p.summary').first()).toContainText('f_t = ');
+  for (const key of ['axial', 'radial', 'transverse']) {
+    const card = page.locator(`#stage [data-kearns-section="${key}"]`);
+    await expect(card.locator('svg[data-reflections]')).toBeVisible();
+    expect(await card.locator('[data-reflection-status="used"]').count()).toBeGreaterThan(5);
+    // The card is not squashed to its header by the stage's flex column.
+    expect((await card.boundingBox()).height).toBeGreaterThan(300);
+  }
+  await expect(page.locator('#stage')).toContainText('the range Kearns found');
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('the Kearns panel refuses to call a closed triad a passed check', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'Kearns parameter');

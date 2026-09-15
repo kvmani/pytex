@@ -2324,6 +2324,34 @@ button:focus-visible {
   color: var(--accent);
 }
 
+/* The measured-texture panel's second tab row holds selects as well as tabs. */
+.analysis-tabs__control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.analysis-tabs__gap {
+  align-self: center;
+  color: var(--ink-faint);
+  padding: 0 0.2rem;
+}
+
+/* A result card that carries its own plots (the Kearns section scans and tilt
+ * profiles). The stage is a flex column and a card clips its overflow, so without
+ * this the card shrinks to its header and the plot inside is cut off; and a plot
+ * whose height is a percentage of an auto-height card body has nothing to be a
+ * percentage of. */
+.card--plots {
+  flex: none;
+}
+
+.card--plots .plot {
+  height: 22rem;
+}
+
 /* The calibration strip, inside the pattern figure while the tool is on. It
  * lives in the frame's own control strip rather than in the rail, because it is
  * read against the line being drawn. */

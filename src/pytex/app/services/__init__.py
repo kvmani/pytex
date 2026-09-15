@@ -18,6 +18,7 @@ from pytex.app.services import ebsd_or as ebsd_or
 from pytex.app.services import ebsd_pattern as ebsd_pattern
 from pytex.app.services import ecci as ecci
 from pytex.app.services import kearns as kearns
+from pytex.app.services import kearns_sections as kearns_sections
 from pytex.app.services import tem as tem
 from pytex.app.services import tem_hrem as tem_hrem
 from pytex.app.services import texture as texture
@@ -34,6 +35,7 @@ __all__ = [
     "ebsd_or",
     "ecci",
     "kearns",
+    "kearns_sections",
     "tem",
     "tem_hrem",
     "texture",

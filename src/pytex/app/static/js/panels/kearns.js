@@ -58,6 +58,18 @@ const MARGIN = { left: 48, right: 18, top: 14, bottom: 32 };
 /** How far the triad sum may sit from 1 before the closure check is called a failure. */
 const CLOSURE_TOLERANCE = 5e-4;
 
+/** How far three independently measured diffractogram sections may sum from 1: Kearns' 0.94-1.06. */
+const KEARNS_SECTION_RANGE = 0.06;
+
+/** Marker colours for a reflection's fate in a section scan. */
+const REFLECTION_COLOURS = {
+  used: '#2563eb',
+  not_detected: '#94a3b8',
+  overlapped: '#dc2626',
+  weak_random: '#dc2626',
+  no_random_peak: '#dc2626',
+};
+
 /**
  * Mount the panel.
  *
@@ -74,6 +86,10 @@ export function mount(context) {
     // Opened pole-figure files live in `core/texturefiles.js`, not in the form:
     // switching route must not silently drop what the user has opened, and a
     // file opened in the measured-texture panel is the same measurement here.
+    // The three-section route's scans are its own: one per section, plus an
+    // optional random standard, kept across route changes for the same reason.
+    scans: { axial: null, radial: null, transverse: null },
+    randomScan: null,
   };
 
   const chooser = el(
@@ -143,12 +159,89 @@ export function mount(context) {
     return state.operation.parameters.some((parameter) => parameter.name === 'files');
   }
 
+  /** Whether the selected route reads one scan per principal section. */
+  function needsScans() {
+    return state.operation.parameters.some((parameter) => parameter.name === 'scan_files');
+  }
+
   function renderControls(initial = {}) {
     chooser.value = state.operation.id;
     routeHelp.textContent = state.operation.summary ?? '';
     state.form = buildForm(state.operation, { initial });
     formHost.replaceChildren(state.form.element);
+    // Opened scans travel beside the form, from the file controls above it.
+    for (const field of state.form.element.querySelectorAll('.field')) {
+      if (field.querySelector('[id^="ctl-scan_files-"], [id^="ctl-random_file-"]')) {
+        field.hidden = true;
+      }
+    }
     renderFileControls();
+  }
+
+  /*
+   * The three-section route's scan slots.
+   *
+   * One labelled control per section, because which scan is which is the
+   * decision the method is most easily got wrong by: f along a direction is
+   * measured on the section whose surface normal is that direction. Each slot
+   * says so, and the result repeats the file name beside every value.
+   */
+  function renderScanControls() {
+    const slots = [
+      ['axial', 'Axial section', 'Surface normal along the tube axis (RD of a plate): a cross-section.'],
+      ['radial', 'Radial section', 'Surface normal radial (ND of a plate): the outer surface, flattened.'],
+      ['transverse', 'Transverse section', 'Surface normal along the hoop (TD of a plate): a longitudinal section.'],
+    ];
+    const accept = '.xy,.xrdml,.csv,.dat,.txt';
+    const slot = (key, label, hint, current, assign) =>
+      el('div.field.kearns-scan', { 'data-section': key }, [
+        el('span.field__label', { text: label }),
+        el('input', {
+          type: 'file',
+          accept,
+          'aria-label': `Open the ${label.toLowerCase()} scan`,
+          onchange: async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            try {
+              assign({ name: file.name, text: await file.text() });
+              renderFileControls();
+            } catch (error) {
+              context.showError(error);
+            }
+          },
+        }),
+        el('span.field__hint', { text: current ? `${current.name} open` : hint }),
+      ]);
+    const opened = Object.values(state.scans).filter(Boolean).length;
+    fileHost.replaceChildren(
+      explainer(
+        'One symmetric theta-2theta scan per section (.xy, .csv, .dat or .xrdml). With none open, '
+          + 'three demonstration scans of a known tube texture are analysed. A random standard is '
+          + 'needed only when the random intensities are to be measured rather than calculated.',
+        { label: 'Which scan goes where' },
+      ),
+      ...slots.map(([key, label, hint]) =>
+        slot(key, label, hint, state.scans[key], (item) => { state.scans[key] = item; })),
+      slot('random', 'Random standard (optional)', 'A random powder of the same phase.',
+        state.randomScan, (item) => { state.randomScan = item; }),
+      el('p.field__help', {
+        text: opened
+          ? `${opened} of 3 section scans open${opened < 3 ? ' — all three are needed for the triad' : ''}.`
+          : 'No scan open: the demonstration scans will be analysed.',
+      }),
+      opened || state.randomScan
+        ? el('button.button', {
+            type: 'button',
+            text: 'Close the scans',
+            onclick: () => {
+              state.scans = { axial: null, radial: null, transverse: null };
+              state.randomScan = null;
+              renderFileControls();
+            },
+          })
+        : null,
+    );
   }
 
   /*
@@ -159,6 +252,13 @@ export function mount(context) {
    * more than one and says why, rather than quietly integrating the first.
    */
   function renderFileControls() {
+    if (needsScans()) {
+      fileGroup.hidden = false;
+      fileGroup.querySelector('summary').textContent = 'Open section scans';
+      renderScanControls();
+      return;
+    }
+    fileGroup.querySelector('summary').textContent = 'Open pole figures';
     const wanted = needsFiles();
     fileGroup.hidden = !wanted;
     if (!wanted) {
@@ -230,6 +330,15 @@ export function mount(context) {
         }
         request.files = { items: texturefiles.openedFiles() };
       }
+      if (needsScans()) {
+        const scans = Object.fromEntries(
+          Object.entries(state.scans).filter(([, item]) => item !== null),
+        );
+        if (Object.keys(scans).length) request.scan_files = scans;
+        else delete request.scan_files;
+        if (state.randomScan) request.random_file = state.randomScan;
+        else delete request.random_file;
+      }
       const result = await call(operation.id, request);
       renderResult(context.stage, result, {
         extra: views(result, state),
@@ -262,6 +371,7 @@ function views(result, state) {
   if (tensor) nodes.push(tensor);
   const profile = profileCard(result, state);
   if (profile) nodes.push(profile);
+  nodes.push(...sectionCards(result));
   return nodes;
 }
 
@@ -342,6 +452,25 @@ function closureNote(result) {
     ]);
   }
   const departure = Math.abs(Number(sum) - 1);
+  if (Array.isArray(result.data?.sections)) {
+    // Three diffractogram sections: independent, but each carries the route's
+    // interpolation over unevenly spaced reflections, so the sum is read against
+    // the range Kearns himself found rather than against rounding.
+    const within = departure <= KEARNS_SECTION_RANGE;
+    return el(within ? 'p.notes--ok' : 'p.notes--warn', {}, [
+      el('strong', {
+        text: within ? 'Within the range Kearns found. ' : 'Outside the range Kearns found. ',
+      }),
+      document.createTextNode(
+        `The three sections sum to ${formatNumber(sum, 4)}, ${formatNumber(departure, 4)} from 1. `
+          + 'They were measured independently, so the sum is a genuine check; Kearns (1965) '
+          + 'found 0.94 to 1.06 from the reflections available. '
+          + (within
+            ? 'The normalised values in the table divide each by the sum.'
+            : 'Compare the three reflection tables and backgrounds: one section is out of line.'),
+      ),
+    ]);
+  }
   const closes = departure <= CLOSURE_TOLERANCE;
   return el(closes ? 'p.notes--ok' : 'p.notes--warn', {}, [
     el('strong', { text: closes ? 'Closure check passes. ' : 'Closure check fails. ' }),
@@ -474,7 +603,7 @@ function profileCard(result, state) {
     + 'counts.',
   );
 
-  return el('section.card', {}, [
+  return el('section.card.card--plots', {}, [
     el('div.card__header', {}, [
       el('h2.card__title', { text: 'What f was integrated from' }),
       el('p.card__subtitle', {
@@ -484,6 +613,126 @@ function profileCard(result, state) {
       }),
     ]),
     el('div.card__body', {}, [frame.element]),
+  ]);
+}
+
+/**
+ * One card per section of the three-scan route: the scan, the reflections, the profile.
+ *
+ * The point of the route is that a reader can follow f back to the counts. So
+ * each card draws the diffractogram with every predicted reflection marked at
+ * its expected angle — blue where its fitted peak was used, grey where no peak
+ * was found and zero was taken, red where it was excluded — and the tilt profile
+ * the densities were integrated from beside it. The numbers behind every marker
+ * are in the stage tables below, row for row.
+ */
+function sectionCards(result) {
+  const sections = result.data?.sections;
+  if (!Array.isArray(sections)) return [];
+  return sections.map((section) => {
+    const scan = plotFrame({ title: `${section.name} section: ${section.file}`, units: '' });
+    scan.setContent(diffractogramPlot(section));
+    const used = section.reflections.filter((row) => row.used).length;
+    scan.setStatus(
+      `${section.peaks.length} peaks fitted · ${used} of ${section.reflections.length} predicted `
+        + 'reflections used · blue used, grey not detected (taken as 0), red excluded · '
+        + 'intensity on a square-root scale so weak peaks stay visible · hover a marker',
+    );
+    const profile = plotFrame({ title: `Tilt profile of the ${section.name} section`, units: '' });
+    profile.setContent(profilePlot(section.profile.polar_deg, section.profile.intensity));
+    profile.setStatus(
+      `f_${section.label} = ${formatNumber(section.f, 4)} · blue I(φ), amber I(φ)·sin φ`,
+    );
+    return el('section.card.card--plots', { 'data-kearns-section': section.key }, [
+      el('div.card__header', {}, [
+        el('h2.card__title', {
+          text: `${section.name[0].toUpperCase()}${section.name.slice(1)} section: `
+            + `f_${section.label} = ${formatNumber(section.f, 4)}`,
+        }),
+        el('p.card__subtitle', {
+          text: 'The scan with every predicted reflection marked, and the basal-pole tilt profile '
+            + 'integrated from their intensities.',
+        }),
+      ]),
+      el('div.card__body', {}, [scan.element, profile.element]),
+    ]);
+  });
+}
+
+/** A measured scan, its background, and a marker for every predicted reflection. */
+function diffractogramPlot(section) {
+  const width = 760;
+  const height = 240;
+  const margin = { left: 58, right: 14, top: 34, bottom: 34 };
+  const angles = section.pattern.two_theta_deg;
+  const counts = section.pattern.intensity;
+  const background = section.pattern.background;
+  const low = angles[0];
+  const high = angles[angles.length - 1];
+  const root2 = (value) => Math.sqrt(Math.max(Number(value) || 0, 0));
+  const ceiling = Math.max(...counts.map(root2)) || 1;
+  const x = (angle) => margin.left + ((angle - low) / (high - low || 1)) * (width - margin.left - margin.right);
+  const y = (value) => margin.top + (1 - root2(value) / ceiling) * (height - margin.top - margin.bottom);
+  const path = (values) => values
+    .map((value, index) => `${index === 0 ? 'M' : 'L'}${x(angles[index]).toFixed(1)} ${y(value).toFixed(1)}`)
+    .join(' ');
+  const ticks = [];
+  for (let angle = Math.ceil(low / 10) * 10; angle <= high; angle += 10) {
+    ticks.push(
+      svg('line', {
+        x1: x(angle), x2: x(angle), y1: margin.top, y2: height - margin.bottom,
+        stroke: 'currentColor', 'stroke-width': 0.3, opacity: 0.15,
+      }),
+      svg('text', {
+        x: x(angle), y: height - margin.bottom + 13, 'text-anchor': 'middle',
+        'font-size': 9, fill: 'currentColor', text: String(angle),
+      }),
+    );
+  }
+  const markers = section.reflections
+    .filter((row) => row.two_theta_expected_deg >= low && row.two_theta_expected_deg <= high)
+    .map((row) => {
+      const colour = REFLECTION_COLOURS[row.status] ?? '#94a3b8';
+      const at = x(row.two_theta_expected_deg);
+      return svg('g', { 'data-reflection-status': row.status }, [
+        svg('line', {
+          x1: at, x2: at, y1: margin.top - 6, y2: height - margin.bottom,
+          stroke: colour, 'stroke-width': row.status === 'used' ? 0.9 : 0.6,
+          'stroke-dasharray': row.status === 'used' ? null : '2 2', opacity: 0.8,
+        }),
+        svg('text', {
+          x: at, y: margin.top - 9, 'text-anchor': 'start', 'font-size': 7.5, fill: colour,
+          transform: `rotate(-40 ${at} ${margin.top - 9})`, text: row.plane,
+        }),
+        svg('title', {
+          text: `${row.plane} · tilt ${formatNumber(row.basal_tilt_deg, 1)}° · 2θ expected `
+            + `${formatNumber(row.two_theta_expected_deg, 3)}°`
+            + (row.two_theta_fitted_deg === null ? '' : `, fitted ${formatNumber(row.two_theta_fitted_deg, 3)}°`)
+            + ` · I ${formatNumber(row.measured, 1)} · I random ${formatNumber(row.random ?? 0, 2)} · ${row.status_text}`,
+        }),
+      ]);
+    });
+  return svg('svg', {
+    viewBox: `0 0 ${width} ${height}`,
+    xmlns: 'http://www.w3.org/2000/svg',
+    role: 'img',
+    'aria-label': `Theta-2theta scan of the ${section.name} section`,
+    'data-reflections': String(section.reflections.length),
+  }, [
+    ...ticks,
+    svg('path', { d: path(background), fill: 'none', stroke: '#d66a2b', 'stroke-width': 0.8, 'stroke-dasharray': '4 3' }),
+    svg('path', { d: path(counts), fill: 'none', stroke: 'currentColor', 'stroke-width': 0.8, opacity: 0.85 }),
+    ...markers,
+    svg('text', {
+      x: margin.left + (width - margin.left - margin.right) / 2, y: height - 6,
+      'text-anchor': 'middle', 'font-size': 10, fill: 'currentColor', text: '2θ (°)',
+    }),
+    svg('text', {
+      x: 14, y: margin.top + (height - margin.top - margin.bottom) / 2, 'font-size': 10,
+      fill: 'currentColor', 'text-anchor': 'middle',
+      transform: `rotate(-90 14 ${margin.top + (height - margin.top - margin.bottom) / 2})`,
+      text: '√ counts',
+    }),
   ]);
 }
 

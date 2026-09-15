@@ -8118,4 +8118,26 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   Verified in the browser at 1600x1000 (no console errors) and by Playwright against a private
   server (`PYTEX_BASE_URL=http://127.0.0.1:8777`): the new test plus the six existing Texture,
   Kearns and CIF-loader tests, 7/7. Three existing tests now reach the model panel by sub-tab.
-- (increment 4 - Kearns from three measured theta-2theta sections - next)
+- **Increment 4 - Kearns from three measured theta-2theta scans (landed).**
+  `pytex/app/services/kearns_sections.py`, operation `kearns.from_three_sections` on the Kearns
+  panel. One scan per section (axial / radial / transverse for a tube; RD / ND / TD for a plate -
+  slot = surface normal). Per scan: peaks detected and fitted (pseudo-Voigt, K-alpha2 modelled),
+  every reflection the phase predicts matched within a tolerance, fitted area (or height) over the
+  random-powder intensity (calculated from multiplicity, |F|^2 and LP, or a measured standard),
+  overlaps and random-weak lines excluded, undetected lines counted as zero - each row labelled
+  with its fate; then `kearns_from_diffractogram` and the node-by-node quadrature. Result: the
+  triad, raw and normalised (f / sum), a genuine closure check, seven stages (reflection table and
+  quadrature per section, then the triad), and per-section diffractograms, peaks and profiles.
+  With no scans, three demonstration scans of a known pilgered-tube texture are analysed and the
+  exact f (mean cos^2 over its basal poles) is shown beside the measured.
+  **Measured, not assumed:** the first demonstration scattered Euler angles, which piles basal
+  poles up at Phi = 0; the (0002) density came out 18x the true peak and f_r was 0.855 against an
+  exact 0.716. Scattering in rotation space and estimating density over a +/-4 deg band gives
+  f_a 0.0268 / 0.0212, f_r 0.7256 / 0.7232, f_t 0.2561 / 0.2556 (route / exact), sum 1.0085.
+  Panel: three labelled scan slots plus an optional random standard, a card per section drawing
+  the scan (sqrt counts) with every predicted reflection marked by fate, and its tilt profile; the
+  closure note reads three-section sums against Kearns' 0.94-1.06. `.card--plots` stops cards with
+  plots being squashed to their header by the stage's flex column (the old profile card was too).
+  Tests: `tests/unit/test_app_kearns_sections.py` (15); `test_app_kearns.py` scoped its
+  one-specimen check to the fibre examples and holds the new example to its own truth (62 green).
+- (increment 5 - documentation and worked examples - next)

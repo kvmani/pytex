@@ -271,14 +271,34 @@ class TestTheExamplesRunAsAdvertised:
         assert result["summary"]
 
     def test_the_examples_describe_one_specimen(self) -> None:
-        """All three examples must land on the same f, or the lesson is false."""
+        """The three single-specimen examples must land on the same f, or the lesson is false.
+
+        The three-section example is deliberately a different specimen - a tube,
+        whose triad is the point - and is held to its own model truth below.
+        """
 
         values = []
-        for example in (item for item in REGISTRY.examples() if item.panel == "kearns"):
+        for example in (
+            item
+            for item in REGISTRY.examples()
+            if item.panel == "kearns" and item.operation != "kearns.from_three_sections"
+        ):
             request = defaults(example.operation)
             request.update(example.request)
             values.append(value_of(REGISTRY.call(example.operation, request), "ND"))
+        assert len(values) == 3
         assert max(values) - min(values) < ROUTE_TOLERANCE
+
+    def test_the_three_section_example_recovers_its_own_specimen(self) -> None:
+        example = next(
+            item for item in REGISTRY.examples() if item.id == "kearns.example.three_sections"
+        )
+        request = defaults(example.operation)
+        request.update(example.request)
+        result = REGISTRY.call(example.operation, request)
+        truth = result["data"]["truth"]
+        for section in result["data"]["sections"]:
+            assert section["f"] == pytest.approx(truth[section["key"]], abs=0.02)
 
 
 class TestTheUploadRoutes:
