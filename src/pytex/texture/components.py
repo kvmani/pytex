@@ -9,6 +9,7 @@ follow the standard fcc rolling-texture tables (Randle & Engler).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -413,19 +414,233 @@ def fit_odf_components(
     )
 
 
+#: Ideal orientations of hexagonal close-packed metals, as the zirconium and
+#: titanium literature names them: by where the basal pole ``[0001]`` lies.
+#: With Bunge angles the crystal ``[0001]`` appears in specimen axes at
+#: ``(sin phi1 sin Phi, -cos phi1 sin Phi, cos Phi)``, so ``Phi`` is the basal
+#: tilt from ND and ``phi1`` the direction it tilts towards. Pinned by
+#: ``tests/unit/test_texture_sections_and_sample_symmetry.py``.
+HCP_BASAL = TextureComponent(
+    "basal",
+    (0.0, 0.0, 0.0),
+    miller_label="(0001) parallel to ND",
+    notes="Basal poles along the normal direction.",
+)
+HCP_BASAL_TD_SPLIT = TextureComponent(
+    "basal_30_td",
+    (180.0, 30.0, 0.0),
+    miller_label="(0001) 30 deg from ND towards TD",
+    notes="The split-basal texture of cold-rolled zirconium and titanium sheet.",
+)
+HCP_BASAL_RD_SPLIT = TextureComponent(
+    "basal_30_rd",
+    (90.0, 30.0, 0.0),
+    miller_label="(0001) 30 deg from ND towards RD",
+    notes="Basal poles tilted towards the rolling direction.",
+)
+HCP_C_ALONG_TD = TextureComponent(
+    "c_along_td",
+    (0.0, 90.0, 0.0),
+    miller_label="(0001) parallel to TD",
+    notes="Basal poles in the transverse (hoop) direction, as in pilgered tube.",
+)
+HCP_C_ALONG_RD = TextureComponent(
+    "c_along_rd",
+    (90.0, 90.0, 0.0),
+    miller_label="(0001) parallel to RD",
+    notes="Basal poles along the rolling (axial) direction.",
+)
+
+STANDARD_HCP_COMPONENTS: tuple[TextureComponent, ...] = (
+    HCP_BASAL,
+    HCP_BASAL_TD_SPLIT,
+    HCP_BASAL_RD_SPLIT,
+    HCP_C_ALONG_TD,
+    HCP_C_ALONG_RD,
+)
+
+
+def random_component_fraction(tolerance_deg: float, symmetry_order: int = 1) -> float:
+    """Volume fraction of a random texture within a misorientation of an ideal orientation.
+
+    Purpose
+    -------
+    The null value a component fraction is read against. "12 percent cube" means
+    nothing until it is set beside what a texture-free specimen gives for the
+    same tolerance.
+
+    Method
+    ------
+    Under the invariant (Haar) measure the rotation angle ``omega`` of a uniform
+    rotation has density ``(1 - cos omega) / pi`` on ``[0, pi]``, so a ball of
+    radius ``w`` holds ``(w - sin w) / pi`` of SO(3). An ideal orientation has
+    ``|G|`` crystal-symmetry equivalents, each with its own ball; while the balls
+    do not overlap - ``w`` below half the smallest symmetry rotation, 45 degrees
+    for cubic and 30 for hexagonal - the fraction is ``|G| (w - sin w) / pi``.
+
+    Parameters
+    ----------
+    tolerance_deg : float
+        Ball radius ``w`` in degrees.
+    symmetry_order : int
+        Number of proper crystal symmetry operators ``|G|``.
+
+    Returns
+    -------
+    float
+        The random fraction, capped at 1.
+    """
+
+    omega = np.deg2rad(float(tolerance_deg))
+    return float(min(1.0, int(symmetry_order) * (omega - np.sin(omega)) / np.pi))
+
+
+def _ball_perturbations(tolerance_deg: float, count: int, seed: int) -> np.ndarray:
+    """Rotation matrices distributed uniformly (Haar) inside a ball about the identity."""
+
+    generator = np.random.default_rng(seed)
+    omega_max = np.deg2rad(tolerance_deg)
+    table = np.linspace(0.0, omega_max, 2049)
+    cdf = table - np.sin(table)
+    cdf /= cdf[-1]
+    angles = np.interp(generator.uniform(0.0, 1.0, size=count), cdf, table)
+    axes = generator.normal(size=(count, 3))
+    axes /= np.linalg.norm(axes, axis=1, keepdims=True)
+    skew = np.zeros((count, 3, 3), dtype=np.float64)
+    skew[:, 0, 1] = -axes[:, 2]
+    skew[:, 0, 2] = axes[:, 1]
+    skew[:, 1, 0] = axes[:, 2]
+    skew[:, 1, 2] = -axes[:, 0]
+    skew[:, 2, 0] = -axes[:, 1]
+    skew[:, 2, 1] = axes[:, 0]
+    sine = np.sin(angles)[:, None, None]
+    versine = (1.0 - np.cos(angles))[:, None, None]
+    squared = np.einsum("nij,njk->nik", skew, skew)
+    return np.asarray(np.eye(3)[None, :, :] + sine * skew + versine * squared, dtype=np.float64)
+
+
+def odf_component_volume_fractions(
+    odf: Any,
+    components: tuple[TextureComponent, ...] | list[TextureComponent],
+    *,
+    tolerance_deg: float = 15.0,
+    sample_count: int = 1500,
+    seed: int = 0,
+) -> list[dict[str, Any]]:
+    """Volume fraction of a continuous ODF within a tolerance of each ideal orientation.
+
+    Purpose
+    -------
+    The quantitative reading of an ODF that a pole figure supports only by eye:
+    "the basal component is 31 percent of this texture, 4.2 times random". It
+    works on a reconstructed ODF - discrete or harmonic - rather than on counted
+    grains, which is what a measured pole figure provides.
+
+    Method
+    ------
+    The fraction is the integral of the density over the ``|G|`` symmetry-
+    equivalent balls of radius ``w`` about the ideal orientation. Because the
+    density is symmetry-invariant this is ``|G|`` times the integral over one
+    ball, which equals the ball's volume ``(w - sin w) / pi`` times the mean
+    density inside it. The mean is estimated from ``sample_count`` orientations
+    drawn uniformly (Haar) inside the ball, so the result integrates the smoothed
+    density rather than cutting the discrete support at a hard edge. A random
+    texture therefore returns :func:`random_component_fraction` exactly, and
+    ``times_random`` is the mean density in the ball in m.r.d.
+
+    Parameters
+    ----------
+    odf : ODF or HarmonicODF
+    components : sequence of TextureComponent
+    tolerance_deg : float
+        Ball radius. Keep it below half the smallest symmetry rotation (45 degrees
+        cubic, 30 hexagonal), or neighbouring balls overlap and are counted twice.
+    sample_count : int
+        Orientations sampled per ball.
+    seed : int
+        Seeds the sampling, so a result is reproducible.
+
+    Returns
+    -------
+    list of dict
+        One entry per component: ``component``, ``miller``, ``fraction``,
+        ``random_fraction`` and ``times_random``. Components are independent, so
+        overlapping balls may both claim the same volume.
+    """
+
+    if not components:
+        raise ValueError("odf_component_volume_fractions requires at least one component.")
+    if not 0.0 < float(tolerance_deg) <= 62.8:
+        raise ValueError("tolerance_deg must lie in (0, 62.8] degrees.")
+    harmonic = hasattr(odf, "quadrature_orientations")
+    if harmonic:
+        crystal_frame, specimen_frame = odf.crystal_frame, odf.specimen_frame
+        symmetry, phase = odf.crystal_symmetry, odf.phase
+    else:
+        support = odf.orientations
+        crystal_frame, specimen_frame = support.crystal_frame, support.specimen_frame
+        symmetry, phase = support.symmetry, support.phase
+    order = 1 if symmetry is None else int(np.asarray(symmetry.operators).shape[0])
+    perturbations = _ball_perturbations(float(tolerance_deg), int(sample_count), int(seed))
+    random_fraction = random_component_fraction(float(tolerance_deg), order)
+    block = 1 if harmonic else max(1, 400_000 // max(len(odf.orientations) * order, 1))
+    results: list[dict[str, Any]] = []
+    for component in components:
+        centre = Rotation.from_euler(
+            *component.bunge_euler_deg, convention="bunge", degrees=True
+        ).as_matrix()
+        matrices = np.einsum("ij,njk->nik", centre, perturbations)
+        densities = np.empty(matrices.shape[0], dtype=np.float64)
+        step = matrices.shape[0] if harmonic else block
+        for start in range(0, matrices.shape[0], step):
+            stop = min(start + step, matrices.shape[0])
+            query = OrientationSet.from_matrices(
+                matrices[start:stop],
+                crystal_frame=crystal_frame,
+                specimen_frame=specimen_frame,
+                symmetry=symmetry,
+                phase=phase,
+            )
+            if harmonic:
+                densities[start:stop] = np.asarray(odf.evaluate(query), dtype=np.float64)
+            else:
+                densities[start:stop] = (
+                    np.asarray(odf.evaluate(query, normalized=True), dtype=np.float64) / order
+                )
+        mean_density = float(np.mean(densities))
+        results.append(
+            {
+                "component": component.name,
+                "miller": component.miller_label,
+                "fraction": float(min(1.0, max(0.0, random_fraction * mean_density))),
+                "random_fraction": random_fraction,
+                "times_random": mean_density,
+            }
+        )
+    return results
+
+
 __all__ = [
     "BRASS",
     "COPPER",
     "CUBE",
     "GOSS",
+    "HCP_BASAL",
+    "HCP_BASAL_RD_SPLIT",
+    "HCP_BASAL_TD_SPLIT",
+    "HCP_C_ALONG_RD",
+    "HCP_C_ALONG_TD",
     "ODF_COMPONENT_FIT_SCHEMA",
     "ROTATED_CUBE",
     "ROTATED_GOSS",
     "STANDARD_BCC_ROLLING_COMPONENTS",
     "STANDARD_FCC_ROLLING_COMPONENTS",
+    "STANDARD_HCP_COMPONENTS",
     "S_COMPONENT",
     "ODFComponentFit",
     "TextureComponent",
     "component_volume_fractions",
     "fit_odf_components",
+    "odf_component_volume_fractions",
+    "random_component_fraction",
 ]

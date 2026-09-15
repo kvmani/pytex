@@ -1729,8 +1729,19 @@ class ODFSectionData:
             raise ValueError(
                 "ODFSectionData.densities must have shape (n_sections, n_big_phi, n_phi1)."
             )
-        if self.section_kind not in {"phi2", "sigma"}:
-            raise ValueError("ODFSectionData.section_kind must be 'phi2' or 'sigma'.")
+        if self.section_kind not in {"phi2", "phi1", "sigma"}:
+            raise ValueError("ODFSectionData.section_kind must be 'phi2', 'phi1' or 'sigma'.")
+
+    @property
+    def horizontal_coordinate(self) -> str:
+        """The Euler angle that runs across each section.
+
+        ``"phi1"`` for constant-phi2 and constant-sigma sections, ``"phi2"`` for
+        constant-phi1 sections. Its sampled values are stored in ``phi1_deg``
+        whatever it is, so a section always reads as ``densities[i, Phi, across]``.
+        """
+
+        return "phi2" if self.section_kind == "phi1" else "phi1"
 
     @property
     def section_values_deg(self) -> np.ndarray:

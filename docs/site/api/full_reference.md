@@ -141,6 +141,18 @@ support objects that are imported elsewhere in the library.
 .. automodule:: pytex.texture.harmonics
 ```
 
+```{eval-rst}
+.. automodule:: pytex.texture.sections
+```
+
+```{eval-rst}
+.. automodule:: pytex.texture.sample_symmetry
+```
+
+```{eval-rst}
+.. automodule:: pytex.texture.components
+```
+
 ## EBSD
 
 ```{eval-rst}

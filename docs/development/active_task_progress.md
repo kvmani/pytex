@@ -8023,3 +8023,71 @@ build declared and all 34 notebooks aboard.
 **The office mirror needs seven more wheels** for the documentation build: `sphinx`, `furo`,
 `myst-nb`, `myst-parser`, `sphinx-design`, `sphinx-copybutton`, `sphinxcontrib-bibtex`. All
 pure-Python on PyPI. Without them the rollout still succeeds and `/docs` stays as it is today.
+
+
+## Goal - a texture workspace that is loaded once and read everywhere (opened 2026-09-15)
+
+### Objective, as the user stated it
+
+Review the Texture workspace of the GUI and fix its usability. Concretely:
+
+1. Once a data file, the crystal symmetry and the sample symmetry are loaded, the pole figures,
+   the ODF and the volume fractions of ideal orientations are all computed and shown under
+   separate tabs, without re-entering any input per view.
+2. Pole-figure analysis shows the **measured** figures, the figures **recalculated** from the ODF,
+   and their **difference**.
+3. ODF sections at constant phi2 by default, or other chosen sections (phi1, sigma), including a
+   LaboTex-style plate of every section at a fixed step on one scale.
+4. **Axial** sample symmetry implemented in the library and exposed in the GUI.
+5. Texture documentation improved thoroughly.
+6. Kearns: upload three measured theta-2theta scans (axial, radial, transverse sections of a tube)
+   and get f_a, f_r, f_t in one go, with the diffractograms plotted, the peaks used marked, their
+   intensities, a table of intermediate results and the final values - so the method can be
+   verified independently.
+
+### Review findings (the usability defects this goal removes)
+
+- The Texture panel is one `View` picker; every view rebuilds its own form, so the phase, the
+  files and the settings are re-entered or carried by a partial `carryOver()` that forgets the
+  measured-view inputs.
+- Measured pole figures and the ODF reconstructed from them live in one view; there is no
+  recalculated pole figure and no difference figure, although the library has both
+  (`PoleFigureResidualReport.from_odf`, `difference_figure`).
+- ODF sections are hard-coded to phi2 = 0, 45, 65 over the cubic [0, 90] box, even for a
+  hexagonal phase, whose phi2 range is [0, 60]; the harmonic route used phi1 in [0, 360].
+- Volume fractions exist only for model textures (grain counting), never for a measured ODF, and
+  there is no hexagonal ideal-orientation catalogue.
+- Sample symmetry is not selectable anywhere in the GUI; the library knows triclinic, monoclinic
+  and orthorhombic only - no axial (fibre) symmetry.
+- The Kearns diffractogram route takes typed peak intensities; nothing reads a measured scan, finds
+  its peaks, or combines three sections into a triad with a real (independent) closure check.
+
+### Plan (increments, each committed and pushed)
+
+1. Library: axial specimen symmetry; `impose_sample_symmetry` for measured pole figures; general
+   ODF sections (phi2 / phi1 / sigma) over symmetry-derived Euler ranges; ODF-integrated
+   volume fractions with a random reference; a hexagonal ideal-orientation catalogue. Tests.
+2. Service `texture.analysis`: one request -> measured, recalculated and difference figures with
+   residual metrics, ODF sections, volume fractions. Tests.
+3. GUI: a "Measured texture" panel with one data rail and result tabs; shared opened files.
+4. Kearns three-section route from uploaded scans (peak detection, reflection matching, random
+   intensities, per-section profile, triad). Tests and panel views.
+5. Documentation: workflow page, theory additions, Kearns algorithm page, index; worked examples.
+
+### Progress
+
+- **Increment 1 - library (landed).** `SymmetrySpec.specimen("axial")` (aliases fibre, fiber,
+  cylindrical): the Curie group infinity/mm, stored as the closed dihedral group D72 where an operator
+  array is unavoidable. `pytex.texture.sample_symmetry.impose_sample_symmetry` averages a measured
+  figure on its own directions - axial exactly (trapezoid-weighted ring means), finite groups by
+  nearest-neighbour orbit lookup that never leaves the measured cap. `pytex.texture.sections`:
+  `euler_section_ranges` (phi2 = 360/n from the crystal's z-axis order, Phi 90 with a perpendicular
+  two-fold, phi1 folded by specimen symmetry) and `odf_sections` (phi2 / phi1 / sigma, both ODF
+  representations in m.r.d., LaboTex plate by default). `ODFSectionData` accepts `phi1`.
+  Components: hexagonal catalogue (basal, basal 30 deg to TD / RD, c along TD / RD - c-axis
+  positions pinned by test), `random_component_fraction` (Haar ball |G|(w - sin w)/pi) and
+  `odf_component_volume_fractions` (kernel-integrated, times-random). Tests:
+  `tests/unit/test_texture_sections_and_sample_symmetry.py` (28). Verified: that file, test_texture,
+  test_texture_components_and_fibres, test_symmetry, test_public_api_docstrings,
+  test_repo_integrity, test_reference_policy, mypy on the four modules.
+- (increment 2 - service `texture.analysis` - next)

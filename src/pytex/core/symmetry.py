@@ -30,6 +30,44 @@ _SPECIMEN_SYMMETRY_POINT_GROUPS = {
     "orthotropic": "222",
 }
 
+#: Names accepted for the axial (fibre, cylindrical) specimen symmetry.
+_AXIAL_SPECIMEN_SYMMETRY_NAMES = frozenset({"axial", "fibre", "fiber", "cylindrical"})
+
+#: The Curie group of an axially symmetric specimen: every rotation about the
+#: fibre axis plus the two-fold axes perpendicular to it, with mirrors.
+_AXIAL_POINT_GROUP = "∞/mm"
+
+#: Angular step of the finite operator list that stands in for the continuous
+#: axial group where an operator array is unavoidable. Pole-figure averaging
+#: does not use it: :func:`pytex.texture.impose_sample_symmetry` integrates the
+#: continuous group exactly.
+_AXIAL_OPERATOR_STEP_DEG = 5.0
+
+
+def _axial_specimen_operators(step_deg: float = _AXIAL_OPERATOR_STEP_DEG) -> np.ndarray:
+    """Proper operators of the dihedral group D_n that samples the axial group.
+
+    ``n = 360 / step_deg`` rotations about the specimen third axis, and ``n``
+    two-fold axes in the specimen plane spaced ``step_deg / 2`` apart. Together
+    they are a closed group, so every orbit computed from them is consistent.
+    """
+
+    count = round(360.0 / step_deg)
+    angles = np.deg2rad(np.arange(count) * step_deg)
+    cosine = np.cos(angles)
+    sine = np.sin(angles)
+    rotations = np.zeros((count, 3, 3), dtype=np.float64)
+    rotations[:, 0, 0] = cosine
+    rotations[:, 0, 1] = -sine
+    rotations[:, 1, 0] = sine
+    rotations[:, 1, 1] = cosine
+    rotations[:, 2, 2] = 1.0
+    axes = np.column_stack([np.cos(angles / 2.0), np.sin(angles / 2.0), np.zeros(count)])
+    two_folds = 2.0 * np.einsum("ni,nj->nij", axes, axes) - np.eye(3)[None, :, :]
+    operators = np.ascontiguousarray(np.concatenate([rotations, two_folds], axis=0))
+    operators.setflags(write=False)
+    return operators
+
 
 def _rotation_matrix_from_axis_angle(axis: ArrayLike, angle_deg: float) -> np.ndarray:
     unit_axis = normalize_vector(axis)
@@ -543,15 +581,26 @@ class SymmetrySpec:
         """
 
         normalized = name.strip().lower()
-        point_group = _SPECIMEN_SYMMETRY_POINT_GROUPS.get(normalized)
-        if point_group is None:
-            supported = ", ".join(sorted(_SPECIMEN_SYMMETRY_POINT_GROUPS))
-            raise ValueError(
-                f"Unsupported specimen symmetry '{name}'. Supported names: {supported}."
-            )
         if reference_frame is not None and reference_frame.domain != FrameDomain.SPECIMEN:
             raise ValueError(
                 "SymmetrySpec.specimen reference_frame must belong to the specimen domain."
+            )
+        if normalized in _AXIAL_SPECIMEN_SYMMETRY_NAMES:
+            return cls(
+                name="specimen-axial",
+                point_group=_AXIAL_POINT_GROUP,
+                operators=_axial_specimen_operators(),
+                specimen_symmetry="axial",
+                reference_frame=reference_frame,
+                provenance=provenance,
+            )
+        point_group = _SPECIMEN_SYMMETRY_POINT_GROUPS.get(normalized)
+        if point_group is None:
+            supported = ", ".join(
+                sorted({*_SPECIMEN_SYMMETRY_POINT_GROUPS, *_AXIAL_SPECIMEN_SYMMETRY_NAMES})
+            )
+            raise ValueError(
+                f"Unsupported specimen symmetry '{name}'. Supported names: {supported}."
             )
         spec = cls.from_point_group(
             point_group,

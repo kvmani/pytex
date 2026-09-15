@@ -2,10 +2,13 @@ from pytex.texture.components import (
     ODF_COMPONENT_FIT_SCHEMA,
     STANDARD_BCC_ROLLING_COMPONENTS,
     STANDARD_FCC_ROLLING_COMPONENTS,
+    STANDARD_HCP_COMPONENTS,
     ODFComponentFit,
     TextureComponent,
     component_volume_fractions,
     fit_odf_components,
+    odf_component_volume_fractions,
+    random_component_fraction,
 )
 from pytex.texture.fibres import NAMED_BCC_FIBRES, Fibre, fibre_axis_alignment_quaternion
 from pytex.texture.ghosts import (
@@ -58,6 +61,12 @@ from pytex.texture.reconstruction import (
     defocus_from_random_standard,
     residual_reports_for_pole_figures,
 )
+from pytex.texture.sample_symmetry import (
+    SAMPLE_SYMMETRY_NAMES,
+    impose_sample_symmetry,
+    sample_symmetry_spec,
+)
+from pytex.texture.sections import ODF_SECTION_KINDS, euler_section_ranges, odf_sections
 
 __all__ = [
     "DEFAULT_RESAMPLING_HALFWIDTH_DEG",
@@ -66,7 +75,9 @@ __all__ = [
     "NAMED_BCC_FIBRES",
     "ODF",
     "ODF_COMPONENT_FIT_SCHEMA",
+    "ODF_SECTION_KINDS",
     "POLE_FIGURE_DEFOCUS_CALIBRATION_SCHEMA",
+    "SAMPLE_SYMMETRY_NAMES",
     "STANDARD_BCC_ROLLING_COMPONENTS",
     "STANDARD_FCC_ROLLING_COMPONENTS",
     "AbelPoissonKernel",
@@ -100,16 +111,20 @@ __all__ = [
     "component_volume_fractions",
     "correct_ghosts",
     "defocus_from_random_standard",
+    "euler_section_ranges",
     "fibre_axis_alignment_quaternion",
     "fit_odf_components",
     "harris_texture_coefficients",
+    "impose_sample_symmetry",
     "kearns_from_diffractogram",
     "kearns_from_odf",
     "kearns_from_orientations",
     "kearns_from_pole_figure",
     "kearns_from_tilt_profile",
     "kernel_axis_shrinkage",
+    "odf_sections",
     "pole_orientation_tensor",
     "random_pole_density",
     "residual_reports_for_pole_figures",
+    "sample_symmetry_spec",
 ]
