@@ -43,6 +43,7 @@ import * as ebsdKikuchi from './panels/ebsdkikuchi.js';
 import * as ebsdOr from './panels/ebsdor.js';
 import * as ecciWorkflow from './panels/ecciWorkflow.js';
 import * as variants from './panels/variants.js';
+import * as textureAnalysis from './panels/textureanalysis.js';
 import * as texture from './panels/texture.js';
 import * as kearns from './panels/kearns.js';
 import * as calculator from './panels/calculator.js';
@@ -106,12 +107,15 @@ const EBSD_ANALYSIS = {
 // levels of compression. The figures show where the poles are; the Kearns
 // parameter is the single second-rank number a designer quotes from exactly
 // that distribution. Side by side, the sub-tab bar says which reading is on
-// screen and the tab bar keeps naming the subject.
+// screen and the tab bar keeps naming the subject. The measured analysis leads:
+// it is the one a user arrives with data for, and its inputs — files, crystal,
+// sample symmetry — are stated once for every reading of them. The opened
+// pole-figure files are shared across the three (see `core/texturefiles.js`).
 const TEXTURE_ANALYSIS = {
   id: 'texture',
   title: 'Texture',
   tagline: 'One polycrystal: where its poles point, and the one number that summarises them.',
-  panels: [texture, kearns],
+  panels: [textureAnalysis, texture, kearns],
 };
 
 const WORKSPACES = [

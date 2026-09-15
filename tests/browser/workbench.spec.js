@@ -29,6 +29,8 @@ const PANEL_PATH = {
   'Kikuchi simulator': ['EBSD', 'Kikuchi simulator'],
   'ECCI workflow': ['EBSD', 'ECCI workflow'],
   'OR from grains': ['EBSD', 'OR from grains'],
+  'Measured texture': ['Texture', 'Measured texture'],
+  Texture: ['Texture', 'Texture'],
   'Kearns parameter': ['Texture', 'Kearns parameter'],
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
@@ -1930,7 +1932,7 @@ test('a pattern file opened from disk is displayed, picked on, and indexed', asy
  */
 test('XRDML pole figures open into tabs on one shared scale', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await workspaceTab(page, 'Texture').click();
+  await openPanel(page, 'Texture');
 
   const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
   await page.locator('#rail-body select[aria-label="View"]').selectOption({
@@ -1995,7 +1997,7 @@ test('XRDML pole figures open into tabs on one shared scale', async ({ page }) =
  */
 test('measured pole figures can be drawn as one labelled comparison plate', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await workspaceTab(page, 'Texture').click();
+  await openPanel(page, 'Texture');
 
   const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
   await page.locator('#rail-body select[aria-label="View"]').selectOption({
@@ -2041,6 +2043,61 @@ test('measured pole figures can be drawn as one labelled comparison plate', asyn
   await page.getByLabel('Measured layout').selectOption('tabs');
   await expect(page.locator('.figure-tab')).toHaveCount(3);
   await expect(page.locator('#stage svg[data-plate-panels]')).toHaveCount(0);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The measured texture: the inputs once, every reading in tabs.
+ *
+ * The defect this panel removes is having to restate the files, the crystal and
+ * the sample symmetry for every view. So the assertions are that one analysis
+ * fills all three tabs, that choosing other ODF sections redraws without the
+ * rail being touched, and that files opened here are the files the Kearns panel
+ * sees.
+ */
+test('measured texture: one set of inputs, every reading in tabs', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Measured texture');
+
+  const plate = page.locator('#stage svg[data-plate-rows]');
+  await expect(plate).toHaveAttribute('data-plate-rows', '3', { timeout: 60_000 });
+  // Orthorhombic symmetry adds the symmetrized column to measured, recalculated
+  // and difference.
+  await expect(plate).toHaveAttribute('data-plate-columns', '4');
+  const status = page.locator('#stage .plot__status').first();
+  await expect(status).toContainText('to the inverted figures');
+
+  await page.locator('#stage [data-tab="odf"]').click();
+  const sections = page.locator('#stage svg[data-odf-sections]');
+  await expect(sections).toHaveAttribute('data-odf-sections', '3');
+  await page.locator('#stage select[aria-label="Which sections"]').selectOption('labotex');
+  await expect(sections).toHaveAttribute('data-odf-sections', '19', { timeout: 60_000 });
+  await page.locator('#stage select[aria-label="Section kind"]').selectOption('phi1');
+  await expect(sections).toHaveAttribute('data-section-kind', 'phi1', { timeout: 60_000 });
+
+  await page.locator('#stage [data-tab="fractions"]').click();
+  await expect(page.locator('#stage svg[data-fraction-rows]')).toHaveAttribute(
+    'data-fraction-rows',
+    '7',
+  );
+
+  // Opened files replace the demonstration, and are the Kearns panel's files too.
+  const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
+  await page.locator('#stage [data-tab="figures"]').click();
+  await page.setInputFiles('#texture-analysis-files input[type="file"]', [
+    { name: 'ni-111.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+    { name: 'ni-200.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+    { name: 'ni-220.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+  ]);
+  await expect(page.locator('#rail-body')).toContainText('3 file(s) open');
+  await expect(page.locator('#stage p.summary').first()).toContainText('3 XRDML file(s)', {
+    timeout: 60_000,
+  });
+
+  await openPanel(page, 'Kearns parameter');
+  await page.locator('#rail-body select[aria-label="Route"]').selectOption('kearns.from_pole_figure');
+  await expect(page.locator('#kearns-files')).toContainText('3 file(s) open');
 
   expect(browserErrors).toEqual([]);
 });
@@ -2804,7 +2861,7 @@ test('keeps all workspaces reachable in the narrow responsive layout', async ({ 
  */
 test('the table on screen is capped and the export carries every row', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await workspaceTab(page, 'Texture').click();
+  await openPanel(page, 'Texture');
 
   const subtitle = page.locator('.card__subtitle');
   await expect(subtitle).toContainText('Showing the first 200 of', { timeout: 30_000 });

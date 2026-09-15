@@ -8105,4 +8105,17 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   6.7% to measured. Split-basal Zr with axial symmetry imposed: 7.8% vs 59.6%, symmetry change
   3.1 m.r.d. against 0.11 with orthorhombic - the analysis flags the wrong assumption.
   Tests: `tests/unit/test_app_texture_analysis.py`; manifest tests for the operation green.
-- (increment 3 - the Measured texture panel - next)
+- **Increment 3 - the Measured texture panel (landed).** `static/js/panels/textureanalysis.js`,
+  first sub-tab of the Texture workspace. The rail holds the inputs once (files, phase, planes,
+  sample symmetry, sections, tolerance, inversion); one request fills three tabs - Pole figures
+  (a plate of measured / symmetrized / recalculated / difference for every figure, or one reading
+  of one figure with a hover read-out of all four), ODF sections (kind and preset switchable in the
+  stage; a re-request reuses the cached inversion) and Volume fractions (bars against the random
+  reference). The difference is drawn on its own diverging scale about zero. Opened XRDML files
+  live in `static/js/core/texturefiles.js`, shared with the Kearns panel. Drawing helpers are
+  exported from `panels/texture.js` rather than copied. Default section lists now include both
+  edges of the box for every kind (the phi1 plate stopped at 85 deg).
+  Verified in the browser at 1600x1000 (no console errors) and by Playwright against a private
+  server (`PYTEX_BASE_URL=http://127.0.0.1:8777`): the new test plus the six existing Texture,
+  Kearns and CIF-loader tests, 7/7. Three existing tests now reach the model panel by sub-tab.
+- (increment 4 - Kearns from three measured theta-2theta sections - next)

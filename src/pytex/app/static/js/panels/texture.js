@@ -39,7 +39,7 @@ const VIEWS = [
 /** The view that draws a user's own files rather than a model texture. */
 const MEASURED = 'texture.measured_pole_figures';
 
-const VIEW = 100;
+export const VIEW = 100;
 
 const DEFAULT_CONTOUR_STYLE = Object.freeze({
   // 'tabs' shows one measured figure at a time; 'plate' shows every one of them
@@ -58,7 +58,7 @@ const DEFAULT_CONTOUR_STYLE = Object.freeze({
   gridSize: 81,
 });
 
-function defaultContourStyle() {
+export function defaultContourStyle() {
   return { ...DEFAULT_CONTOUR_STYLE };
 }
 
@@ -109,7 +109,7 @@ function displayMaximum(maxMrd, style) {
   return style.scaleMax > 0 ? style.scaleMax : Math.max(maxMrd, 1);
 }
 
-function paletteColor(mrd, style, maxMrd) {
+export function paletteColor(mrd, style, maxMrd) {
   const value = Math.max(Number(mrd) || 0, 0);
   if (style.palette === 'mrd') return interpolateRamp(value, MRD_RAMP);
   const normalized = Math.min(value / displayMaximum(maxMrd, style), 1);
@@ -127,7 +127,7 @@ function customContourLevels(text) {
   return unique.length >= 2 ? unique : null;
 }
 
-function contourLevels(maxMrd, style) {
+export function contourLevels(maxMrd, style) {
   const custom = customContourLevels(style.customLevels);
   if (custom) return custom;
   const maximum = displayMaximum(maxMrd, style);
@@ -825,7 +825,7 @@ export function mount(context) {
 
 /* -------------------------------------------------------------- rendering */
 
-function discFrame(root, axes) {
+export function discFrame(root, axes) {
   root.append(
     svg('circle', {
       cx: 0,
@@ -859,7 +859,7 @@ function discFrame(root, axes) {
 }
 
 /** Display-only inverse-distance interpolation onto the projection disc. */
-function interpolatePoleFigure(points, size) {
+export function interpolatePoleFigure(points, size) {
   const xValues = Array.from({ length: size }, (_, index) => -1 + 2 * index / (size - 1));
   const yValues = [...xValues];
   const neighbours = 6;
@@ -894,7 +894,7 @@ function crossingPoint(a, b, level) {
 }
 
 /** One SVG path containing every marching-squares segment for one level. */
-function contourPath(grid, level, mapPoint) {
+export function contourPath(grid, level, mapPoint) {
   const commands = [];
   for (let row = 0; row < grid.yValues.length - 1; row += 1) {
     for (let column = 0; column < grid.xValues.length - 1; column += 1) {
@@ -933,7 +933,7 @@ function contourPath(grid, level, mapPoint) {
   return commands.join(' ');
 }
 
-function drawContourGrid(parent, grid, style, maxMrd, mapPoint) {
+export function drawContourGrid(parent, grid, style, maxMrd, mapPoint) {
   const levels = contourLevels(maxMrd, style);
   if (style.mode !== 'lines') {
     const fill = svg('g', { 'fill-opacity': style.fillOpacity });

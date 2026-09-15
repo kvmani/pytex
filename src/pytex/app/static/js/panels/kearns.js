@@ -33,6 +33,7 @@ import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { download, renderResult } from '../core/result.js';
 import { call } from '../core/api.js';
+import * as texturefiles from '../core/texturefiles.js';
 
 export const panel = {
   id: 'kearns',
@@ -70,9 +71,9 @@ export function mount(context) {
     form: null,
     teaches: null,
     plotNode: null,
-    // Opened pole-figure files, kept on the panel rather than in the form:
-    // switching route must not silently drop what the user has opened.
-    files: [],
+    // Opened pole-figure files live in `core/texturefiles.js`, not in the form:
+    // switching route must not silently drop what the user has opened, and a
+    // file opened in the measured-texture panel is the same measurement here.
   };
 
   const chooser = el(
@@ -179,18 +180,15 @@ export function mount(context) {
       ),
       input,
       el('p.field__help', {
-        text: state.files.length
-          ? `${state.files.length} file(s) open: ${state.files.map((file) => file.name).join(', ')}`
-          : 'No file open yet. Choose one or more .xrdml pole-figure files.',
+        text: texturefiles.describeOpenedFiles(
+          'No file open yet. Choose one or more .xrdml pole-figure files.',
+        ),
       }),
-      state.files.length
+      texturefiles.openedFiles().length
         ? el('button.button', {
             type: 'button',
             text: 'Close them',
-            onclick: () => {
-              state.files = [];
-              renderFileControls();
-            },
+            onclick: () => texturefiles.closeFiles(),
           })
         : null,
     );
@@ -199,15 +197,15 @@ export function mount(context) {
   async function openFiles(files) {
     if (!files.length) return;
     try {
-      state.files = await Promise.all(
-        files.map(async (file) => ({ name: file.name, text: await file.text() })),
-      );
-      renderFileControls();
+      await texturefiles.openFiles(files);
       await run();
     } catch (error) {
       context.showError(error);
     }
   }
+
+  // Another texture panel may open or close the shared files while this one is mounted.
+  texturefiles.onFilesChanged(() => renderFileControls());
 
   function loadExample(example) {
     state.operation = operations.find((entry) => entry.id === example.operation);
@@ -224,13 +222,13 @@ export function mount(context) {
     try {
       const request = state.form.values();
       if (needsFiles()) {
-        if (!state.files.length) {
+        if (!texturefiles.openedFiles().length) {
           context.showError(
             new Error('Open at least one XRDML pole-figure file before computing f.'),
           );
           return;
         }
-        request.files = { items: state.files };
+        request.files = { items: texturefiles.openedFiles() };
       }
       const result = await call(operation.id, request);
       renderResult(context.stage, result, {

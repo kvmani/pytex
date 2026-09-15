@@ -240,10 +240,11 @@ def odf_sections(
 
     section_max = {"phi2": phi2_max, "phi1": phi1_max, "sigma": phi1_max + phi2_max}[kind]
     if values_deg is None:
-        # Inclusive of the upper limit only where it is a distinct section; the
-        # 90 degree phi2 section of a cubic crystal is the 0 degree one again.
+        # Both edges of the box are drawn, as LaboTex and the printed atlases do:
+        # the last section repeats the first under symmetry, and showing it lets
+        # a component on the boundary be read without wrapping round.
         count = int(np.floor(section_max / step_deg + 1e-9))
-        section_values = np.arange(count + (0 if kind != "phi2" else 1)) * step_deg
+        section_values = np.arange(count + 1) * step_deg
         section_values = section_values[section_values <= section_max + 1e-9]
     else:
         section_values = np.atleast_1d(np.asarray(values_deg, dtype=np.float64))
