@@ -801,8 +801,11 @@ def _odf_sections(request: dict[str, Any]) -> dict[str, Any]:
                 "max_mrd": float(plane.max()),
             }
         )
-        for row_index, phi1_value in enumerate(phi1):
-            for column_index, big_phi_value in enumerate(big_phi):
+        # `plane` is indexed [Phi][phi1], as `ODF.phi2_sections` returns it. The
+        # loops follow that order: reading it as [phi1][Phi] transposed every
+        # section, which a square cubic grid hides and a Goss texture exposes.
+        for row_index, big_phi_value in enumerate(big_phi):
+            for column_index, phi1_value in enumerate(phi1):
                 rows.append(
                     {
                         "phi2_deg": float(phi2),

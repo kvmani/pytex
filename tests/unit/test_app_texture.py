@@ -265,6 +265,25 @@ class TestOdfSections:
         sections = odf_sections()["data"]["sections"]
         assert [section["phi2_deg"] for section in sections] == [0.0, 45.0, 65.0]
 
+    def test_goss_peaks_at_phi1_zero_and_big_phi_45_in_the_table_and_the_grid(self) -> None:
+        """Goss is Bunge (0, 45, 0), so its phi2 = 0 section peaks at phi1 = 0, Phi = 45.
+
+        A cube texture is symmetric enough to survive the two Euler angles being
+        swapped; Goss is not. The table once read the grid as [phi1][Phi] and put
+        this peak at phi1 = 45, Phi = 0, and the section renderer drew it the same
+        way, so both are pinned: the grid is indexed [Phi][phi1].
+        """
+
+        result = odf_sections(model="goss", spread_deg=6.0, grain_count=300, halfwidth_deg=8.0)
+        rows = [row for row in result["table"]["rows"] if row["phi2_deg"] == 0.0]
+        peak = max(rows, key=lambda row: row["mrd"])
+        assert (peak["phi1_deg"], peak["big_phi_deg"]) == (0.0, 45.0)
+        section = result["data"]["sections"][0]
+        grid = np.asarray(section["densities"])
+        big_phi_index, phi1_index = np.unravel_index(int(grid.argmax()), grid.shape)
+        assert section["big_phi_deg"][big_phi_index] == 45.0
+        assert section["phi1_deg"][phi1_index] == 0.0
+
     def test_a_sharp_component_gives_a_strong_peak_in_the_published_range(self) -> None:
         """A tight cube reaches tens of m.r.d., not hundreds or fractions.
 

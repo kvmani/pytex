@@ -8157,3 +8157,20 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   leaves exactly the polar part (analytic); random cubic 15 deg fraction 0.022768
   (24 (w - sin w)/pi by hand); hexagonal + orthorhombic Euler box (90, 90, 60) (Bunge 4.2).
   `{cite}` roles were not used: the site has no bibliography configured for these keys.
+  Landed as `ad7b1c9`; gallery regenerated (only the new page and the index changed); worked
+  examples, documentation policy, reference policy and manifest doc-link tests green.
+- **Increment 6 - two defects the final review found (landed).**
+  1. *Model ODF sections were transposed.* `ODF.phi2_sections` returns `[Phi][phi1]`; the
+     `texture.odf_sections` table and `panels/texture.js::renderSections` both read `[phi1][Phi]`.
+     A square cubic grid hid it and a cube texture is symmetric enough to survive it; a Goss
+     texture does not: the table put its phi2 = 0 peak at (phi1, Phi) = (45, 0) against the true
+     (0, 45). Both fixed, and pinned by
+     `test_app_texture.py::TestOdfSections::test_goss_peaks_at_phi1_zero_and_big_phi_45...`.
+     The same renderer drew the old measured view's harmonic sections, which are non-square.
+  2. *The Kearns panel showed a blank stage while its first example computed.* With the measured
+     analysis now ahead of it in the workspace, the browser walk of every panel found it empty for
+     over 5 s. It shows a placeholder until the result replaces it.
+  `docs/site/concepts/texture_foundation.md` "Current State" now lists the new capabilities.
+  Verified: test_app_texture (39) green; Playwright against 8777 - every-workspace walk, CIF
+  loader, both measured pole-figure tests, measured texture, table cap, and the three Kearns tests,
+  9/9.

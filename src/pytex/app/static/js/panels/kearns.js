@@ -354,6 +354,12 @@ export function mount(context) {
   }
 
   renderControls();
+  // Never a blank stage while the first example computes: another texture panel's
+  // analysis may be ahead of it on the server, and an empty page reads as broken.
+  // The result replaces this when it arrives.
+  context.stage.append(
+    el('div.stage__placeholder', { text: 'Computing the first example…' }),
+  );
   if (examples.length) loadExample(examples[0]);
 
   return {

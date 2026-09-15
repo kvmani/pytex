@@ -37,6 +37,18 @@ The texture layer is where PyTex demonstrates that its canonical core is not abs
 - PF/IPF and ODF foundations are implemented
 - discrete dictionary-based PF inversion is implemented
 - band-limited harmonic PF-to-ODF inversion is implemented
+- statistical sample symmetry is implemented for triclinic, monoclinic, orthorhombic and **axial**
+  (fibre) specimens; axial symmetry is imposed on measured pole figures exactly, as a
+  trapezoid-weighted ring average ({func}`~pytex.texture.sample_symmetry.impose_sample_symmetry`)
+- ODF sections at constant $\varphi_2$, $\varphi_1$ or $\sigma$ are implemented for both ODF
+  representations over the Euler box the crystal and sample symmetries require
+  ({func}`~pytex.texture.sections.odf_sections`, {func}`~pytex.texture.sections.euler_section_ranges`)
+- recalculated and difference pole figures, with the RP factor, are the acceptance test of every
+  inversion in the workbench's measured-texture analysis
+- component volume fractions integrate a continuous ODF over misorientation balls and are reported
+  against their Haar random reference; a hexagonal ideal-orientation catalogue is provided
+- the Kearns triad is computed from three measured theta-2theta section scans, with every peak,
+  intensity and quadrature node reported — see {doc}`../workflows/texture_analysis_workbench`
 - exhaustive orientation-region boundaries and broader experimental correction doctrine remain ahead
 
 ## Related Material

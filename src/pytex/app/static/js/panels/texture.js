@@ -1161,12 +1161,17 @@ function renderSections(data, frame, style) {
     const originX = index * (size + gap);
     const phi1 = section.phi1_deg;
     const bigPhi = section.big_phi_deg;
-    const cellWidth = size / Math.max(phi1.length, 1);
-    const cellHeight = size / Math.max(bigPhi.length, 1);
+    // Cell pitch matches the grid map below: n samples span n - 1 intervals.
+    const cellWidth = size / Math.max(phi1.length - 1, 1);
+    const cellHeight = size / Math.max(bigPhi.length - 1, 1);
+    // The densities arrive indexed [Phi][phi1], which is already row-by-column
+    // for a section drawn with phi1 across and Phi down. Reading them as
+    // [phi1][Phi] transposed every section; a Goss peak at (0, 45) was drawn at
+    // (45, 0).
     const grid = {
       xValues: phi1.map((_, point) => point / Math.max(phi1.length - 1, 1)),
       yValues: bigPhi.map((_, point) => point / Math.max(bigPhi.length - 1, 1)),
-      values: bigPhi.map((_, column) => phi1.map((__, row) => section.densities[row][column])),
+      values: bigPhi.map((_, phiIndex) => phi1.map((__, phi1Index) => section.densities[phiIndex][phi1Index])),
     };
 
     root.append(
@@ -1190,7 +1195,7 @@ function renderSections(data, frame, style) {
 
     for (let row = 0; row < phi1.length; row += 1) {
       for (let column = 0; column < bigPhi.length; column += 1) {
-        const mrd = section.densities[row][column];
+        const mrd = section.densities[column][row];
         const node = svg('rect', {
           x: originX + row * cellWidth - cellWidth / 2,
           y: column * cellHeight - cellHeight / 2,
