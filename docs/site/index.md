@@ -65,6 +65,7 @@ workflows/vectorized_miller_workflows
 workflows/orix_kikuchipy_interop
 workflows/phases_and_cif
 workflows/texture_odf_inversion
+workflows/texture_analysis_workbench
 workflows/harmonic_odf_reconstruction
 workflows/pole_figure_presentation
 workflows/foundation_feature_priorities

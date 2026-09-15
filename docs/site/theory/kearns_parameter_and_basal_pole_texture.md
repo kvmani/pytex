@@ -309,6 +309,33 @@ Four approximations enter, in decreasing order of consequence.
    reflection and {func}`~pytex.texture.kearns.kearns_from_diffractogram` reports the spread, so
    the condition is visible rather than silent.
 
+### Three sections at once, from measured scans
+
+The triad needs all three principal sections, and in practice the three scans are analysed
+together. The workbench route *Kearns f from three measured scans* does the whole chain on each:
+peaks are detected and fitted with the K-$\alpha_2$ partner modelled, every reflection the phase
+predicts is matched to its fitted peak, the fitted area is divided by the reflection's random-powder
+intensity — calculated from multiplicity, $|F|^{2}$ and the Lorentz-polarisation factor, or measured
+on a standard — and the resulting densities are integrated section by section. Every reflection's
+fate is reported: *used*, *not detected* (counted as zero, because an absent peak is texture),
+*overlapping* or *too weak in a random powder* (excluded). The steps and their numbers are in
+[the texture-analysis workflow](../workflows/texture_analysis_workbench.md).
+
+Because the three values are measured on three different surfaces, $f_a + f_r + f_t$ is **not** 1
+by construction, unlike the tensor routes: its departure is a genuine diagnostic of the
+interpolation over unevenly spaced tilts (approximation 1 above) and of section-to-section
+differences in background and absorption. Kearns found sums between $0.94$ and $1.06$; the
+normalised values $f_i / \sum_j f_j$ are reported beside the raw ones, as Mani Krishna *et al.*
+(2011) do.
+
+The route is exercised against a texture whose triad is known exactly — basal poles $30^{\circ}$
+either side of radial towards transverse, as in pilgered tubing — and recovers it to within
+$0.006$: $f_a = 0.0268$, $f_r = 0.7256$, $f_t = 0.2561$ against $0.0212$, $0.7232$, $0.2556$.
+It is also sensitive to precisely the failure approximation 1 describes: a density spike at a tilt
+with no neighbouring reflection is carried across a whole tilt bin. A demonstration texture built
+by scattering Euler angles, which concentrates basal poles artificially at $\Phi = 0$, put
+$f_r$ at $0.855$ against $0.716$ until the scatter was moved into rotation space.
+
 ## Validation
 
 The identities of {eq}`eq-kearns-sum-rule` and the random value are exact, which makes them

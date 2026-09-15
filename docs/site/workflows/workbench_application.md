@@ -720,9 +720,31 @@ the Variants workspace and draws it. What crosses is the *name* and the two phas
 rotation: the wall draws catalogued relationships, and quietly substituting a fitted rotation for the
 catalogue entry would leave the picture and its caption describing different things.
 
+### The measured-texture panel, loaded once
+
+The **Texture** workspace opens on **Measured texture**. Its rail holds everything the analysis
+needs — the XRDML pole-figure files, the plane of each, the phase (and so the crystal symmetry) and
+the sample symmetry, including **axial** — and one press of **Analyse texture** fills three tabs:
+
+- **Pole figures**: a plate with, for every figure, the *measured*, *symmetrized*, *recalculated*
+  and *difference* readings on one intensity scale (the difference on its own diverging scale about
+  zero), or any one reading of one figure with a hover read-out of all four;
+- **ODF sections**: constant φ₂ by default, or φ₁ or σ, as the standard sections, every section at
+  a fixed step (the LaboTex plate), or chosen values — switchable in the tab itself;
+- **Volume fractions**: each ideal orientation of the crystal system, against what a random texture
+  holds in the same ball.
+
+Nothing is re-entered when the tab changes, and the service reuses the inversion when only the view
+does. Run the *rolled fcc sheet* example and read the difference figures first: an RP factor of a
+few percent and speckle, not lobes, is what an ODF that reproduces its data looks like. Then run the
+*axial symmetry on a zirconium tube* example, whose specimen is not axial, and watch the RP factor
+against the measured figures jump while the fit to the symmetrized ones stays good. The full method,
+its equations and its verification are in
+[texture analysis in the workbench](texture_analysis_workbench.md).
+
 ### The texture panel, against the m.r.d. scale
 
-Open **Texture** and run the random baseline first. It reads **1 m.r.d. everywhere**, and the status
+Open **Texture ▸ Texture** (the model textures) and run the random baseline first. It reads **1 m.r.d. everywhere**, and the status
 line reports the area-weighted mean as 1.000. That is not a coincidence to admire but the definition
 of the scale: multiples of a random distribution means exactly that a texture-free material is 1, and
 the area-weighted mean of any correctly normalised pole figure is 1 whatever the texture. A figure
@@ -767,6 +789,15 @@ The sum becomes a real test only where the three values were measured **independ
 principal sections by the diffractogram route. There no identity forces them to agree, and a
 departure means an unmeasured tilt range, a wrong random standard, or an unbalanced background. A
 single diffractogram section shows no closure check at all, because one section gives one number.
+
+The route **Kearns f from three measured scans** is that case. Open one symmetric θ–2θ scan per
+section — the slot is named by the section's *surface normal*: axial, radial, transverse for a tube;
+RD, ND, TD for a plate — or press **Compute f** with none open to analyse demonstration scans of a
+known tube texture. Each section gets a card drawing its scan with every predicted reflection
+marked (used, not detected, or excluded) and the tilt profile integrated from it; the stages below
+list every reflection's fitted and random intensity and every quadrature node. The closure note
+reads the sum against the 0.94–1.06 Kearns found, and the table gives the values normalised to sum
+to one beside the raw ones.
 
 ### Contour presentation
 

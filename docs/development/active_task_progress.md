@@ -8140,4 +8140,20 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
   plots being squashed to their header by the stage's flex column (the old profile card was too).
   Tests: `tests/unit/test_app_kearns_sections.py` (15); `test_app_kearns.py` scoped its
   one-specimen check to the fibre examples and holds the new example to its own truth (62 green).
-- (increment 5 - documentation and worked examples - next)
+- **Increment 5 - documentation and worked examples (in progress).**
+  New page `docs/site/workflows/texture_analysis_workbench.md` (in the site toctree, linked from
+  `docs/README.md` and from the analysis panel's help): the inputs stated once; sample symmetry
+  including axial, with the ring-average equation; measured / symmetrized / recalculated /
+  difference figures and the RP factor, reported against inverted and measured data, with the
+  demonstration numbers; ODF section ranges derived from the symmetries and the three presets
+  (standard, LaboTex plate, chosen); component volume fractions and their Haar random reference;
+  the Kearns three-scan route (slot = surface normal, per-step statuses, closure against 0.94-1.06,
+  the Euler-scatter demonstration failure recorded); a verification table; references.
+  Theory note `kearns_parameter_and_basal_pole_texture.md` gains "Three sections at once, from
+  measured scans". `workbench_application.md` gains "The measured-texture panel, loaded once" and
+  the three-scan route under the closure check; the model panel is now named Texture > Texture.
+  Terminology registry: recalculated pole figure, RP factor, axial sample symmetry, LaboTex plate.
+  Worked examples `worked_examples/examples/texture_sections_and_symmetry.py`: axial average
+  leaves exactly the polar part (analytic); random cubic 15 deg fraction 0.022768
+  (24 (w - sin w)/pi by hand); hexagonal + orthorhombic Euler box (90, 90, 60) (Bunge 4.2).
+  `{cite}` roles were not used: the site has no bibliography configured for these keys.

@@ -31,7 +31,10 @@ generated figures, and the site's own README.
 - [TEM Tilt Navigation Foundation](architecture/tem_tilt_navigation_foundation.md)
 - [Application Platform: One Codebase, Two Shells](architecture/application_platform.md) — the desktop and intranet workbench over the library, and the decisions behind it
   ([user guide](site/workflows/workbench_application.md) — running it, reading a result, exporting,
-  and two panels whose answers are known before the calculation runs)
+  and two panels whose answers are known before the calculation runs; [texture analysis in the
+  workbench](site/workflows/texture_analysis_workbench.md) — measured, recalculated and difference
+  pole figures, ODF sections, sample symmetry including axial, volume fractions, and the Kearns
+  triad from three measured scans)
 - [Repository Review 2026 Foundation Audit](architecture/repo_review_2026_foundation_audit.md)
 
 ## Testing And Validation

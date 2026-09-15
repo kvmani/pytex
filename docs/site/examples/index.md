@@ -99,6 +99,9 @@ The complete set of computed-versus-expected values at a glance:
 | `kearns-triad-sum-is-exactly-one` | 1.000000000000 | 1.000000000000 | &mdash; | ✅ |
 | `kearns-ideal-basal-girdle` | [0.500000, 0.500000, 0.000000] | [0.500000, 0.500000, 0.000000] | &mdash; | ✅ |
 | `kearns-1965-table-3-longitudinal-section` | 0.4879 | 0.4880 | &mdash; | ✅ |
+| `axial-sample-symmetry-keeps-the-polar-part` | < 1e-11 | 0.00e+00 | m.r.d. | ✅ |
+| `random-texture-fraction-within-15-degrees-cubic` | 0.022768 | 0.022768 | &mdash; | ✅ |
+| `hexagonal-orthorhombic-odf-section-box` | [90.0, 90.0, 60.0] | [90.0, 90.0, 60.0] | deg | ✅ |
 | `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | ✅ |
 | `tem-tilt-001-to-111-travel` | 54.7356 | 54.7356 | deg | ✅ |
 | `tem-holder-accessible-solid-angle` | 1.04720 | 1.04720 | sr | ✅ |
@@ -179,6 +182,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`The ghost problem, and its correction <generated/ghost-problem>` &mdash; What diffraction pole figures cannot determine, and what positivity can recover of it: an asymmetric texture still gives a pole set closed under negation, excluding the odd harmonic degrees discards nearly half the basis, a cubic material has no odd term below degree 9, and the correction removes the negative density without moving the fit.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`The Kearns parameter <generated/kearns-parameter>` &mdash; The scalar texture index the zirconium industry specifies components against, checked against the identities that calibrate it -- 1/3 for a random texture, an exact sum of 1 over any orthonormal triad, (1/2, 1/2, 0) for an ideal basal girdle -- and against the tabulated calculation in Kearns' own 1965 report.
+- {doc}`Sample symmetry, ODF sections and component fractions <generated/texture-sections-and-sample-symmetry>` &mdash; The texture-analysis surfaces behind the workbench's measured-texture panel, each checked against its definition: axial sample symmetry removes exactly the azimuthal part of a figure, a random cubic texture holds the Haar volume of 24 balls within a tolerance, and a hexagonal ODF under orthorhombic sample symmetry spans 90, 90 and 60 degrees.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Simulated SAED plates and the zone-axis atlas <generated/saed_practice_patterns>` &mdash; The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put, and the forbidden reflection that double diffraction puts on a real plate at exactly the radius a genuine one would occupy.
 - {doc}`Precise lattice-parameter determination <generated/lattice-parameters>` &mdash; The extrapolation functions and the drift-column identity checked against closed-form algebra, the hexagonal quadratic form checked against the textbook expression it must reduce to, and an end-to-end determination through a deliberately displaced specimen checked against the pinned fixture cell the pattern was generated from - alongside the same data solved by averaging, which leaves the displacement in the answer.
@@ -212,6 +216,7 @@ generated/directional-statistics
 generated/ghost-problem
 generated/pole-figure-arithmetic
 generated/kearns-parameter
+generated/texture-sections-and-sample-symmetry
 generated/tem_tilt_navigation
 generated/saed_practice_patterns
 generated/lattice-parameters

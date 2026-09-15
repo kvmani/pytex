@@ -151,7 +151,7 @@ _PANEL_DOCUMENTATION = {
     ),
     "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
     "texture_analysis": DocumentationLink(
-        "Texture analysis of measured pole figures", "workflows/texture_odf_inversion"
+        "Texture analysis of measured pole figures", "workflows/texture_analysis_workbench"
     ),
     "variants": DocumentationLink(
         "Orientation relationships", "concepts/orientation_relationships"
