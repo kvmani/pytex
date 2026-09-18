@@ -35,6 +35,7 @@ stay sharp when the figure is zoomed.
 from __future__ import annotations
 
 import base64
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -62,6 +63,7 @@ from pytex.app.registry import (
     Parameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
+from pytex.app.services.ebsd_figures import scan_quality_figure
 
 __all__: tuple[str, ...] = ()
 
@@ -1239,6 +1241,21 @@ def _scan_summary(request: dict[str, Any]) -> dict[str, Any]:
             "percentiles are given beside it.",
         ),
         citations=(_CITATION_RANDLE_ENGLER,),
+    )
+    quality_channels = {
+        key: (label, np.asarray(crystal_map.get_property(channel), dtype=float))
+        for key, (channel, label, units) in _SCALAR_CHANNELS.items()
+        if key in channels
+    }
+    result = replace(
+        result,
+        figures=(
+            scan_quality_figure(
+                quality_channels,
+                confidence_threshold=confidence_threshold,
+                diameters_um=np.asarray(diameters, dtype=float),
+            ),
+        ),
     )
     return result.to_json()
 

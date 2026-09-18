@@ -102,3 +102,11 @@ def test_orientation_relationships_show_pairs_and_catalogue_margins() -> None:
         example = next(item for item in REGISTRY.examples() if item.operation == operation)
         result = REGISTRY.call(operation, example.request)
         assert _figures_by_stage(result)[""] == expected
+
+
+def test_an_ebsd_scan_summary_shows_what_its_threshold_keeps() -> None:
+    result = REGISTRY.call("ebsd.scan_summary", {})
+    assert _figures_by_stage(result)[""] == ["scan_quality"]
+    assert "confidence-index threshold" in result["figures"][0]["caption"]
+    # One histogram per quality channel present in the scan, plus the grain sizes.
+    assert set(result["data"]["channels"]) == {"confidence_index", "fit", "image_quality"}
