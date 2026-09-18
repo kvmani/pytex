@@ -231,16 +231,11 @@ function backgroundOf(node) {
 function loadSvgImage(markup) {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }));
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('The figure could not be rasterized.'));
-    };
-    image.src = url;
+    // A data URL rather than an object URL: object URLs are reserved for
+    // saving files, which goes through `saveBlob` alone.
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('The figure could not be rasterized.'));
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
   });
 }
 

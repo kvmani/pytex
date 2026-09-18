@@ -8297,3 +8297,27 @@ overlaid on the model where it makes sense. Validated numerics must not change.
   every workspace and sub-panel, saves a PNG from each drawn frame (long side >= 2400 px) and
   requires every FIGURE_PANELS entry to have exported; passed in 3.9 min on :8777. Spot check:
   crystal viewer, EBSD map, SAED, texture, variants exports all non-blank.
+- **Increment 5 - EBSD scan quality, docs, two defects from the full run (landed).**
+  `ebsd_figures.py`: CI / fit / IQ histograms with the CI threshold and the kept fraction, and the
+  grain-size distribution (finding: the demo scan's default CI threshold 0.1 keeps a distinct
+  low-CI population at 0.15-0.3). Docs: `workbench_application.md` table of every operation's
+  intermediate figures; `architecture/application_platform.md` Decision 6 and frontend list.
+  Defects found by the full unit run and fixed: (1) matplotlib writes each text's source string as
+  an SVG comment, leaking mathtext into payloads - comments are stripped in `render_figure`
+  (pinned); (2) the exporter loaded SVG through an object URL, which the frontend reserves for
+  `saveBlob` - it now uses a data URL.
+
+### Verification of record, and status
+
+- Full unit lane: one failure on the first run (the object-URL guard), fixed and its file rerun
+  green; the earlier mathtext failure fixed and the manifest mathtext tests rerun green.
+- ruff and mypy clean on every touched module.
+- Playwright against :8777: HRTEM native PNG (byte-identical), figure-card PNG/SVG, every panel's
+  PNG, XRD views, HRTEM workspace, workspace walk, measured texture, table cap, three Kearns
+  tests - 11/11 (the workspace walk and XRD view fail only as the first tests on a cold server,
+  as recorded before; both pass warm).
+- Validated numbers unchanged: six lattice-parameter configurations bit-identical to the
+  pre-change dump, and pinned in `test_app_xrd_lattice_report.py`.
+
+**Status: the goal is met.** Every item of the objective is implemented, tested, documented and
+on `main`.
