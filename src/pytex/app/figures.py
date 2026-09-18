@@ -235,6 +235,7 @@ def draw_normalized_residuals(
     labels: Sequence[str] | None = None,
     xlabel: str = "",
     ylabel: str = "",
+    marker_size: float = 4.5,
 ) -> None:
     """Residuals in units of their own standard uncertainty, with 2σ and 3σ guides.
 
@@ -254,13 +255,15 @@ def draw_normalized_residuals(
         axes.axhline(-level, color=COLORS["guide"], lw=0.8, ls=style, zorder=1)
     axes.axhline(0.0, color=COLORS["guide"], lw=0.8, zorder=1)
     outside = np.abs(z_values) > 3.0
-    axes.plot(x_values[~outside], z_values[~outside], "o", ms=4.5, color=COLORS["data"], zorder=3)
+    axes.plot(
+        x_values[~outside], z_values[~outside], "o", ms=marker_size, color=COLORS["data"], zorder=3
+    )
     if np.any(outside):
         axes.plot(
             x_values[outside],
             z_values[outside],
             "D",
-            ms=5.0,
+            ms=max(marker_size, 2.5),
             color=COLORS["warning"],
             zorder=3,
             label="beyond ±3σ",

@@ -38,6 +38,15 @@ from pytex.app.results import (
     ResultTable,
 )
 from pytex.app.services.calculator import phase_parameter, plane_label
+from pytex.app.services.xrd_figures import (
+    background_figure,
+    identification_figures,
+    pattern_figures,
+    rietveld_figures,
+    size_strain_figures,
+    size_strain_highlights,
+    williamson_hall_uncertainties,
+)
 from pytex.app.services.xrd_lattice_report import (
     EXTRAPOLATION_NAMES,
     correction_figure,
@@ -380,6 +389,19 @@ def _powder_pattern(request: dict[str, Any]) -> dict[str, Any]:
             "refinement.",
         ),
         citations=(_CITATION_CULLITY, _CITATION_BEARDEN),
+    )
+    result = replace(
+        result,
+        figures=pattern_figures(
+            pattern.two_theta_grid_deg,
+            pattern.intensity_grid,
+            rows,
+            labels=[
+                _powder_label(tuple(reflection.miller_indices), spec=spec, style="mathtext")
+                for reflection in pattern.reflections
+            ],
+            radiation=str(radiation.name),
+        ),
     )
     return result.to_json()
 
@@ -869,6 +891,18 @@ def _background(request: dict[str, Any]) -> dict[str, Any]:
         notes=tuple(notes),
         citations=(_CITATION_SNIP_METHOD,),
     )
+    result = replace(
+        result,
+        figures=(
+            background_figure(
+                estimate.two_theta_deg,
+                estimate.observed_intensity,
+                estimate.background,
+                method=method,
+                fraction=float(estimate.background_fraction),
+            ),
+        ),
+    )
     return result.to_json()
 
 
@@ -1171,6 +1205,23 @@ def _rietveld(request: dict[str, Any]) -> dict[str, Any]:
         notes=tuple(notes),
         citations=(_CITATION_RIETVELD_METHOD, _CITATION_TOBY_R),
     )
+    result = replace(
+        result,
+        figures=rietveld_figures(
+            result_object,
+            labels=[
+                _powder_label(
+                    cast(
+                        tuple[int, int, int],
+                        tuple(int(value) for value in reflection.miller_indices),
+                    ),
+                    spec=spec,
+                    style="mathtext",
+                )
+                for reflection in result_object.reflections
+            ],
+        ),
+    )
     return result.to_json()
 
 
@@ -1464,6 +1515,28 @@ def _size_strain(request: dict[str, Any]) -> dict[str, Any]:
         },
         notes=tuple(notes),
         citations=(_CITATION_WH, _CITATION_CAGLIOTI_UVW),
+    )
+    statistics = williamson_hall_uncertainties(
+        analysis.abscissa,
+        analysis.ordinate,
+        wavelength_angstrom=wavelength,
+        shape_factor=shape_factor,
+    )
+    result = replace(
+        result,
+        highlights=size_strain_highlights(statistics, float(analysis.r_squared)),
+        figures=size_strain_figures(
+            standard_angles=standard_angles,
+            standard_widths=standard_widths,
+            instrument=instrument,
+            sample_angles=np.asarray(analysis.two_theta_deg, dtype=float),
+            observed_widths=observed_sorted,
+            sample_widths=np.asarray(analysis.sample_fwhm_deg, dtype=float),
+            abscissa=np.asarray(analysis.abscissa, dtype=float),
+            ordinate=np.asarray(analysis.ordinate, dtype=float),
+            scherrer_nm=np.asarray(scherrer, dtype=float),
+            statistics=statistics,
+        ),
     )
     return result.to_json()
 
@@ -4040,7 +4113,7 @@ def _phase_identification(request: dict[str, Any]) -> dict[str, Any]:
         "from the list as that the scan is poor."
     )
 
-    return AppResult(
+    identified = AppResult(
         title=f"Phase identification of {measured.name}",
         summary=summary,
         table=ResultTable(
@@ -4110,7 +4183,8 @@ def _phase_identification(request: dict[str, Any]) -> dict[str, Any]:
             identification=identification,
             table=table,
         ),
-    ).to_json()
+    )
+    return replace(identified, figures=identification_figures(identified.data)).to_json()
 
 
 _CRITERION_LABELS = {

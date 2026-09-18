@@ -8264,3 +8264,21 @@ overlaid on the model where it makes sense. Validated numerics must not change.
   Next: figures of intermediate results for the other operations, module by module (XRD
   background / Rietveld / size-strain / phase ID / pattern, Kearns, texture analysis, TEM fit and
   solve, CBED, ECCI, EBSD, OR, variants, crystal, calculator).
+- **Increment 3 - figures of the intermediate results: XRD, Kearns, texture analysis (landed).**
+  `xrd_figures.py`: background under the scan (log) + remainder; Rietveld observed/calculated/
+  background/difference with reflection ticks, weighted residuals (y_obs - y_calc) sqrt(w) with
+  2/3 sigma bands (sum of squares / (N - P) = GoF^2, pinned), parameter shifts in units of sigma;
+  size-strain Caglioti calibration, width decomposition, Williamson-Hall line with its OLS +/-1
+  sigma band and highlights D +/- sigma, eps +/- sigma (equal to numpy polyfit covariance,
+  pinned), Scherrer sizes; phase identification lines per candidate + score breakdown; simulated
+  pattern + |F|^2 / multiplicity / LP factors. `kearns_figures.py`: tilt profile, volume share and
+  the running Kearns sum (ends exactly at f; Kearns' Table 3 gives 0.4879) for the diffractogram,
+  tilt-profile and three-section routes; the triad against 1/3 (closure by construction vs
+  measured stated); c-axis tilt histograms and a sampling standard error std(cos^2)/sqrt(N) for
+  the orientation route; each section's scan with its used/excluded reflections.
+  `texture_figures.py`: recalculated-vs-measured parity per pole figure, misfit against tilt,
+  component fractions against random. Findings: the Rietveld demo's weighted residuals show
+  structure below ~45 deg (background model); the texture demo's {200} parity plot shows the ODF
+  flattening the strongest peak (kernel/regularisation smoothing).
+  Tests: `test_app_xrd_figures.py` (8), `test_app_kearns_figures.py` (5),
+  `test_app_module_figures.py` (texture); Kearns, sections and texture-analysis suites green.

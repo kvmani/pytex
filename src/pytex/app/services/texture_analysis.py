@@ -34,6 +34,7 @@ import hashlib
 import json
 import math
 from collections import OrderedDict
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -63,6 +64,11 @@ from pytex.app.services.texture import (
     _crystal_plane,
     _project,
     _specimen_frame,
+)
+from pytex.app.services.texture_figures import (
+    fraction_figure,
+    parity_figure,
+    tilt_misfit_figure,
 )
 
 __all__: tuple[str, ...] = ()
@@ -1171,6 +1177,17 @@ def _texture_analysis(request: dict[str, Any]) -> dict[str, Any]:
     if evidence["ghost"] is not None:
         notes.append(str(evidence["ghost"]["describe"]))
 
+    # The figures that test the ODF, attached to the stages they are evidence for.
+    stage_figures: dict[str, tuple[Any, ...]] = {
+        "recalculated": (parity_figure(figures), tilt_misfit_figure(figures)),
+    }
+    if fraction_rows:
+        stage_figures["fractions"] = (fraction_figure(fraction_rows, tolerance_deg=tolerance),)
+    figured_stages = tuple(
+        replace(stage, figures=stage_figures[stage.key]) if stage.key in stage_figures else stage
+        for stage in stages
+    )
+
     result = AppResult(
         title=f"Texture analysis of {spec.name}: {names}",
         summary=summary,
@@ -1225,7 +1242,7 @@ def _texture_analysis(request: dict[str, Any]) -> dict[str, Any]:
         },
         notes=tuple(notes),
         citations=(_CITATION_BUNGE, _CITATION_RANDLE, _CITATION_MATTHIES, _CITATION_LABOTEX),
-        stages=stages,
+        stages=figured_stages,
     )
     return result.to_json()
 

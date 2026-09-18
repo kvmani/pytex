@@ -40,6 +40,7 @@ derivation and the literature.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -57,8 +58,14 @@ from pytex.app.registry import (
     ObjectParameter,
     TextParameter,
 )
-from pytex.app.results import AppResult, Column, ResultTable
+from pytex.app.results import AppResult, Column, ResultMetric, ResultTable
 from pytex.app.services.calculator import phase_parameter
+from pytex.app.services.kearns_figures import (
+    orientation_statistics,
+    orientation_tilt_figure,
+    tilt_profile_figure,
+    triad_figure,
+)
 
 __all__: tuple[str, ...] = ()
 
@@ -716,6 +723,42 @@ def _from_orientations(request: dict[str, Any]) -> dict[str, Any]:
         ),
         citations=(_CITATION_KEARNS, _CITATION_MANI, _CITATION_HOLT),
     )
+    statistics = orientation_statistics(
+        orientations,
+        pole,
+        np.asarray(report.directions, dtype=float),
+        include_symmetry_family=bool(request["include_symmetry_family"]),
+    )
+    labels = list(report.direction_labels)
+    result = replace(
+        result,
+        highlights=tuple(
+            ResultMetric(
+                f"f_{label}",
+                f"{value:.4f} ± {error:.4f}",
+                None,
+                "± is the sampling standard error of the mean of cos²φ over the "
+                f"{len(orientations)} orientations.",
+            )
+            for label, value, error in zip(
+                labels, report.values, statistics["standard_error"], strict=True
+            )
+        ),
+        figures=(
+            triad_figure(
+                key="kearns_triad",
+                labels=labels,
+                values=[float(value) for value in report.values],
+                closure_by_construction=report.orientation_tensor is not None,
+                uncertainties=[float(value) for value in statistics["standard_error"]],
+            ),
+            orientation_tilt_figure(
+                cos2=statistics["cos2"],
+                labels=labels,
+                values=[float(value) for value in report.values],
+            ),
+        ),
+    )
     return result.to_json()
 
 
@@ -941,6 +984,26 @@ def _from_diffractogram(request: dict[str, Any]) -> dict[str, Any]:
         ),
         citations=(_CITATION_KEARNS, _CITATION_MANI),
     )
+    result = replace(
+        result,
+        figures=(
+            tilt_profile_figure(
+                key="kearns_profile",
+                polar_deg=np.asarray(polar_deg, dtype=float),
+                density=np.asarray(profile, dtype=float),
+                direction=direction_label,
+                f_value=float(value),
+                points=[
+                    {
+                        "tilt": row["basal_tilt_deg"],
+                        "density": row["density"],
+                        "label": row["plane"],
+                    }
+                    for row in rows
+                ],
+            ),
+        ),
+    )
     return result.to_json()
 
 
@@ -1125,6 +1188,18 @@ def _from_tilt_profile(request: dict[str, Any]) -> dict[str, Any]:
             "orientations at zero tilt has no circumference.",
         ),
         citations=(_CITATION_KEARNS, _CITATION_BARON),
+    )
+    result = replace(
+        result,
+        figures=(
+            tilt_profile_figure(
+                key="kearns_profile",
+                polar_deg=np.asarray(polar_deg, dtype=float),
+                density=np.asarray(intensity, dtype=float),
+                direction=str(report.direction_labels[0]),
+                f_value=float(report.values[0]),
+            ),
+        ),
     )
     return result.to_json()
 
@@ -1410,6 +1485,17 @@ def _from_pole_figure(request: dict[str, Any]) -> dict[str, Any]:
         notes=(*report.notes, *_naming_note(figure.pole)),
         citations=(_CITATION_BARON, _CITATION_KEARNS, _CITATION_MANI),
     )
+    result = replace(
+        result,
+        figures=(
+            triad_figure(
+                key="kearns_triad",
+                labels=list(report.direction_labels),
+                values=[float(value) for value in report.values],
+                closure_by_construction=report.orientation_tensor is not None,
+            ),
+        ),
+    )
     return result.to_json()
 
 
@@ -1635,6 +1721,17 @@ def _from_odf(request: dict[str, Any]) -> dict[str, Any]:
             "planes is the usual minimum, and the residual is the number to watch.",
         ),
         citations=(_CITATION_MANI, _CITATION_BARON, _CITATION_KEARNS),
+    )
+    result = replace(
+        result,
+        figures=(
+            triad_figure(
+                key="kearns_triad",
+                labels=list(report.direction_labels),
+                values=[float(value) for value in report.values],
+                closure_by_construction=report.orientation_tensor is not None,
+            ),
+        ),
     )
     return result.to_json()
 

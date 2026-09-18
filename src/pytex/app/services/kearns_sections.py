@@ -65,6 +65,11 @@ from pytex.app.services.kearns import (
     _report_payload,
     _specimen_frame,
 )
+from pytex.app.services.kearns_figures import (
+    section_scan_figure,
+    tilt_profile_figure,
+    triad_figure,
+)
 
 __all__: tuple[str, ...] = ()
 
@@ -943,6 +948,14 @@ def _from_three_sections(request: dict[str, Any]) -> dict[str, Any]:
                     ResultMetric("Reflections used", section["used_count"]),
                 ),
                 table=ResultTable(columns=_REFLECTION_COLUMNS, rows=tuple(section["reflections"])),
+                figures=(
+                    section_scan_figure(
+                        key=f"{section['key']}_scan",
+                        name=section["name"],
+                        pattern=section["pattern"],
+                        reflections=section["reflections"],
+                    ),
+                ),
                 explanation=(
                     "Measured over random intensity is the basal-pole density at the reflection's "
                     "tilt to [0001]. A reflection with a large 2θ offset has been matched to the "
@@ -959,6 +972,26 @@ def _from_three_sections(request: dict[str, Any]) -> dict[str, Any]:
                 ),
                 metrics=(ResultMetric(f"f_{section['label']}", section["f"]),),
                 table=ResultTable(columns=_QUADRATURE_COLUMNS, rows=tuple(section["quadrature"])),
+                figures=(
+                    tilt_profile_figure(
+                        key=f"{section['key']}_profile",
+                        polar_deg=section["profile"]["polar_deg"],
+                        density=section["profile"]["intensity"],
+                        direction=section["label"],
+                        f_value=float(section["f"]),
+                        points=[
+                            {
+                                "tilt": row["basal_tilt_deg"],
+                                "density": row["density"],
+                                "label": row["plane"],
+                            }
+                            for row in section["reflections"]
+                            if row["used"] and row["density"] is not None
+                        ],
+                        title=f"{section['name'].capitalize()} section: how f_{section['label']} "
+                        "is built",
+                    ),
+                ),
                 explanation=(
                     "f = sum of I(φ) sin φ cos²φ over sum of I(φ) sin φ. "
                     "The sin φ factor turns "
@@ -981,6 +1014,19 @@ def _from_three_sections(request: dict[str, Any]) -> dict[str, Any]:
                 "reflection tables and backgrounds."
             ),
             status="ok" if departure <= 0.1 else "warning",
+            figures=(
+                triad_figure(
+                    key="kearns_triad",
+                    labels=[section["label"] for section in sections],
+                    values=[float(section["f"]) for section in sections],
+                    closure_by_construction=False,
+                    truth=(
+                        None
+                        if truth is None
+                        else {section["label"]: truth[section["key"]] for section in sections}
+                    ),
+                ),
+            ),
         )
     )
 
