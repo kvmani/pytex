@@ -195,3 +195,13 @@ def test_unsectioned_results_keep_their_report_layout() -> None:
     stage = ResultStage(key="one", title="1. First", summary="First step.")
     text = result_to_markdown(AppResult(title="t", summary="s", stages=(stage,)).to_json())
     assert "## How the result was reached" in text.decode("utf-8")
+
+
+def test_figures_carry_no_markup_comments() -> None:
+    def draw(figure: object) -> None:
+        axes = figure.subplots()  # type: ignore[attr-defined]
+        axes.set_title(r"$(1\bar{1}0)$")
+
+    figure = render_figure(draw, key="mathtext", title="t", caption="c")
+    assert "<!--" not in figure.svg
+    assert "\bar{" not in figure.svg

@@ -130,6 +130,10 @@ def render_figure(
     # Only the <svg> element: the XML declaration and DOCTYPE are invalid inside
     # an HTML document and inside a data URL wrapped by a Markdown viewer.
     markup = markup[markup.index("<svg") :]
+    # Matplotlib records the source string of every text as an XML comment
+    # beside its glyph paths. The paths are the figure; the comments would carry
+    # matplotlib markup (mathtext) into a payload a browser reads.
+    markup = re.sub(r"<!--.*?-->", "", markup, flags=re.DOTALL)
     markup = re.sub(r"\n\s*\n", "\n", markup)
     return ResultFigure(
         key=key,
