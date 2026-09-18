@@ -397,6 +397,17 @@ a *What it shows* paragraph saying what it implies for this run. They are drawn 
 `pytex.app.figures`, as self-contained SVG with the text as paths, so the figure on screen, the
 download and the report are the same picture.
 
+The figures each analysis adds to the panel's own plot:
+
+| Operation | Figures of the intermediate results |
+| --- | --- |
+| XRD → Determine lattice parameters | Measured scan; fitted peak profiles over the scan and each peak close up; indexing (observed against calculated lines, Δ2θ ± σ); peak-fit diagnostics; final residuals ± σ; normalized residuals with ±2σ/±3σ bands; systematic correction against 2θ ± σ; parameter correlations; cubic extrapolation ± σ; method comparison ± σ. Le Bail: observed, calculated and difference profiles. |
+| XRD → Background, Rietveld, Crystallite size, Identify, Powder pattern | Background under the scan; Rietveld observed/calculated/difference, weighted residuals and parameter shifts in σ; Caglioti calibration, width decomposition, Williamson–Hall line with its ±1σ band, Scherrer sizes; every candidate's lines under the scan and its score breakdown; the pattern and the factors behind each intensity. |
+| Kearns parameter (every route) | Tilt profile, volume share and the running Kearns sum ending at f; the triad against 1/3; c-axis tilt distributions with a sampling standard error; each section's scan with its reflections. |
+| Measured texture | Recalculated against measured pole figures; misfit against tilt; component fractions against random. |
+| TEM Solver, HRTEM, CBED | Picks against lattice nodes with magnified residuals; measured against calculated spacings and every candidate's score; the micrograph's spectrum against the lens transfer function; the two-beam thickness fit with its uncertainty. |
+| EBSD, Variants | Indexing-quality and grain-size distributions with the CI threshold; each measured pair against the fitted orientation relationship, and the distance to every catalogued one. |
+
 **Re-plottable numbers, and a readable account of them.** Five formats. The CSV is one row per
 entity at full precision; the XLSX adds a sheet recording the inputs; the JSON is the complete
 result, reloadable. The **Report** is a Markdown page written for a person rather than a program:

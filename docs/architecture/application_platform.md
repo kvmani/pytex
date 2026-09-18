@@ -186,6 +186,19 @@ The JSON export is the contract that matters most: it carries the `ProvenanceRec
 input parameters, so a figure in a paper can be regenerated from the file that produced it. This is
 the `describe()`/explainable-results doctrine of `AGENTS.md` applied to the application surface.
 
+**Figures are part of the result, and every figure is saveable.** An operation whose answer is
+reached through intermediate steps returns figures of those steps as `ResultFigure` objects —
+self-contained SVG drawn once by `pytex.app.figures`, each with a caption and a *what it shows*
+reading — on the result or on the stage they are evidence for. The generic renderer shows them,
+the Markdown report embeds them and the zip report bundle writes them as files, so the picture a
+reader judged is the picture in the file. Every plot frame and every figure card carries one
+**Save** menu from `static/js/core/imageexport.js`: PNG at 300 dpi of the drawn size (at least
+2400 px on the long side, and never coarser than an embedded raster), SVG with computed styles
+inlined, and Copy — which a browser allows only on a secure origin, so the download never depends
+on it. A computed raster (the HRTEM micrograph) is offered byte for byte at its own pixel count.
+A report whose stages name a section (`REPORT_SECTIONS`) is read result → evidence → diagnostics →
+method → audit, with `highlights` and `warnings` above everything else.
+
 Presentation-only controls are deliberately outside that scientific contract. Marker shape,
 visual scale and display palette operate on the rows already returned by the service and trigger a
 frontend redraw, not a second scientific request. Their shared implementation lives in
@@ -516,6 +529,10 @@ No framework, but not ad hoc either. The frontend is four layers:
 - `core/feedback.js` — the feedback and feature-request drawer, built from the invitation the
   server publishes rather than from text in the page (Decision 11).
 - `core/tour.js` — the welcome and the skippable tour (Decision 11).
+- `core/imageexport.js` — the one exporter behind every Save menu: SVG, PNG and Copy for any
+  plot frame or server figure, and byte-for-byte download of computed rasters (Decision 6).
+- `core/result.js` — the generic result renderer: headline and warnings, figure cards, sectioned
+  stages, tables and the report exports (Decision 6).
 - `panels/*.js` — one module per tab.
 
 Layout follows the "visualisation gets the room" rule: a persistent tab bar, a single large canvas
