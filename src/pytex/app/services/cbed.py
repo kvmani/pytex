@@ -31,6 +31,7 @@ why symmetry determination refuses to run on it. See
 from __future__ import annotations
 
 import base64
+from dataclasses import replace
 from typing import Any, cast
 
 import numpy as np
@@ -47,8 +48,9 @@ from pytex.app.registry import (
     IntegerParameter,
     NumberParameter,
 )
-from pytex.app.results import AppResult, Column, ResultTable
+from pytex.app.results import AppResult, Column, ResultMetric, ResultTable
 from pytex.app.services.calculator import phase_parameter, plane_label
+from pytex.app.services.tem_figures import thickness_figure
 
 __all__: tuple[str, ...] = ()
 
@@ -804,6 +806,34 @@ def _thickness_from_fringes(request: dict[str, Any]) -> dict[str, Any]:
         ),
         citations=(_CITATION_KELLY, _CITATION_WILLIAMS_CARTER),
     )
+    figure, statistics = thickness_figure(
+        minima=minima,
+        first_order=int(report.first_order),
+        thickness_angstrom=float(report.thickness_angstrom),
+        extinction_angstrom=float(report.extinction_distance_angstrom),
+    )
+    highlights = (
+        ResultMetric(
+            "Foil thickness t",
+            f"{report.thickness_angstrom / 10:.2f} ± "
+            f"{statistics['sigma_thickness_angstrom'] / 10:.2f}"
+            if np.isfinite(statistics["sigma_thickness_angstrom"])
+            else f"{report.thickness_angstrom / 10:.2f} (no uncertainty from two minima)",
+            "nm",
+            "± from the scatter of the minima about the straight line (three or more minima).",
+        ),
+        ResultMetric(
+            "Extinction distance ξg",
+            f"{report.extinction_distance_angstrom / 10:.2f} ± "
+            f"{statistics['sigma_extinction_angstrom'] / 10:.2f}"
+            if np.isfinite(statistics["sigma_extinction_angstrom"])
+            else f"{report.extinction_distance_angstrom / 10:.2f}",
+            "nm",
+        ),
+        ResultMetric("First fringe order", int(report.first_order)),
+        ResultMetric("R² of the line", float(report.r_squared)),
+    )
+    result = replace(result, figures=(figure,), highlights=highlights)
     return result.to_json()
 
 

@@ -8282,3 +8282,18 @@ overlaid on the model where it makes sense. Validated numerics must not change.
   flattening the strongest peak (kernel/regularisation smoothing).
   Tests: `test_app_xrd_figures.py` (8), `test_app_kearns_figures.py` (5),
   `test_app_module_figures.py` (texture); Kearns, sections and texture-analysis suites green.
+- **Increment 4 - TEM, CBED and orientation-relationship figures; every panel exports (landed).**
+  `tem_figures.py`: lattice fit (picks vs nodes with residual arrows magnified, residual per
+  spot vs r.m.s.), pattern solve (measured vs calculated d with % deviation; candidates' spacing/
+  angle/coverage agreement), HRTEM rotational average of the power spectrum against the lens CTF
+  and envelope with point resolution and information limit, CBED two-beam thickness fit (chosen
+  (s/n)^2 vs 1/n^2 line with +/-1 sigma band, neighbouring order assignments n +/- 1) with
+  highlights t +/- sigma and xi_g +/- sigma (OLS, three or more minima; "no uncertainty from two
+  minima" stated). `pytex.app.fitstats.fit_line` (shared OLS line + standard errors; also used by
+  Williamson-Hall). `orientation_figures.py`: distance to every catalogued OR (log) with the
+  naming tolerance, per-pair residuals with mean / weighted mean / tolerance (EBSD and variants
+  OR-from-grains). EBSD distributions already overlay their random reference.
+  Browser: `every drawn figure in every workspace downloads as a full-resolution PNG` walks
+  every workspace and sub-panel, saves a PNG from each drawn frame (long side >= 2400 px) and
+  requires every FIGURE_PANELS entry to have exported; passed in 3.9 min on :8777. Spot check:
+  crystal viewer, EBSD map, SAED, texture, variants exports all non-blank.

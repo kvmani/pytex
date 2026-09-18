@@ -35,6 +35,7 @@ What every pole carries
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -68,6 +69,7 @@ from pytex.app.services.crystal import (
     _euler_convention,
     scene_payload,
 )
+from pytex.app.services.orientation_figures import catalog_distance_figure
 from pytex.core._angles import (
     acute_angle_between_unit_vectors_rad,
     rotation_angle_from_matrix_rad,
@@ -2614,6 +2616,9 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
             "max_index": max_index,
         },
         citations=(_CITATION_MORITO, _CITATION_BUNGE),
+    )
+    result = replace(
+        result, figures=(catalog_distance_figure(rows, tolerance_deg=tolerance),)
     )
     return result.to_json()
 

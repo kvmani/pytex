@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -51,6 +52,7 @@ from pytex.app.services.calculator import (
     phase_parameter,
     plane_label,
 )
+from pytex.app.services.tem_figures import lattice_fit_figure, solve_figures
 from pytex.app.services.traces import clipped_runs
 from pytex.app.tem_gallery import GALLERY, gallery_entry, gallery_options
 from pytex.core.notation import format_direction_indices
@@ -734,6 +736,10 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
         notes=notes,
         citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
     )
+    result = replace(
+        result,
+        figures=solve_figures(rows, alternatives, best_label=f"{best.phase_name} {zone_text}"),
+    )
     return result.to_json()
 
 
@@ -1351,6 +1357,16 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
             "consistent, which is necessary for a correct indexing and far from sufficient.",
         ),
         citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
+    )
+    result = replace(
+        result,
+        figures=(
+            lattice_fit_figure(
+                rows,
+                centre=[float(value) for value in fit.centre],
+                rms=float(fit.rms_residual),
+            ),
+        ),
     )
     return result.to_json()
 

@@ -32,6 +32,7 @@ from pytex.app.figures import (
     draw_ticks,
     render_figure,
 )
+from pytex.app.fitstats import fit_line
 from pytex.app.results import ResultFigure, ResultMetric
 
 __all__ = [
@@ -297,36 +298,16 @@ def williamson_hall_uncertainties(
     estimate, and every uncertainty is ``nan``.
     """
 
-    x = np.asarray(abscissa, dtype=float)
-    y = np.asarray(ordinate, dtype=float)
-    n = x.size
-    slope, intercept = np.polyfit(x, y, 1)
-    if n <= 2:
-        nan = float("nan")
-        return {
-            "slope": float(slope),
-            "intercept": float(intercept),
-            "sigma_slope": nan,
-            "sigma_intercept": nan,
-            "size_nm": float(shape_factor * wavelength_angstrom / intercept / 10.0),
-            "sigma_size_nm": nan,
-            "covariance": nan,
-        }
-    residual = y - (slope * x + intercept)
-    variance = float(np.sum(residual**2) / (n - 2))
-    mean = float(np.mean(x))
-    sxx = float(np.sum((x - mean) ** 2))
-    sigma_slope = float(np.sqrt(variance / sxx))
-    sigma_intercept = float(np.sqrt(variance * (1.0 / n + mean**2 / sxx)))
-    size = float(shape_factor * wavelength_angstrom / intercept / 10.0)
+    line = fit_line(np.asarray(abscissa, dtype=float), np.asarray(ordinate, dtype=float))
+    size = float(shape_factor * wavelength_angstrom / line.intercept / 10.0)
     return {
-        "slope": float(slope),
-        "intercept": float(intercept),
-        "sigma_slope": sigma_slope,
-        "sigma_intercept": sigma_intercept,
+        "slope": line.slope,
+        "intercept": line.intercept,
+        "sigma_slope": line.sigma_slope,
+        "sigma_intercept": line.sigma_intercept,
         "size_nm": size,
-        "sigma_size_nm": abs(size) * sigma_intercept / abs(float(intercept)),
-        "covariance": -mean * variance / sxx,
+        "sigma_size_nm": abs(size) * line.sigma_intercept / abs(line.intercept),
+        "covariance": line.covariance,
     }
 
 

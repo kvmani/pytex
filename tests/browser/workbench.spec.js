@@ -916,6 +916,46 @@ test('a server-drawn figure downloads as PNG and SVG from its own card', async (
   expect(browserErrors).toEqual([]);
 });
 
+/*
+ * Every workspace that draws a figure lets it be saved at full resolution.
+ *
+ * The Save menu is mounted by the one plot frame every panel uses, so this
+ * walks every panel, waits for a drawing, and takes a real PNG download from
+ * it: a panel whose stage composes several drawings, or one that draws on a
+ * canvas, must export as reliably as a single SVG does.
+ */
+test('every drawn figure in every workspace downloads as a full-resolution PNG', async ({
+  page,
+}) => {
+  test.setTimeout(600_000);
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const browserErrors = await openWorkbench(page);
+  const saved = [];
+  const panels = [
+    ...WORKSPACES.filter((name) => !Object.values(PANEL_PATH).some(([ws]) => ws === name)),
+    ...Object.keys(PANEL_PATH),
+  ];
+  for (const panel of panels) {
+    await openPanel(page, panel);
+    const frame = page
+      .locator('#stage .plot')
+      .filter({ has: page.locator('.plot__canvas svg, .plot__canvas canvas') })
+      .first();
+    const drawn = await frame
+      .waitFor({ state: 'visible', timeout: 45_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!drawn) continue;
+    const { name, bytes } = await saveFromMenu(page, frame, 'Download PNG');
+    const size = pngSize(bytes);
+    expect(name).toMatch(/^pytex-.*\.png$/);
+    expect(Math.max(size.width, size.height)).toBeGreaterThanOrEqual(2400);
+    saved.push(panel);
+  }
+  for (const panel of FIGURE_PANELS) expect(saved).toContain(panel);
+  expect(browserErrors).toEqual([]);
+});
+
 test('a long operation reports progress that reaches the browser', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
 

@@ -35,6 +35,7 @@ The four angles, which are not interchangeable
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -57,6 +58,10 @@ from pytex.app.services.calculator import (
     relationship_name,
 )
 from pytex.app.services.crystal import _EULER_CONVENTIONS, _euler_convention
+from pytex.app.services.orientation_figures import (
+    catalog_distance_figure,
+    pair_residual_figure,
+)
 from pytex.app.services.variants import (
     _ANGLE_MEANINGS,
     _CANONICAL_CHILD,
@@ -605,6 +610,19 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
             "max_statements": max_statements,
         },
         citations=(_CITATION_BUNGE, _CITATION_BURGERS),
+    )
+    fit_summary = result.data["fit"]
+    result = replace(
+        result,
+        figures=(
+            catalog_distance_figure(catalog_rows, tolerance_deg=tolerance),
+            pair_residual_figure(
+                result.data["pairs"],
+                mean_deg=float(fit_summary["mean_residual_deg"]),
+                weighted_mean_deg=fit_summary.get("weighted_mean_residual_deg"),
+                tolerance_deg=tolerance,
+            ),
+        ),
     )
     return result.to_json()
 

@@ -24,6 +24,7 @@ from pytex.app.registry import (
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import phase_parameter
+from pytex.app.services.tem_figures import hrem_spectrum_figure
 from pytex.app.uploads import describe_upload, uploaded_name_and_text
 from pytex.core._chemistry import atomic_number
 from pytex.diffraction.hrem import (
@@ -738,6 +739,20 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             "Kirkland (2010), Advanced Computing in Electron Microscopy, 2nd ed.",
             "Cowley & Moodie (1957), Acta Crystallogr. 10, 609-619.",
             "Madsen et al. (2021), abTEM: An open-source framework, ChemPhysChem 22, 1-13.",
+        ),
+    )
+    app_res = replace(
+        app_res,
+        figures=(
+            hrem_spectrum_figure(
+                power_spectrum=np.asarray(result.power_spectrum, dtype=float),
+                pixel_size_angstrom=float(result.pixel_size_angstrom),
+                frequencies=np.asarray(result.ctf.spatial_frequencies_inv_angstrom, dtype=float),
+                transfer=np.asarray(result.ctf.transfer_function, dtype=float),
+                envelope=np.asarray(result.ctf.total_envelope, dtype=float),
+                point_resolution=result.point_resolution_angstrom,
+                information_limit=result.information_limit_angstrom,
+            ),
         ),
     )
     return app_res.to_json()
