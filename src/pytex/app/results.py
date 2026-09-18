@@ -20,9 +20,11 @@ from typing import Any
 
 __all__ = [
     "APP_RESULT_SCHEMA",
+    "REPORT_SECTIONS",
     "STAGE_STATUSES",
     "AppResult",
     "Column",
+    "ResultFigure",
     "ResultMetric",
     "ResultStage",
     "ResultTable",
@@ -36,6 +38,22 @@ STAGE_STATUSES = ("ok", "warning", "info")
 
 #: Schema identifier of the result payload.
 APP_RESULT_SCHEMA = "pytex.app_result/1"
+
+#: The order a report is read in, and the part of it each stage belongs to.
+#:
+#: A computation runs scan, peaks, indexing, fit, cell; a report written in that
+#: order makes the reader wade through the audit trail before learning the
+#: answer. A reader needs the answer and how far to trust it first, then the
+#: evidence that supports it, then the checks that could have exposed it, then
+#: how it was computed, and last the raw intermediate numbers. A stage names its
+#: section; the renderer and the Markdown export group by it.
+REPORT_SECTIONS: dict[str, str] = {
+    "result": "Result and reliability",
+    "evidence": "Evidence",
+    "diagnostics": "Diagnostics",
+    "method": "Method",
+    "audit": "Audit details",
+}
 
 
 @dataclass(frozen=True)
@@ -142,6 +160,70 @@ class ResultMetric:
 
 
 @dataclass(frozen=True)
+class ResultFigure:
+    """One publication-quality figure behind a result, with how to read it.
+
+    Purpose
+    -------
+    A table of residuals says a fit is good; a plot of them *shows* whether it
+    is, and shows the trend a single summary number hides. A figure is therefore
+    part of the result, not decoration added by one panel: it travels in the
+    same payload as the numbers, is shown by the one generic renderer, is
+    downloadable as SVG and PNG, and is embedded in the Markdown report, so the
+    picture a reader judged on screen is the picture in the file.
+
+    Attributes
+    ----------
+    key : str
+        Stable identifier, unique within a result; also the file stem of the
+        downloaded figure.
+    title : str
+        Heading shown above the figure.
+    svg : str
+        Self-contained SVG markup (text drawn as paths, no external resources),
+        so the figure renders identically offline, in a report viewer, and when
+        rasterized to PNG in the browser.
+    caption : str
+        What is plotted: axes, symbols, error bars.
+    interpretation : str, optional
+        What the figure implies for *this* result, in plain words.
+    width_in, height_in : float
+        Physical size the figure was drawn at, in inches. PNG export scales
+        from this, so a 300 dpi raster has the proportions the layout was
+        designed for.
+    """
+
+    key: str
+    title: str
+    svg: str
+    caption: str
+    interpretation: str | None = None
+    width_in: float = 6.4
+    height_in: float = 4.0
+
+    def __post_init__(self) -> None:
+        if not self.key.strip() or not self.title.strip():
+            raise ValueError("A result figure needs a non-empty key and title.")
+        if "<svg" not in self.svg:
+            raise ValueError("A result figure must carry SVG markup.")
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the wire form of this figure."""
+
+        payload: dict[str, Any] = {
+            "key": self.key,
+            "title": self.title,
+            "svg": self.svg,
+            "caption": self.caption,
+            "width_in": float(self.width_in),
+            "height_in": float(self.height_in),
+        }
+        if self.interpretation is not None:
+            payload["interpretation"] = self.interpretation
+        return payload
+
+
+@dataclass(frozen=True)
 class ResultStage:
     """One intermediate step on the way to a result, reported in its own right.
 
@@ -171,6 +253,12 @@ class ResultStage:
         How to read the stage: what each number means and what to look for.
     status : str
         One of :data:`STAGE_STATUSES`.
+    section : str, optional
+        One of :data:`REPORT_SECTIONS`: where in the report the stage is read.
+        ``None`` keeps the stage in the order it was given, after every stage
+        that names a section.
+    figures : tuple of ResultFigure
+        The stage's own plots, for instance the fitted peaks over the scan.
     """
 
     key: str
@@ -180,13 +268,18 @@ class ResultStage:
     table: ResultTable | None = None
     explanation: str | None = None
     status: str = "ok"
+    section: str | None = None
+    figures: tuple[ResultFigure, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.key.strip() or not self.title.strip():
             raise ValueError("A result stage needs a non-empty key and title.")
         if self.status not in STAGE_STATUSES:
             raise ValueError(f"A result stage status must be one of {STAGE_STATUSES}.")
+        if self.section is not None and self.section not in REPORT_SECTIONS:
+            raise ValueError(f"A result stage section must be one of {tuple(REPORT_SECTIONS)}.")
         object.__setattr__(self, "metrics", tuple(self.metrics))
+        object.__setattr__(self, "figures", tuple(self.figures))
 
     def to_json(self) -> dict[str, Any]:
         """Return the wire form of this stage."""
@@ -202,6 +295,10 @@ class ResultStage:
             payload["table"] = self.table.to_json()
         if self.explanation is not None:
             payload["explanation"] = self.explanation
+        if self.section is not None:
+            payload["section"] = self.section
+        if self.figures:
+            payload["figures"] = [figure.to_json() for figure in self.figures]
         return payload
 
 
@@ -233,6 +330,15 @@ class AppResult:
         The intermediate steps behind the answer, in the order they ran. Empty
         for a result that is a single computation. Serialized only when
         present, so a result without stages keeps its existing wire form.
+    highlights : sequence of ResultMetric
+        The headline numbers and how far to trust them, shown before anything
+        else: the answer with its uncertainty, and the few fit statistics that
+        decide whether to believe it.
+    warnings : sequence of str
+        Reasons, found by the analysis itself, to distrust this particular
+        result. Shown prominently beside the highlights.
+    figures : sequence of ResultFigure
+        Figures of the result as a whole; a stage's figures travel with it.
     """
 
     title: str
@@ -243,11 +349,19 @@ class AppResult:
     notes: Sequence[str] = ()
     citations: Sequence[str] = ()
     stages: Sequence[ResultStage] = ()
+    highlights: Sequence[ResultMetric] = ()
+    warnings: Sequence[str] = ()
+    figures: Sequence[ResultFigure] = ()
 
     def __post_init__(self) -> None:
         keys = [stage.key for stage in self.stages]
         if len(keys) != len(set(keys)):
             raise ValueError("Result stage keys must be unique within one result.")
+        figure_keys = [figure.key for figure in self.figures] + [
+            figure.key for stage in self.stages for figure in stage.figures
+        ]
+        if len(figure_keys) != len(set(figure_keys)):
+            raise ValueError("Result figure keys must be unique within one result.")
 
     def to_json(self) -> dict[str, Any]:
         """Return the wire form of this result."""
@@ -265,6 +379,12 @@ class AppResult:
             payload["table"] = self.table.to_json()
         if self.stages:
             payload["stages"] = [stage.to_json() for stage in self.stages]
+        if self.highlights:
+            payload["highlights"] = [metric.to_json() for metric in self.highlights]
+        if self.warnings:
+            payload["warnings"] = list(self.warnings)
+        if self.figures:
+            payload["figures"] = [figure.to_json() for figure in self.figures]
         return payload
 
     def describe(self) -> str:
@@ -275,6 +395,13 @@ class AppResult:
         """
 
         lines = [self.title, "", self.summary]
+        if self.highlights:
+            lines.append("")
+            for metric in self.highlights:
+                units = f" {metric.units}" if metric.units else ""
+                lines.append(f"- {metric.label}: {metric.value}{units}")
+        if self.warnings:
+            lines.extend(["", *(f"Warning: {warning}" for warning in self.warnings)])
         if self.stages:
             lines.extend(["", "How the result was reached:"])
             lines.extend(f"- {stage.title}: {stage.summary}" for stage in self.stages)

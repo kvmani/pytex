@@ -217,6 +217,10 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 "src/pytex/app/services/tem.py" = ["RUF001"]
 "src/pytex/app/services/tem_hrem.py" = ["RUF001"]
 "src/pytex/diffraction/hrem.py" = ["RUF001"]
+# Sigma is the standard symbol for a standard uncertainty, and the residual
+# guides are labelled +/-2 sigma and +/-3 sigma as every statistics text writes
+# them; the minus sign in a difference-curve label is the typographic one.
+"src/pytex/app/figures.py" = ["RUF001", "RUF002"]
 # This module exists to hold the registered symbols in the characters the
 # literature writes them with. Every Greek letter in it is deliberate and is the
 # whole point of the file, so the confusable-character rules have nothing left

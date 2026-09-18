@@ -8189,3 +8189,49 @@ Review the Texture workspace of the GUI and fix its usability. Concretely:
 
 **Status: the goal is met.** Every item of the objective is implemented, tested, documented and
 on `main`. No planned work remains open under this goal.
+
+## Goal - explained figures and reliable image export in every workspace (opened 2026-09-19)
+
+**Objective.** (1) XRD > Determine lattice parameters: rewrite the report in plain scientific
+English, result and reliability first (cell +/- sigma, reflections, degrees of freedom, reduced
+chi^2, strongest correlation, systematic correction, warnings), then evidence, diagnostics, method,
+audit; publication-quality downloadable figures (scan, fitted peaks, indexing, peak-fit
+diagnostics, residuals, normalized residuals with 2/3 sigma guides, systematic correction vs 2theta,
+correlation heat map); peak-fit chi^2 vs lattice-fit chi^2, precision vs accuracy, database-relative
+change vs elastic strain kept distinct; Cohen/Nelson-Riley term described as an angle-dependent
+systematic correction; Markdown export carries the same text and figures; Le Bail keeps
+observed/calculated/difference profiles. (2) HRTEM: fix image copy/export, add Download PNG at the
+native simulation resolution, independent of clipboard permission. (3) Every workspace: download
+of full-resolution images and figures of the intermediate results, with uncertainties and data
+overlaid on the model where it makes sense. Validated numerics must not change.
+
+**Design decisions.**
+- One figure contract: `ResultFigure` (key, title, SVG, caption, how-to-read) on `AppResult` and on
+  `ResultStage`, drawn server-side with matplotlib by one helper module `pytex.app.figures`, so the
+  same figure is on screen, in the Markdown report and in the zip bundle.
+- Reports gain a `section` per stage (result / evidence / diagnostics / method / audit) and
+  `highlights` + `warnings` on the result; the renderer orders by section, generic for all panels.
+- One client image-export module `core/imageexport.js`: SVG, PNG (rasterized at print scale) and
+  Copy, used by every plot frame and every server figure; native-resolution rasters (HRTEM) are
+  registered on the frame and downloaded without resampling.
+
+### Increments
+- **Increment 1 - one figure contract and one image exporter (landed).**
+  `pytex.app.results`: `ResultFigure` (SVG + caption + how-to-read + drawn size), `REPORT_SECTIONS`
+  (result / evidence / diagnostics / method / audit), `ResultStage.section|figures`,
+  `AppResult.highlights|warnings|figures`; all serialized only when present, so existing wire
+  forms are unchanged. `pytex.app.figures`: `render_figure` (bare matplotlib Figure, journal theme,
+  text as paths, deterministic ids, no pyplot) and helpers `draw_observed_model`,
+  `draw_residuals`, `draw_normalized_residuals` (+/-2 and 3 sigma bands), `draw_correlation`,
+  `draw_image`, `draw_ticks`. `pytex.app.export`: the Markdown report is ordered by section and
+  embeds figures as SVG data URLs; new `zip` format = report.md + figures/*.svg + result.json.
+  Client: `core/imageexport.js` (serialize any stage - one SVG, or several SVG/canvas drawings
+  composed at their on-screen positions - with computed styles inlined; PNG at 300 dpi or finer to
+  keep embedded rasters 1:1; Copy with an explicit fallback message; byte-for-byte native raster
+  download). Every `plotFrame` has a Save menu and `setRasters`; HRTEM registers the micrograph
+  and power spectrum at simulation resolution. `core/result.js` renders highlights, warnings,
+  figure cards (img + Save menu + caption + reading) and sectioned stages; Report/zip/JSON export
+  is offered on every result, not only on results with a table.
+  Found: the HRTEM "copy" failure is the clipboard permission (write denied outside a user
+  gesture / non-secure origin); download no longer depends on it and a refusal is now announced.
+  Tests: `tests/unit/test_app_figures.py` (12). Export/stages/manifest suites green.

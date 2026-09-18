@@ -29,21 +29,24 @@ numbers and text as text, which is the whole requirement for re-plottable data.
 
 from __future__ import annotations
 
+import base64
 import csv
 import io
 import json
 import zipfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 from xml.sax.saxutils import escape
 
 from pytex.app.contracts import to_jsonable
 from pytex.app.errors import InvalidInputError
+from pytex.app.results import REPORT_SECTIONS
 
 __all__ = [
     "EXPORT_FORMATS",
     "export_result",
+    "result_to_bundle",
     "result_to_csv",
     "result_to_json",
     "result_to_markdown",
@@ -76,6 +79,15 @@ EXPORT_FORMATS: dict[str, dict[str, str]] = {
         "mime": "text/markdown; charset=utf-8",
         "extension": "md",
         "description": "A readable report: what was computed, from what, with the sources.",
+    },
+    "zip": {
+        "label": "Report + figures",
+        "mime": "application/zip",
+        "extension": "zip",
+        "description": (
+            "The report with every figure as a separate SVG file, and the complete result as "
+            "JSON."
+        ),
     },
 }
 
@@ -189,102 +201,98 @@ def result_to_xlsx(result: Mapping[str, Any]) -> bytes:
     return write_xlsx(sheets)
 
 
-def result_to_markdown(result: Mapping[str, Any]) -> bytes:
+def result_to_markdown(
+    result: Mapping[str, Any],
+    *,
+    figure_link: Callable[[Mapping[str, Any]], str] | None = None,
+) -> bytes:
     """Write the result as a report a person can read without a spreadsheet.
 
     Purpose
     -------
-    The other three formats are for machines or for grids. CSV is a table with no
+    The other formats are for machines or for grids. CSV is a table with no
     account of where it came from; JSON is complete and unreadable; a workbook is
     a table plus a sheet of key-value pairs. None of them is the thing to paste
     into a notebook entry or attach to an email, which is a page saying *what was
-    computed, from what, and on whose authority*.
+    computed, from what, how far to trust it, and on whose authority*.
 
-    That is what this writes, in the order a reader needs it: the answer in
-    prose, then the caveats, then the numbers, then the exact inputs that produced
-    them, then the citations. Markdown because it is readable as plain text,
-    renders everywhere, and survives being pasted into anything.
+    That is what this writes, in the order a reader needs it: the answer and its
+    reliability, the warnings, the figures, then the stages grouped as evidence,
+    diagnostics, method and audit details (see
+    :data:`~pytex.app.results.REPORT_SECTIONS`), then the exact inputs and the
+    citations. Markdown because it is readable as plain text, renders
+    everywhere, and survives being pasted into anything.
 
-    A result with no table still exports — the prose and the provenance are the
-    point — which is why this does not go through ``_table_of``.
+    Parameters
+    ----------
+    result : mapping
+        The result payload.
+    figure_link : callable, optional
+        Maps a figure payload to the image target written into the report. By
+        default each figure is embedded as a base64 SVG data URL, so the single
+        ``.md`` file is self-contained; the zip bundle passes a relative path.
+
+    A result with no table still exports - the prose and the provenance are the
+    point - which is why this does not go through ``_table_of``.
     """
 
+    link = figure_link or _embedded_figure
     lines: list[str] = [f"# {result.get('title', 'PyTex result')}", ""]
     summary = str(result.get("summary") or "").strip()
     if summary:
         lines += [summary, ""]
+
+    highlights = list(result.get("highlights") or ())
+    if highlights:
+        lines += ["## Result and reliability", ""]
+        lines += _metric_table(highlights)
+    warnings = [str(item) for item in (result.get("warnings") or ())]
+    if warnings:
+        lines += ["## Warnings", ""]
+        lines += [f"- **Warning.** {warning}" for warning in warnings]
+        lines.append("")
+
+    for figure in result.get("figures") or ():
+        lines += _figure_block(figure, link)
+
+    stages = list(result.get("stages") or ())
+    sectioned = any(stage.get("section") for stage in stages)
+    table_lines = _data_table(result)
+
+    if sectioned:
+        for section, heading in REPORT_SECTIONS.items():
+            members = [stage for stage in stages if stage.get("section") == section]
+            if section == "audit" and table_lines:
+                members_lines = table_lines
+                table_lines = []
+            else:
+                members_lines = []
+            if not members and not members_lines:
+                continue
+            if section == "result" and highlights:
+                heading = "Result in detail"
+            lines += [f"## {heading}", ""]
+            for stage in members:
+                lines += _stage_block(stage, link)
+            lines += members_lines
+        loose = [stage for stage in stages if not stage.get("section")]
+        if loose:
+            lines += ["## Further stages", ""]
+            for stage in loose:
+                lines += _stage_block(stage, link)
+        lines += table_lines
+    else:
+        lines += table_lines
+        if stages:
+            lines += ["## How the result was reached", ""]
+            for stage in stages:
+                lines += _stage_block(stage, link)
 
     notes = [str(note) for note in (result.get("notes") or ())]
     if notes:
         lines += ["## Notes", ""]
         lines += [f"- {note}" for note in notes]
         lines.append("")
-
-    table = result.get("table") or {}
-    columns = table.get("columns") or []
-    rows = table.get("rows") or []
-    if columns and rows:
-        lines += ["## Data", ""]
-        caption = str(table.get("caption") or "").strip()
-        if caption:
-            lines += [caption, ""]
-        headers = [
-            f"{column['label']} / {column['units']}" if column.get("units") else column["label"]
-            for column in columns
-        ]
-        lines.append("| " + " | ".join(headers) + " |")
-        lines.append("| " + " | ".join("---" for _ in headers) + " |")
-        for row in rows:
-            lines.append(
-                "| " + " | ".join(_markdown_cell(row.get(column["key"])) for column in columns) + " |"
-            )
-        lines.append("")
-
-    stages = list(result.get("stages") or ())
-    if stages:
-        lines += ["## How the result was reached", ""]
-        for stage in stages:
-            lines += [f"### {stage.get('title', '')}", ""]
-            stage_summary = str(stage.get("summary") or "").strip()
-            if stage_summary:
-                lines += [stage_summary, ""]
-            metrics = list(stage.get("metrics") or ())
-            if metrics:
-                lines += ["| Quantity | Value | Units |", "| --- | --- | --- |"]
-                for metric in metrics:
-                    lines.append(
-                        f"| {_markdown_cell(metric.get('label'))} | "
-                        f"{_markdown_cell(metric.get('value'))} | "
-                        f"{_markdown_cell(metric.get('units'))} |"
-                    )
-                lines.append("")
-            stage_table = stage.get("table") or {}
-            stage_columns = stage_table.get("columns") or []
-            stage_rows = stage_table.get("rows") or []
-            if stage_columns and stage_rows:
-                stage_caption = str(stage_table.get("caption") or "").strip()
-                if stage_caption:
-                    lines += [stage_caption, ""]
-                stage_headers = [
-                    f"{column['label']} / {column['units']}"
-                    if column.get("units")
-                    else column["label"]
-                    for column in stage_columns
-                ]
-                lines.append("| " + " | ".join(stage_headers) + " |")
-                lines.append("| " + " | ".join("---" for _ in stage_headers) + " |")
-                for row in stage_rows:
-                    lines.append(
-                        "| "
-                        + " | ".join(
-                            _markdown_cell(row.get(column["key"])) for column in stage_columns
-                        )
-                        + " |"
-                    )
-                lines.append("")
-            explanation = str(stage.get("explanation") or "").strip()
-            if explanation:
-                lines += [f"*How to read this stage.* {explanation}", ""]
 
     inputs = result.get("inputs") or {}
     if inputs:
@@ -307,6 +315,136 @@ def result_to_markdown(result: Mapping[str, Any]) -> bytes:
         "",
     ]
     return "\n".join(lines).encode("utf-8")
+
+
+def result_to_bundle(result: Mapping[str, Any]) -> bytes:
+    """Write a zip holding the report, every figure as its own file, and the JSON.
+
+    Purpose
+    -------
+    The single Markdown file embeds its figures, which keeps it self-contained
+    but makes a figure awkward to lift into a manuscript. The bundle is the same
+    report with each figure written beside it as ``figures/<key>.svg`` and
+    linked by relative path, plus the complete result as JSON, so every number
+    and every picture in the report can be traced to the file that holds it.
+    """
+
+    figures = _all_figures(result)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "report.md",
+            result_to_markdown(
+                result, figure_link=lambda figure: f"figures/{_slug(str(figure['key']))}.svg"
+            ),
+        )
+        for figure in figures:
+            archive.writestr(
+                f"figures/{_slug(str(figure['key']))}.svg", str(figure["svg"]).encode("utf-8")
+            )
+        archive.writestr("result.json", result_to_json(result))
+    return buffer.getvalue()
+
+
+def _all_figures(result: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    figures = list(result.get("figures") or ())
+    for stage in result.get("stages") or ():
+        figures.extend(stage.get("figures") or ())
+    return figures
+
+
+def _embedded_figure(figure: Mapping[str, Any]) -> str:
+    encoded = base64.b64encode(str(figure.get("svg", "")).encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
+def _figure_block(figure: Mapping[str, Any], link: Callable[[Mapping[str, Any]], str]) -> list[str]:
+    title = str(figure.get("title") or figure.get("key") or "Figure")
+    lines = [f"#### Figure: {title}", "", f"![{title}]({link(figure)})", ""]
+    caption = str(figure.get("caption") or "").strip()
+    if caption:
+        lines += [f"*{caption}*", ""]
+    interpretation = str(figure.get("interpretation") or "").strip()
+    if interpretation:
+        lines += [f"**What it shows.** {interpretation}", ""]
+    return lines
+
+
+def _metric_table(metrics: Sequence[Mapping[str, Any]]) -> list[str]:
+    lines = ["| Quantity | Value | Units |", "| --- | --- | --- |"]
+    for metric in metrics:
+        lines.append(
+            f"| {_markdown_cell(metric.get('label'))} | "
+            f"{_markdown_cell(_format_metric(metric.get('value')))} | "
+            f"{_markdown_cell(metric.get('units'))} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _format_metric(value: Any) -> Any:
+    """Round a float for reading; full precision stays in the JSON and XLSX exports."""
+
+    if isinstance(value, float) and not isinstance(value, bool):
+        if value != value:  # NaN
+            return "n/a"
+        return f"{value:.6g}"
+    return value
+
+
+def _rows_table(columns: Sequence[Mapping[str, Any]], rows: Sequence[Mapping[str, Any]]) -> list[str]:
+    headers = [
+        f"{column['label']} / {column['units']}" if column.get("units") else column["label"]
+        for column in columns
+    ]
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join("---" for _ in headers) + " |"]
+    for row in rows:
+        lines.append(
+            "| " + " | ".join(_markdown_cell(row.get(column["key"])) for column in columns) + " |"
+        )
+    lines.append("")
+    return lines
+
+
+def _data_table(result: Mapping[str, Any]) -> list[str]:
+    table = result.get("table") or {}
+    columns = table.get("columns") or []
+    rows = table.get("rows") or []
+    if not (columns and rows):
+        return []
+    lines = ["### Data", ""]
+    caption = str(table.get("caption") or "").strip()
+    if caption:
+        lines += [caption, ""]
+    return lines + _rows_table(columns, rows)
+
+
+def _stage_block(
+    stage: Mapping[str, Any], link: Callable[[Mapping[str, Any]], str]
+) -> list[str]:
+    status = str(stage.get("status") or "ok")
+    marker = " (check this)" if status == "warning" else ""
+    lines = [f"### {stage.get('title', '')}{marker}", ""]
+    stage_summary = str(stage.get("summary") or "").strip()
+    if stage_summary:
+        lines += [stage_summary, ""]
+    metrics = list(stage.get("metrics") or ())
+    if metrics:
+        lines += _metric_table(metrics)
+    for figure in stage.get("figures") or ():
+        lines += _figure_block(figure, link)
+    stage_table = stage.get("table") or {}
+    stage_columns = stage_table.get("columns") or []
+    stage_rows = stage_table.get("rows") or []
+    if stage_columns and stage_rows:
+        stage_caption = str(stage_table.get("caption") or "").strip()
+        if stage_caption:
+            lines += [stage_caption, ""]
+        lines += _rows_table(stage_columns, stage_rows)
+    explanation = str(stage.get("explanation") or "").strip()
+    if explanation:
+        lines += [f"*How to read this.* {explanation}", ""]
+    return lines
 
 
 def _markdown_cell(value: Any) -> str:
@@ -339,6 +477,7 @@ def export_result(result: Mapping[str, Any], *, fmt: str) -> tuple[bytes, str, s
         "xlsx": result_to_xlsx,
         "json": result_to_json,
         "md": result_to_markdown,
+        "zip": result_to_bundle,
     }
     payload = writers[fmt](result)
     spec = EXPORT_FORMATS[fmt]

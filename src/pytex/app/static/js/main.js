@@ -848,7 +848,12 @@ function wireGlobals() {
     const message = event.detail?.message ?? 'Saved.';
     showNotice(message);
     // A toast lasts six seconds; where a file went is worth longer than that.
-    log.notice(message, { source: app.activePanel?.panel.id ?? 'app', detail: event.detail ?? {} });
+    // An export that could not be completed (a clipboard refusal) is a warning,
+    // not a notice: the reader has to do something else to get the figure.
+    const emit = { warning: log.warning, error: log.error, success: log.success }[
+      event.detail?.level
+    ] ?? log.notice;
+    emit(message, { source: app.activePanel?.panel.id ?? 'app', detail: event.detail ?? {} });
   });
 
   document.addEventListener('keydown', (event) => {

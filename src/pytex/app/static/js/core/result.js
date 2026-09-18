@@ -14,6 +14,7 @@
  */
 
 import { clear, el, formatNumber, markdown } from './dom.js';
+import { exportMenu, fileStem } from './imageexport.js';
 
 /**
  * The export formats, as the manifest declares them.
@@ -47,10 +48,15 @@ export function renderResult(container, result, { extra = [], teaches = null } =
   clear(container);
 
   container.append(
-    el('section.card', {}, [
-      el('div.card__header', {}, [el('h2.card__title', { text: result.title })]),
+    el('section.card.result-head', {}, [
+      el('div.card__header', {}, [
+        el('h2.card__title', { text: result.title }),
+        reportButtons(result),
+      ]),
       el('div.card__body', {}, [
         el('p.summary', { text: result.summary }),
+        result.highlights?.length ? highlightsList(result.highlights) : null,
+        result.warnings?.length ? warningsList(result.warnings) : null,
         teaches ? el('p.teaches', {}, [el('strong', { text: 'What to notice: ' }), teaches]) : null,
         result.notes?.length
           ? el('ul.notes', {}, result.notes.map((note) => el('li', { text: note })))
@@ -64,13 +70,143 @@ export function renderResult(container, result, { extra = [], teaches = null } =
 
   for (const node of extra) container.append(node);
 
-  if (result.table?.rows?.length) {
+  if (result.figures?.length) {
+    container.append(
+      el('section.card.result-figures', {}, [
+        el('div.card__header', {}, [el('h2.card__title', { text: 'Figures' })]),
+        el('div.card__body.figure-grid', {}, result.figures.map((figure) => figureCard(figure))),
+      ]),
+    );
+  }
+
+  const sectioned = result.stages?.some((stage) => stage.section);
+  if (!sectioned && result.table?.rows?.length) {
     container.append(tableCard(result));
   }
 
   if (result.stages?.length) {
-    container.append(stagesCard(result.stages));
+    if (sectioned) {
+      for (const node of sectionCards(result)) container.append(node);
+    } else {
+      container.append(stagesCard(result.stages));
+    }
   }
+}
+
+/**
+ * The report downloads, offered on every result whether or not it has a table.
+ *
+ * A result without rows still has prose, figures and provenance worth keeping;
+ * before this, such a result had no way out of the page at all.
+ */
+function reportButtons(result) {
+  const formats = EXPORT_FORMATS.filter((format) => ['md', 'zip', 'json'].includes(format.id));
+  if (!formats.length) return null;
+  return el('div.button-row.result-head__exports', { style: 'margin-left:auto' },
+    formats.map((format) => exportButton(result, format.id, format.label, format.description)));
+}
+
+/** The answer and the few numbers that decide how far to trust it. */
+function highlightsList(highlights) {
+  return el('dl.highlights', {}, highlights.flatMap((metric) => {
+    const value = typeof metric.value === 'number'
+      ? formatNumber(metric.value)
+      : formatCell(metric.value);
+    return [
+      el('dt', { text: metric.label, title: metric.help ?? null }),
+      el('dd', {
+        text: metric.units ? `${value} ${metric.units}` : value,
+        title: metric.help ?? null,
+      }),
+    ];
+  }));
+}
+
+function warningsList(warnings) {
+  return el('div.result-warnings', { role: 'alert' }, [
+    el('strong', {
+      text: warnings.length === 1
+        ? 'Check this before using the result'
+        : `Check these ${warnings.length} points before using the result`,
+    }),
+    el('ul', {}, warnings.map((warning) => el('li', { text: warning }))),
+  ]);
+}
+
+/**
+ * One server-drawn figure: the picture, what is plotted, and what it implies.
+ *
+ * Shown as an image rather than inlined, so the figure's own identifiers and
+ * styles can never collide with the page's, and so the browser's own "Copy
+ * image" and "Save image as" work on it as they do on any picture.
+ */
+export function figureCard(figure) {
+  const url = URL.createObjectURL(new Blob([figure.svg], { type: 'image/svg+xml' }));
+  const image = el('img.result-figure__image', {
+    src: url,
+    alt: `${figure.title}. ${figure.caption ?? ''}`.trim(),
+  });
+  const widthPx = (figure.width_in ?? 6.4) * 96;
+  const heightPx = (figure.height_in ?? 4) * 96;
+  const menu = exportMenu({
+    figure: () => ({
+      markup: figure.svg,
+      width: widthPx,
+      height: heightPx,
+      stem: `pytex-${fileStem(figure.key)}`,
+    }),
+  });
+  return el('figure.result-figure', { 'data-figure': figure.key }, [
+    el('div.result-figure__header', {}, [
+      el('h3.result-figure__title', { text: figure.title }),
+      menu,
+    ]),
+    image,
+    el('figcaption.result-figure__caption', {}, [
+      figure.caption ? el('p', { text: figure.caption }) : null,
+      figure.interpretation
+        ? el('p.result-figure__reading', {}, [
+            el('strong', { text: 'What it shows: ' }),
+            figure.interpretation,
+          ])
+        : null,
+    ]),
+  ]);
+}
+
+/** The order a report is read in; mirrors `REPORT_SECTIONS` in `pytex.app.results`. */
+const REPORT_SECTIONS = [
+  ['result', 'Result in detail'],
+  ['evidence', 'Evidence'],
+  ['diagnostics', 'Diagnostics'],
+  ['method', 'Method'],
+  ['audit', 'Audit details'],
+];
+
+/**
+ * The stages grouped as the report is read: result, evidence, diagnostics,
+ * method, audit. The final data table belongs to the audit trail. Every stage
+ * outside the audit trail starts open, and so does any stage that warns.
+ */
+function sectionCards(result) {
+  const cards = [];
+  for (const [section, heading] of REPORT_SECTIONS) {
+    const members = result.stages.filter((stage) => stage.section === section);
+    const withTable = section === 'audit' && result.table?.rows?.length;
+    if (!members.length && !withTable) continue;
+    cards.push(el(`section.card.stages.report-section.report-section--${section}`, {
+      'data-section': section,
+      'data-stages': String(members.length),
+    }, [
+      el('div.card__header', {}, [el('h2.card__title', { text: heading })]),
+      el('div.card__body.stages__list', {}, members.map((stage) =>
+        stageSection(stage, section !== 'audit' || stage.status === 'warning'))),
+    ]));
+    if (withTable) cards.push(tableCard(result));
+  }
+  const loose = result.stages.filter((stage) => !stage.section);
+  if (loose.length) cards.push(stagesCard(loose));
+  return cards;
 }
 
 /**
@@ -131,6 +267,9 @@ function stageSection(stage, open) {
       el('div.stage__body', {}, [
         el('p.stage__text', { text: stage.summary }),
         metrics,
+        stage.figures?.length
+          ? el('div.figure-grid', {}, stage.figures.map((figure) => figureCard(figure)))
+          : null,
         table,
         stage.explanation
           ? el('p.stage__explanation', {}, [
@@ -232,6 +371,17 @@ function formatCell(value) {
 /** The prose form: what a user pastes into a lab notebook. */
 export function describe(result) {
   const parts = [result.title, '', result.summary];
+  if (result.highlights?.length) {
+    parts.push('', ...result.highlights.map((metric) => {
+      const value = typeof metric.value === 'number'
+        ? formatNumber(metric.value)
+        : formatCell(metric.value);
+      return `${metric.label}: ${value}${metric.units ? ` ${metric.units}` : ''}`;
+    }));
+  }
+  if (result.warnings?.length) {
+    parts.push('', ...result.warnings.map((warning) => `Warning: ${warning}`));
+  }
   if (result.notes?.length) parts.push('', ...result.notes.map((note) => `Note: ${note}`));
   if (result.citations?.length) parts.push('', `Sources: ${result.citations.join('; ')}`);
   return parts.join('\n');

@@ -24,12 +24,17 @@
  *    mounted in the frame's control strip rather than as a sibling below it, so
  *    it stays on screen with the figure instead of being pushed under the fold
  *    by the result tables.
+ * 5. **Every figure can be saved.** A Save menu on every frame downloads the
+ *    complete drawing as PNG or SVG, or copies it, through the one exporter in
+ *    `imageexport.js`; a panel whose figure *is* a computed raster registers it
+ *    with `setRasters`, and it is offered byte for byte at its own resolution.
  *
  * The panel supplies a mapping from screen coordinates to data coordinates,
  * because only the panel knows its own projection; everything else is here.
  */
 
 import { clear, el, formatNumber } from './dom.js';
+import { exportMenu, fileStem, serializeFigure } from './imageexport.js';
 
 /**
  * Create a plot frame.
@@ -151,10 +156,24 @@ export function plotFrame({
     cursor.textContent = '—';
   }
 
+  // Native rasters a panel registers: the simulation output itself, saved
+  // without being redrawn.
+  let rasters = [];
+  const saveMenu = exportMenu({
+    figure: () => {
+      const content = canvas.firstElementChild;
+      const figure = serializeFigure(content, {
+        viewBox: content === view.svg ? view.base : null,
+      });
+      return figure ? { ...figure, stem: `pytex-${fileStem(titleNode.textContent)}` } : null;
+    },
+    rasters: () => rasters,
+  });
+
   const element = el('figure.plot', {}, [
     el('figcaption.plot__header', {}, [
       titleNode,
-      el('div.plot__toolbar', {}, [...viewportToolbar, ...toolbar]),
+      el('div.plot__toolbar', {}, [...viewportToolbar, ...toolbar, saveMenu]),
     ]),
     el('div.plot__stage', {}, [canvas, overlay, detail, readout ? null : cursor]),
     readoutBar,
@@ -463,6 +482,20 @@ export function plotFrame({
 
     /** Restore the complete drawing; useful to bespoke panel toolbars too. */
     fitView,
+
+    /**
+     * Offer computed rasters for download at their own resolution.
+     *
+     * A simulated micrograph is an array of numbers with one pixel per
+     * simulated pixel; drawing it into the plot and rasterizing the plot would
+     * resample it. Registered here, it is saved byte for byte instead.
+     *
+     * @param {{label: string, data: string, filename: string, width: number, height: number}[]} list
+     *   `data` is a `data:image/png;base64,` URL.
+     */
+    setRasters(list) {
+      rasters = Array.isArray(list) ? list.filter((item) => item?.data) : [];
+    },
 
     /**
      * Put a panel's own readout in the top-left of the drawing.

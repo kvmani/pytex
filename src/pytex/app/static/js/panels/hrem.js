@@ -309,6 +309,18 @@ export function mount(context) {
           `x = ${formatNumber(point.x, 2)} Å, y = ${formatNumber(point.y, 2)} Å`,
       });
       simFrame.setContent(figure, { preserveViewport });
+      const [rows, columns] = data.image_shape_px || [0, 0];
+      // The simulation output itself, one PNG pixel per simulated pixel, saved
+      // without being redrawn: the only export that cannot have been resampled.
+      simFrame.setRasters([
+        {
+          label: `Download PNG (simulation, ${columns} × ${rows} px)`,
+          data: data.image_png,
+          filename: `pytex-hrtem-micrograph-${columns}x${rows}px.png`,
+          width: columns,
+          height: rows,
+        },
+      ]);
       simFrame.setStatus(
         `Field of view ${formatNumber(lx, 1)} × ${formatNumber(ly, 1)} Å at `
           + `${formatNumber(data.pixel_size_angstrom, 3)} Å/px; specimen `
@@ -355,6 +367,16 @@ export function mount(context) {
           + (point.q > 0 ? `, d = ${formatNumber(1 / point.q, 3)} Å` : ''),
       });
       fftFrame.setContent(figure, { preserveViewport });
+      const [specRows, specColumns] = data.image_shape_px || [0, 0];
+      fftFrame.setRasters([
+        {
+          label: `Download PNG (spectrum, ${specColumns} × ${specRows} px)`,
+          data: data.power_spectrum_png,
+          filename: `pytex-hrtem-power-spectrum-${specColumns}x${specRows}px.png`,
+          width: specColumns,
+          height: specRows,
+        },
+      ]);
       fftFrame.setStatus(
         `Nyquist ±${formatNumber(qx, 2)} Å⁻¹. Dashed rings: point resolution `
           + `${formatNumber(data.point_resolution_angstrom, 2)} Å (green) and information `

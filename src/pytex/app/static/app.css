@@ -4725,3 +4725,153 @@ dl.detail dd {
   font-size: 0.8125rem;
   line-height: 1.55;
 }
+
+/* ------------------------------------------------------------------------
+ * Figures and their export (core/imageexport.js, core/result.js).
+ * Every figure has a Save menu; server-drawn figures are shown as images on a
+ * white sheet whatever the theme, because they are publication figures and
+ * are exported exactly as shown.
+ * ---------------------------------------------------------------------- */
+
+.export-menu {
+  position: relative;
+}
+
+.export-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.export-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.export-menu > summary::after {
+  content: " \25BE";
+  font-size: 0.7em;
+}
+
+.export-menu__list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 15rem;
+  padding: 0.25rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.export-menu__item {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.export-menu__item:hover,
+.export-menu__item:focus-visible {
+  background: var(--accent-soft);
+}
+
+.highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.highlights dt {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.highlights dd {
+  margin: 0 0 0.35rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.result-warnings {
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.9rem;
+  border-left: 4px solid var(--warn);
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.result-warnings ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.figure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: 1rem;
+}
+
+.result-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.result-figure__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.result-figure__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+  flex: 1;
+}
+
+.result-figure__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.result-figure__caption {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.result-figure__caption p {
+  margin: 0 0 0.3rem;
+}
+
+.result-figure__reading {
+  color: var(--ink);
+}
+
+.report-section--result {
+  border-top: 3px solid var(--accent);
+}
