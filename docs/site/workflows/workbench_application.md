@@ -373,22 +373,49 @@ Choose the format for the drawing, not by habit: a lit sphere is a mesh and a ve
 every facet of it, so PNG is right for the crystal viewer; a pole figure is line art, so SVG is
 right there and is roughly twenty times smaller.
 
-**Re-plottable numbers, and a readable account of them.** Four formats, on every result in every
-panel. The CSV is one row per entity at full precision; the XLSX adds a sheet recording the inputs;
-the JSON is the complete result, reloadable. The **Report** is a Markdown page written for a person
-rather than a program: the answer in prose, the caveats, the data, the exact inputs that produced
-it, and the citations — the thing to paste into a notebook entry, which none of the other three is.
-No result in the application is exportable only as a picture, and a result with no table at all
-still exports as a report, because the prose and the provenance are the point.
+**Any figure, at full resolution.** Every plot frame and every figure card has a **Save** menu:
+
+- **Download PNG** rasterizes the complete drawing (not the zoomed view) at 300 dpi of its size,
+  with the long side at least 2400 px for a plot drawn in a narrow column, and raised further when
+  the drawing embeds a raster so that raster is reproduced at least one output pixel per source
+  pixel. A frame that holds several drawings side by side exports them as one picture.
+- **Download SVG** writes the vector drawing with the page's styles written onto every element, so
+  it looks the same in Inkscape or Illustrator as on screen.
+- **Copy image** puts the PNG on the clipboard. Browsers allow that only on a secure origin (HTTPS
+  or `localhost`), so on a plain-HTTP intranet host the copy is refused; the refusal is reported in
+  the message log and the download works regardless.
+- A panel whose figure *is* a computed image offers it byte for byte as well: the HRTEM micrograph
+  and its power spectrum download as the simulation's own PNG, at exactly the simulated pixel
+  count, never resampled.
+
+Everything is done in the page, with no network access, so it works on an air-gapped host.
+
+**Figures of the intermediate results.** Operations that reach their answer through several steps
+return server-drawn figures of those steps — the measured data with the fitted model over it, the
+residuals with their error bars, the diagnostics — each with a caption saying what is plotted and
+a *What it shows* paragraph saying what it implies for this run. They are drawn once by
+`pytex.app.figures`, as self-contained SVG with the text as paths, so the figure on screen, the
+download and the report are the same picture.
+
+**Re-plottable numbers, and a readable account of them.** Five formats. The CSV is one row per
+entity at full precision; the XLSX adds a sheet recording the inputs; the JSON is the complete
+result, reloadable. The **Report** is a Markdown page written for a person rather than a program:
+the answer and how far to trust it, the warnings, the figures (embedded), the evidence, the
+diagnostics, the method, the exact inputs that produced it, and the citations — the thing to paste
+into a notebook entry, which none of the others is. **Report + figures** is a zip of the same
+report with every figure as its own SVG file and the complete result as JSON. Report, Report +
+figures and JSON are offered on every result, and a result with no table at all still exports,
+because the prose, the figures and the provenance are the point.
 
 The buttons are generated from the manifest, like everything else here, so a format added in Python
 appears on every result at once.
 
 **The intermediate stages behind a result.** An analysis made of several steps also reports each
-step, under **How this result was reached** below the data table: its own quantities, its own
-table, a status mark (✓ done, ! check this before believing what follows, i an input) and a note
-on how to read it. The first stage with a warning opens itself, because that is the one to look at
-first. The Report writes every stage as a section and the XLSX adds a `Stages` sheet plus one sheet
+step: its own quantities, its own table, its own figures, a status mark (✓ done, ! check this
+before believing what follows, i an input) and a note on how to read it. A report whose stages
+name their section is read as **Result → Evidence → Diagnostics → Method → Audit details**, with
+the headline numbers and any warnings above everything else; other results list their stages
+under **How this result was reached**, where the first stage with a warning opens itself. The Report writes every stage as a section and the XLSX adds a `Stages` sheet plus one sheet
 per stage table, so the chain of evidence survives export. Lattice-parameter determination and
 phase identification report their stages today; every stage, quantity and column is defined in
 {doc}`../algorithms/precise_lattice_parameter_determination` and

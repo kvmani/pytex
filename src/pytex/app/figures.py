@@ -393,9 +393,9 @@ def _label_points(axes: Any, x: np.ndarray, y: np.ndarray, labels: Sequence[str]
         axes.annotate(
             text,
             (x_value, y_value),
-            xytext=(0, 5),
+            xytext=(5, 3),
             textcoords="offset points",
-            ha="center",
+            ha="left",
             fontsize=6.5,
             color=COLORS["background"],
         )

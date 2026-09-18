@@ -4830,6 +4830,7 @@ dl.detail dd {
 
 .result-figure {
   margin: 0;
+  max-width: 54rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;

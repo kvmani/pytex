@@ -31,6 +31,15 @@ export const PRINT_DPI = 300;
 /** No exported raster side is larger than this; browsers cap canvas size near 16k. */
 const MAX_SIDE_PX = 8192;
 
+/**
+ * The long side of a PNG exported from an on-screen plot is at least this.
+ *
+ * A plot drawn in a narrow column is a few hundred CSS pixels wide, and 300 dpi
+ * of *that* is a thumbnail. A server-drawn figure has a designed physical size
+ * and is exported at exactly 300 dpi of it instead (it passes its own scale).
+ */
+export const MIN_LONG_SIDE_PX = 2400;
+
 /** CSS properties that decide how an SVG element looks, copied onto the export. */
 const STYLE_PROPERTIES = [
   'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity',
@@ -278,8 +287,8 @@ function naturalSize(href) {
  * @param {number} options.width - Drawn width, in CSS pixels.
  * @param {number} options.height - Drawn height, in CSS pixels.
  * @param {number} [options.scale] - Output pixels per CSS pixel. Defaults to
- *   print resolution for a drawing of this size, raised to keep any embedded
- *   raster at native resolution.
+ *   print resolution for a drawing of this size, raised until the long side is
+ *   at least `MIN_LONG_SIDE_PX` and any embedded raster is at native resolution.
  * @param {string} [options.background] - Painted under the drawing; PNG has no
  *   notion of a page, and a transparent plot pasted into a dark document
  *   disappears.
@@ -287,7 +296,11 @@ function naturalSize(href) {
  */
 export async function svgToPng(markup, { width, height, scale = null, background = '#ffffff' }) {
   const image = await loadSvgImage(markup);
-  let factor = scale ?? Math.max(PRINT_DPI / 96, await nativeScaleOf(markup, width));
+  let factor = scale ?? Math.max(
+    PRINT_DPI / 96,
+    MIN_LONG_SIDE_PX / Math.max(width, height, 1),
+    await nativeScaleOf(markup, width),
+  );
   factor = Math.min(factor, MAX_SIDE_PX / Math.max(width, height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(width * factor));

@@ -411,8 +411,8 @@ def test_no_correction_leaves_the_drift_column_empty_and_says_so() -> None:
 def test_an_injected_displacement_is_declared_in_the_notes() -> None:
     result = determine(specimen_displacement_mm=0.1)
     joined = " ".join(result["notes"])
-    assert "100 \u00b5m specimen displacement" in joined
-    assert "two aberrations of different angular form" in joined
+    assert "specimen displacement of 100 \u00b5m" in joined
+    assert "different angular forms" in joined
     assert result["data"]["synthetic"] is True
 
 

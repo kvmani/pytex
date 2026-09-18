@@ -14,7 +14,7 @@
  */
 
 import { clear, el, formatNumber, markdown } from './dom.js';
-import { exportMenu, fileStem } from './imageexport.js';
+import { PRINT_DPI, exportMenu, fileStem } from './imageexport.js';
 
 /**
  * The export formats, as the manifest declares them.
@@ -154,6 +154,8 @@ export function figureCard(figure) {
       width: widthPx,
       height: heightPx,
       stem: `pytex-${fileStem(figure.key)}`,
+      // Exactly 300 dpi of the size the figure was designed at.
+      scale: PRINT_DPI / 96,
     }),
   });
   return el('figure.result-figure', { 'data-figure': figure.key }, [

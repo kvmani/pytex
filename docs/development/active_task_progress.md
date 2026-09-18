@@ -8235,3 +8235,32 @@ overlaid on the model where it makes sense. Validated numerics must not change.
   Found: the HRTEM "copy" failure is the clipboard permission (write denied outside a user
   gesture / non-secure origin); download no longer depends on it and a refusal is now announced.
   Tests: `tests/unit/test_app_figures.py` (12). Export/stages/manifest suites green.
+- **Increment 2 - the lattice-parameter report, rewritten (landed).**
+  `pytex.app.services.xrd_lattice_report` (new): `lattice_highlights`, `lattice_warnings`
+  (exactly determined, <3 dof, chi2 > 3 or < 0.3, |z| > 3 named, |r| > 0.95, insignificant D, no
+  correction / average, non-converged or chi2 > 10 peaks, M < 10, unindexed peaks, > 1 % from the
+  reference cell, Le Bail profile chi2 > 3), `normalized_residuals`, `systematic_correction_curve`
+  and eleven figures (scan, fitted peaks + difference, per-peak close-ups, indexing, peak-fit
+  diagnostics, residuals, normalized residuals with 2/3 sigma bands, systematic correction with
+  +/-1 sigma band, correlation heat map, cubic extrapolation with error bars, method comparison;
+  Le Bail: observed/calculated/difference). `xrd.lattice_parameters` now returns stages in
+  reading order with sections (cell | scan, peaks, assignment | lattice_fit, peak_quality,
+  cross_check | least_squares | passes), a plain-English summary, highlights and warnings, a
+  `normalized_residual` column, `relative_change_from_reference` (strain key kept for API
+  compatibility), mathtext (overbarred) Miller labels in figures. `PeakFit.evaluate` and
+  `kalpha_doublet_parameters` added to `pytex.diffraction.xrd_peaks` (fit_peaks uses the latter;
+  numerics bit-identical, checked against a pre-change JSON dump of six configurations).
+  Docs: section 8 of `algorithms/precise_lattice_parameter_determination.md` rewritten;
+  `workflows/workbench_application.md` Exporting section.
+  Scientific findings (pinned in `TestPrecisionIsNotAccuracy`): on the demonstration scan (a
+  constant 0.05 deg zero error) the default Nelson-Riley fit is 159 ppm = 37 sigma from the true
+  cell with chi2 = 3.6 (now warned); cot(theta) recovers it within 1.2 sigma, chi2 0.89, and its D
+  is the zero in radians; cos^2/sin is 48 sigma off with chi2 1.74 - an acceptable chi2 does not
+  prove accuracy. Le Bail on the demo: R_wp 44 %, chi2 6.1, dominated by a background-subtraction
+  hump below ~42 deg 2theta visible in the new difference figure.
+  Tests: `tests/unit/test_app_xrd_lattice_report.py` (42), stage/XRD suites updated; browser:
+  lattice view layout, HRTEM native PNG download (byte-identical, IHDR size), figure-card PNG at
+  exactly 1920 px (300 dpi x 6.4 in) and SVG, live-plot PNG >= 2400 px long side.
+  Next: figures of intermediate results for the other operations, module by module (XRD
+  background / Rietveld / size-strain / phase ID / pattern, Kearns, texture analysis, TEM fit and
+  solve, CBED, ECCI, EBSD, OR, variants, crystal, calculator).

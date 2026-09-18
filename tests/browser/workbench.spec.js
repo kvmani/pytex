@@ -520,11 +520,17 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
     page.locator('#stage svg[aria-label="Lattice parameter extrapolated against the '
       + 'systematic-error function"]'),
   ).toBeVisible();
-  // The cell is reported with every step that produced it, in order, so a wrong
-  // answer can be traced to the stage where it went wrong.
+  // The report reads result, evidence, diagnostics, method, audit: the cell
+  // first, and every step that produced it after, so a wrong answer can be
+  // traced to the stage where it went wrong without wading through it first.
   const stages = page.locator('#stage .stages details.stage');
-  await expect(stages).toHaveCount(7);
-  await expect(stages.nth(2)).toHaveAttribute('data-stage', 'passes');
+  await expect(stages).toHaveCount(9);
+  await expect(stages.first()).toHaveAttribute('data-stage', 'cell');
+  await expect(stages.last()).toHaveAttribute('data-stage', 'passes');
+  await expect(page.locator('#stage .report-section')).toHaveCount(5);
+  await expect(page.locator('#stage .highlights')).toContainText('Lattice-fit reduced χ²');
+  await expect(page.locator('#stage .result-figure[data-figure="normalized_residuals"] img'))
+    .toBeVisible();
   await expect(page.locator('#stage details.stage[data-stage="least_squares"] table.result'))
     .toHaveCount(1);
 
@@ -832,6 +838,84 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
  * the envelope. Second: a tick renders as a measured percentage with both
  * times, which proves the presentation. Neither depends on the clock.
  */
+/** Width and height of a PNG, read from its IHDR chunk. */
+function pngSize(bytes) {
+  expect([...bytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
+/** Open a frame's Save menu, choose an item, and return the downloaded bytes. */
+async function saveFromMenu(page, frame, item) {
+  await frame.locator('.export-menu > summary').click();
+  const download = page.waitForEvent('download');
+  await frame
+    .getByRole('menuitem', typeof item === 'string' ? { name: item, exact: true } : { name: item })
+    .click();
+  const file = await download;
+  return { name: file.suggestedFilename(), bytes: readFileSync(await file.path()) };
+}
+
+/*
+ * The HRTEM picture is the simulation output, and a copy of it that has been
+ * redrawn is a resampled copy. The frame therefore offers the PNG byte for
+ * byte, at exactly the simulated pixel count, and does so through a download:
+ * the clipboard needs a permission a browser grants only to a secure origin,
+ * so a copy button alone left intranet users with no way to get the image.
+ */
+test('the HRTEM micrograph downloads at the resolution it was simulated at', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'HRTEM Simulation');
+  const micrograph = page.locator('#stage .hrem-sim-stage svg.hrem-figure').first();
+  await expect(micrograph.locator('image')).toHaveCount(1, { timeout: 60_000 });
+  const frame = page.locator('#stage .hrem-sim-stage > .plot').first();
+  const href = await micrograph.locator('image').getAttribute('href');
+  const expected = pngSize(Buffer.from(href.split(',')[1], 'base64'));
+
+  const native = await saveFromMenu(page, frame, /simulation, \d+ × \d+ px/);
+  expect(native.name).toBe(`pytex-hrtem-micrograph-${expected.width}x${expected.height}px.png`);
+  expect(pngSize(native.bytes)).toEqual(expected);
+  // Byte for byte: the file is the simulation's own PNG, not a redrawing of it.
+  expect(native.bytes.equals(Buffer.from(href.split(',')[1], 'base64'))).toBe(true);
+
+  // The figure as drawn, at print resolution, never coarser than the data.
+  const drawn = await saveFromMenu(page, frame, 'Download PNG');
+  const size = pngSize(drawn.bytes);
+  expect(size.width).toBeGreaterThanOrEqual(Math.max(1200, expected.width));
+
+  const spectrum = page.locator('#stage .hrem-sim-stage > .plot').nth(1);
+  const power = await saveFromMenu(page, spectrum, /spectrum, \d+ × \d+ px/);
+  expect(power.name).toMatch(/^pytex-hrtem-power-spectrum-\d+x\d+px\.png$/);
+  expect(browserErrors).toEqual([]);
+});
+
+test('a server-drawn figure downloads as PNG and SVG from its own card', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'XRD');
+  await expectNewCompletedCalculation(page, () =>
+    page.locator('#subtabs .viewtab[data-view="xrd.lattice_parameters"]').click().then(() =>
+      page.getByRole('button', { name: 'Determine lattice parameters', exact: true }).click(),
+    ),
+  );
+  const card = page.locator('#stage .result-figure[data-figure="normalized_residuals"]');
+  await expect(card.locator('img')).toBeVisible();
+  const png = await saveFromMenu(page, card, 'Download PNG');
+  expect(png.name).toBe('pytex-normalized-residuals.png');
+  // 300 dpi at the figure's drawn width of 6.4 inches.
+  expect(pngSize(png.bytes).width).toBe(1920);
+  const svgFile = await saveFromMenu(page, card, 'Download SVG');
+  expect(svgFile.bytes.toString('utf-8')).toMatch(/^<svg/);
+
+  // A plot drawn in the page itself exports too, through the same menu.
+  const plot = page.locator('#stage > .plot, #stage .plot').first();
+  const plotPng = await saveFromMenu(page, plot, 'Download PNG');
+  expect(pngSize(plotPng.bytes).width).toBeGreaterThan(1000);
+  expect(browserErrors).toEqual([]);
+});
+
 test('a long operation reports progress that reaches the browser', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
 

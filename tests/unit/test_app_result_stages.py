@@ -71,16 +71,32 @@ class TestStageContract:
 
 
 class TestLatticeStages:
-    def test_every_step_of_the_computation_is_reported(self, cohen: dict) -> None:
+    def test_every_step_is_reported_in_reading_order(self, cohen: dict) -> None:
+        """Result, then evidence, diagnostics, method and audit - not computation order."""
+
         keys = [stage["key"] for stage in cohen["stages"]]
         assert keys == [
+            "cell",
             "scan",
             "peaks",
-            "passes",
             "assignment",
-            "least_squares",
-            "cell",
+            "lattice_fit",
+            "peak_quality",
             "cross_check",
+            "least_squares",
+            "passes",
+        ]
+        sections = [stage["section"] for stage in cohen["stages"]]
+        assert sections == [
+            "result",
+            "evidence",
+            "evidence",
+            "evidence",
+            "diagnostics",
+            "diagnostics",
+            "diagnostics",
+            "method",
+            "audit",
         ]
         assert all(stage["explanation"] for stage in cohen["stages"])
 
@@ -136,7 +152,7 @@ class TestLatticeStages:
 
     def test_le_bail_reports_its_whole_pattern_stage_and_no_peak_list(self) -> None:
         keys = [stage["key"] for stage in _lattice(method="le_bail")["stages"]]
-        assert keys == ["scan", "whole_pattern", "cell"]
+        assert keys == ["cell", "scan", "whole_pattern"]
 
     def test_a_hexagonal_cell_reports_its_two_parameters_in_the_cell_stage(self) -> None:
         result = _lattice(phase={"builtin": "ti_hcp"})
@@ -146,8 +162,8 @@ class TestLatticeStages:
 
     def test_stages_reach_the_markdown_and_workbook_exports(self, cohen: dict) -> None:
         markdown = result_to_markdown(cohen).decode("utf-8")
-        assert "## How the result was reached" in markdown
-        assert "### 4. Reflection assignment" in markdown
+        assert "## Evidence" in markdown
+        assert "### Peak indexing" in markdown
         with zipfile.ZipFile(io.BytesIO(result_to_xlsx(cohen))) as archive:
             workbook = archive.read("xl/workbook.xml").decode("utf-8")
         assert 'name="Stages"' in workbook

@@ -203,23 +203,97 @@ All least-squares weights reflect experimental Poisson uncertainties: $w_i = 1 /
 
 ## 8. Reading the workbench report
 
-The workbench operation **XRD → Determine lattice parameters** returns the answer three ways —
-the summary sentence, the residual table and the plot — and, under **How this result was
-reached**, one section for every stage of the computation described above. A final cell is only
-as believable as the steps behind it, and each of those steps can fail in its own way: a missed
-peak, a wrong assignment, a systematic error absorbed into the cell. The stages put that chain of
-evidence on the page.
+The workbench operation **XRD → Determine lattice parameters** writes its report in the order a
+reader needs it, not the order the computation ran:
+
+1. **Result and reliability** — the cell with its standard uncertainties, and the numbers that
+   decide how far to trust it: reflections used, degrees of freedom, the lattice-fit reduced χ²,
+   the strongest parameter correlation, the systematic correction, and the change from the
+   reference cell. Beside them, in a highlighted box, every **warning** the run raised.
+2. **Evidence** — the measured scan, the fitted peaks, and the indexing.
+3. **Diagnostics** — the lattice-fit residuals and the systematic correction, the peak-fit
+   quality, and the same peaks pushed through the other methods.
+4. **Method** — how the cell was calculated.
+5. **Audit details** — the indexing passes and the final per-reflection table.
+
+Every section carries figures drawn by the server with `pytex.app.figures`: each figure has a
+caption saying what is plotted and a *What it shows* paragraph saying what it implies for this run,
+and each has its own **Save** menu (PNG at 300 dpi of its designed size, SVG, or Copy). The
+**Report** export is a Markdown file with the same sections, text and figures (embedded as SVG);
+**Report + figures** is a zip of the same report with every figure as its own SVG file, plus the
+complete result as JSON. In the library the stages come from `lattice_parameter_pipeline`, which
+returns the peak table and the pass history together with the `LatticeParameterResult` and the
+final `PeakIndexing`; `determine_lattice_parameters_from_pattern` is the same computation
+returning only the last two. The report adds no science of its own: its derived quantities are
+rearrangements of those objects, pinned by `tests/unit/test_app_xrd_lattice_report.py`.
 
 Each stage carries a status mark. **✓** means the stage did its job. **!** means it completed but
-left something that must be checked before the stages after it are believed; the first such stage
-opens itself. **i** marks a stage that records an input rather than a computation. The same
-stages are written into the Markdown report, and into the Excel workbook as a `Stages` sheet of
-every stage quantity plus one sheet per stage table. In the library they come from
-`lattice_parameter_pipeline`, which returns the peak table and the pass history together with the
-`LatticeParameterResult` and the final `PeakIndexing`;
-`determine_lattice_parameters_from_pattern` is the same computation returning only the last two.
+left something that must be checked before what follows is believed. **i** marks a stage that
+records an input rather than a computation.
 
-### Stage 1 — The scan as read
+### Three distinctions the report keeps
+
+- **Peak-fit χ² and lattice-fit χ² are different statistics.** The *peak-fit* $\chi^2_\nu$ of each
+  peak compares one pseudo-Voigt profile with the counts in its window. The *lattice-fit*
+  $\chi^2_\nu = \sum_i z_i^2/(N-p)$, with $z_i = (2\theta_{\text{obs}} - 2\theta_{\text{calc}})_i /
+  \sigma_i(2\theta)$, compares the fitted positions with the cell. A good profile fit can still
+  give a position the cell cannot accommodate, and the reverse.
+- **Precision is not accuracy.** The ± values are one standard uncertainty from the fit
+  covariance: the precision of this determination on this scan. Accuracy needs the instrument
+  calibrated against a certified standard such as NIST SRM 640 (silicon) or SRM 660 (lanthanum
+  hexaboride). The demonstration scan shows why the difference matters: it carries a constant
+  detector zero error, which the default Nelson–Riley form absorbs only approximately, so the
+  reported $a$ is precise to a few parts in $10^6$ yet more than 100 ppm — tens of standard
+  uncertainties — from the true cell; its lattice-fit $\chi^2_\nu$ above 3 and the warning it
+  raises are what give that away. The $\cot\theta$ function is the exact form for a zero error
+  and recovers the true cell within its uncertainty, with $\chi^2_\nu$ near 1 and $D$ equal to
+  the injected zero in radians. The $\cos^2\theta/\sin\theta$ form is as biased as Nelson–Riley
+  but fits with $\chi^2_\nu$ below 3: an acceptable χ² does not prove an accurate cell, which is
+  what the *comparison with other methods* stage is for.
+  `tests/unit/test_app_xrd_lattice_report.py` pins all three statements.
+- **A change from the database cell is not an elastic strain.** The report quotes
+  $(a - a_{\text{ref}})/a_{\text{ref}}$ against the tabulated cell of the selected phase as a
+  *change from the reference cell*. It includes composition, temperature and calibration
+  differences, and becomes an elastic strain only when the reference is the stress-free cell of
+  the same material on the same instrument — and even then a symmetric scan gives the strain normal
+  to the surface only, not a stress.
+
+The refined Cohen / Nelson–Riley term is described throughout as an **angle-dependent systematic
+correction**. Its angular form matches specimen displacement and absorption, but the fit cannot
+tell which aberration produced it, so it is never presented as a measured specimen displacement.
+
+### Warnings
+
+Each warning names what was found, what it usually means, and what to do:
+
+| Condition | Warning |
+| --- | --- |
+| $N - p \le 0$ | The fit is exactly determined; χ² and every uncertainty are meaningless. |
+| $0 < N - p < 3$ | Few degrees of freedom; χ² and σ are themselves very uncertain. |
+| lattice-fit $\chi^2_\nu > 3$ | Poor lattice fit; the uncertainties have been enlarged by $\sqrt{\chi^2_\nu}$, but the cause should be found. |
+| lattice-fit $\chi^2_\nu < 0.3$ with $N - p \ge 3$ | The peak uncertainties are probably overstated. |
+| any $\lvert z_i\rvert > 3$ | The reflections beyond ±3σ are named as candidate misassignments. |
+| any off-diagonal $\lvert r\rvert > 0.95$ | The two parameters are barely separable over this angular range. |
+| $\lvert D\rvert/\sigma(D) < 2$ | The systematic correction is not significant but still costs precision. |
+| extrapolation `none`, or the average method | The systematic error is absorbed into the cell. |
+| non-converged peak, or peak-fit $\chi^2_\nu > 10$ | Those positions may be biased. |
+| $M_N < 10$, or unindexed peaks | Check the phase and the radiation; a second phase may be present. |
+| $\lvert a - a_{\text{ref}}\rvert / a_{\text{ref}} > 1\,\%$ | Far more than any elastic strain; check phase, radiation and wavelength. |
+| Le Bail profile $\chi^2_\nu > 3$ | The calculated profile does not describe the measured one; read the difference curve. |
+
+### Result — the determined cell
+
+The cell edges and their standard uncertainties that the crystal system leaves free — $a$ for
+cubic; $a$, $c$ and $c/a$ for hexagonal and tetragonal; also $b$ for orthorhombic and lower; and
+the angles for monoclinic and triclinic — then the relative precision $\sigma(a)/a$, the reference
+$a$ of the selected phase, and the change from the reference cell. The summary grades the relative
+precision: below $5\times10^{-5}$ is strain-grade, below $5\times10^{-4}$ composition-grade, and
+anything larger identification-grade. For a cubic cell the stage carries the classical
+**extrapolation figure**: $a$ from each reflection alone, with $\sigma(a_i)/a_i =
+\cot\theta\,\sigma(\theta)$, against the extrapolation function, and the reported value at
+$f = 0$. The slope is the systematic error and the scatter the random one.
+
+### Evidence — the measured scan
 
 | Quantity | Meaning and what to check |
 | --- | --- |
@@ -228,7 +302,10 @@ every stage quantity plus one sheet per stage table. In the library they come fr
 | Radiation, wavelength $\lambda$ | Every spacing is computed from $\lambda$; the wrong radiation scales every cell edge by the ratio of the two wavelengths. |
 | Injected specimen displacement | Demonstration scans only: the known aberration added so the methods can be judged against it. |
 
-### Stage 2 — Peak detection and profile fitting
+The figure is the scan exactly as read, with a triangle at every detected peak; red triangles are
+peaks the phase did not index.
+
+### Evidence — peak positions from profile fitting
 
 The headline quantities are the number of peaks detected, how many fits converged, the detection
 threshold (in robust noise standard deviations, `prominence_sigma`), the expected width, and the
@@ -237,34 +314,20 @@ median $\sigma(2\theta)$ and FWHM. The table has one row per peak:
 | Column | Meaning |
 | --- | --- |
 | 2θ | Fitted Kα₁ centre, in degrees. |
-| σ(2θ) | Standard uncertainty of that centre, in millidegrees, from the fit covariance of Stage 2 above. It becomes the weight of the reflection in the least squares, so an imprecise peak counts for little. |
+| σ(2θ) | Standard uncertainty of that centre, in millidegrees, from the fit covariance. It becomes the weight of the reflection in the least squares, so an imprecise peak counts for little. |
 | Height, Integrated intensity | Fitted peak height and area above the local linear background. |
 | FWHM | Fitted full width at half maximum, in degrees. |
 | η | Lorentzian fraction of the pseudo-Voigt: 0 is Gaussian, 1 is Lorentzian. |
-| χ²ν | Reduced chi-squared of that peak's profile fit. Near 1, the profile describes the peak to within counting noise; far above 1 flags an overlapped, asymmetric or badly backgrounded peak whose position deserves suspicion. |
+| χ²ν | The **peak-fit** reduced chi-squared of that peak's profile. Near 1, the profile describes the peak to within counting noise; far above 1 flags an overlapped, asymmetric or badly backgrounded peak. |
 | Converged | Whether the optimizer converged. A non-converged fit stays in the table but should not be trusted. |
 
-The stage is marked **!** when any fit failed to converge, or when there are no more peaks than
-refined parameters, since the least squares then has no redundancy to detect an error with.
+Two figures: every fitted profile (with its Kα₂ partner and local background, redrawn by
+`PeakFit.evaluate` from the fitted parameters) over the scan with the difference inside each fit
+window below it, and a close-up panel per peak with its centre, σ and peak-fit χ²ν. The stage is
+marked **!** when any fit failed to converge, or when there are no more peaks than refined
+parameters.
 
-### Stage 3 — Index-then-determine passes
-
-One row per pass of the re-indexing loop of Stage 3 above.
-
-| Column | Meaning |
-| --- | --- |
-| Pass | Pass number; pass 1 indexes against the tabulated cell of the selected phase. |
-| a | The cell edge determined from that pass's assignment, in ångströms. For a pass that was not taken, the cell it was indexed against. |
-| Indexed, Unindexed | Peaks assigned and left over in that pass. |
-| M | de Wolff's figure of merit of that pass's assignment (defined in Stage 4 below). |
-| Mean \|Δ2θ\| | Mean absolute position discrepancy of the assignment, in millidegrees. |
-| Outcome | *taken*, or *not taken: indexed no more* — the pass that ends the loop. |
-
-The metric *Reflections recovered by re-indexing* is the final indexed count minus the first. A
-positive value is the direct evidence that the starting cell misplaced high-angle reflections by
-$\Delta(2\theta) = 2e\tan\theta$ and that re-indexing recovered them.
-
-### Stage 4 — Reflection assignment
+### Evidence — peak indexing
 
 The final one-to-one assignment the cell is fitted to.
 
@@ -273,7 +336,7 @@ The final one-to-one assignment the cell is fitted to.
 | Reflection | Miller indices of the calculated line (Miller–Bravais for hexagonal phases). |
 | 2θ observed, σ(2θ) | The fitted peak centre and its uncertainty. |
 | 2θ calculated | Where the cell of the final pass puts the reflection, **before** any systematic correction. |
-| Δ2θ | Observed minus calculated, in millidegrees. A smooth trend with angle is expected when a zero or displacement error is present, and Stage 5 removes it; a single reflection far off the trend is a misassignment. |
+| Δ2θ | Observed minus calculated, in millidegrees. A smooth trend with angle is expected when a zero or displacement error is present, and the lattice fit removes it; a single reflection far off the trend is a misassignment. |
 | d observed, d calculated | Interplanar spacings from $\lambda/(2\sin\theta)$ and from the cell. |
 | Multiplicity | Number of symmetry-equivalent planes contributing to the line. |
 | I calculated | Calculated relative intensity. It ranks lines for matching and is never used to fit the cell. |
@@ -284,12 +347,50 @@ $F_N = N / (\langle|\Delta 2\theta|\rangle N_{\text{poss}})$, the number of unin
 number of calculated lines above the intensity threshold that were not observed. $N$ is 20 for
 $M$ and 30 for $F$ unless fewer lines were indexed, and the subscript always shows the $N$ used,
 because $M_7$ and $M_{20}$ are not comparable. $M_N > 10$ is a plausible cell and $M_N > 20$ a
-convincing one. The stage is marked **!** when $M_N < 10$ or any peak stayed unindexed; an
-unindexed strong peak belongs to something the phase does not describe — a second phase, a Kβ or
-tungsten line, or the sample holder. When every Δ2θ carries the same sign, the summary says so:
-that is the signature of an uncorrected zero or displacement error, not of a wrong cell.
+convincing one. The figure mirrors observed peaks against calculated lines and plots Δ2θ with
+±1σ(2θ) error bars. The stage is marked **!** when $M_N < 10$ or any peak stayed unindexed.
 
-### Stage 5 — Least-squares determination
+### Diagnostics — lattice-fit residuals and systematic correction
+
+Quantities: reflections used, degrees of freedom $N - p$, the lattice-fit $\chi^2_\nu$, how many
+reflections lie within ±2σ and beyond ±3σ, the RMS residual and the largest systematic correction.
+Four figures:
+
+- **Final residuals** — $2\theta_{\text{obs}} - 2\theta_{\text{calc}}$ in millidegrees, with the
+  calculated position including the systematic correction, and ±1σ(2θ) error bars.
+- **Normalized residuals** — $z_i$ with the ±2σ and ±3σ bands; points beyond ±3σ are drawn in red.
+  $\sum z_i^2/(N-p)$ equals the reported lattice-fit $\chi^2_\nu$ exactly, because the residual and
+  its uncertainty are converted from $\sin^2\theta$ to $2\theta$ by the same derivative.
+- **Systematic correction against 2θ** — the refined term $D\sin^2\theta f(\theta)$ converted to
+  degrees $2\theta$, drawn as a curve over the scan range with a ±1σ band from $\sigma(D)$ (the
+  correction is linear in $D$), with each reflection's own σ(2θ) for scale.
+- **Parameter correlations** — the correlation matrix as a heat map on a fixed $[-1, 1]$ scale.
+
+The final table carries the normalized residual as its own column, *Residual / σ*.
+
+### Diagnostics — peak-fit quality
+
+σ(2θ), FWHM and the peak-fit χ²ν of every peak against angle, peaks used in the lattice fit filled
+and the rest open, non-converged fits crossed. The stage is marked **!** when a fit did not
+converge or a peak-fit χ²ν exceeds 10.
+
+### Diagnostics — comparison with other methods
+
+The same assignment, and the same angular floor, pushed through the alternative methods: Cohen
+with no systematic term, Cohen with the Nelson–Riley term (when that is not already the reported
+method), and, for a cubic cell, the average over reflections.
+
+| Column | Meaning |
+| --- | --- |
+| Method | The first row is the reported determination; the others are alternatives. |
+| a, σ(a) | Cell edge and its standard uncertainty from that method. |
+| Difference from reported a | $10^6\,(a_{\text{method}} - a_{\text{reported}})/a_{\text{reported}}$, in parts per million. |
+| χ²ν | Lattice-fit reduced chi-squared of that method. |
+
+The figure plots $a \pm \sigma(a)$ per method. Because the peaks and the assignment are shared,
+every difference is due to the method alone. Prefer the method whose $\chi^2_\nu$ is closest to 1.
+
+### Method — how the cell was calculated
 
 For Cohen's method, the quantities are:
 
@@ -298,67 +399,56 @@ For Cohen's method, the quantities are:
 | Method, Extrapolation function | The chosen method and the function $f(\theta)$ of Stage 4 above. |
 | Refined parameters | The free reciprocal-metric components the crystal system allows (for example `a*^2`, `c*^2`) and, when a systematic term is refined, `D`. |
 | Observations, Degrees of freedom | $N$ reflections and $N - p$ for $p$ refined parameters. |
-| Drift coefficient D, σ(D), \|D\|/σ(D) | The refined systematic-error coefficient, its standard uncertainty and their ratio; above about 2 the term is significantly different from zero. |
-| Largest systematic shift | The largest angular correction $D$ applied to any reflection, in millidegrees. Compare it with σ(2θ): a correction much larger than the position uncertainties did real work. |
-| Reduced χ² | $\chi^2_\nu = \sum_i (r_i/\sigma_i)^2/(N-p)$ in $\sin^2\theta$. About 1: the residuals match the position uncertainties. Much larger: an unmodelled error or a misassignment. Much smaller: the uncertainties are overstated. |
+| Drift coefficient D, σ(D), \|D\|/σ(D) | The refined systematic-correction coefficient, its standard uncertainty and their ratio; above about 2 the term is significantly different from zero. |
+| Largest systematic correction | The largest angular correction applied to any reflection, in millidegrees. |
+| Lattice-fit reduced χ² | As above. |
 | Angular floor, Reflections discarded by the floor | The `minimum_two_theta_deg` restriction and how many assigned reflections it removed after the passes converged. |
 
 The table is the correlation matrix of the refined parameters,
 $r_{jk} = V_{jk}/\sqrt{V_{jj}V_{kk}}$ with
-$\mathbf{V} = (\mathbf{X}^{\mathsf{T}}\mathbf{W}\mathbf{X})^{-1}\chi^2_\nu$. Its diagonal is 1 and
-every entry lies in $[-1, 1]$. A cell parameter correlated with $D$ beyond about $\pm 0.95$ means
-the scan's angular range barely separates a change of cell from the systematic error, which is why
-that parameter's uncertainty is larger than the scatter alone suggests. The stage is marked **!**
-when $\chi^2_\nu > 3$ or any off-diagonal $|r| > 0.98$.
+$\mathbf{V} = (\mathbf{X}^{\mathsf{T}}\mathbf{W}\mathbf{X})^{-1}\chi^2_\nu$. Because
+$\mathbf{V}$ carries the factor $\chi^2_\nu$, the quoted uncertainties grow when the residuals are
+larger than the peak uncertainties predict and shrink when they are smaller. For the average
+method there is no joint fit: the stage reports the number of reflections and the reduced χ² of
+the per-reflection values.
 
-For the average method there is no joint fit: the stage reports the number of reflections and
-the reduced χ² of the per-reflection values, and states that no systematic term could be refined.
+### Audit — indexing passes
 
-### Stage 6 — The determined cell
-
-The cell edges and their standard uncertainties that the crystal system leaves free — $a$ for
-cubic; $a$, $c$ and $c/a$ for hexagonal and tetragonal; also $b$ for orthorhombic and lower; and
-the angles for monoclinic and triclinic — then the relative uncertainty $\sigma(a)/a$, the
-reference $a$ of the selected phase, and the lattice strain $(a - a_{\text{ref}})/a_{\text{ref}}$.
-The summary grades the relative uncertainty: below $5\times10^{-5}$ is strain-grade, below
-$5\times10^{-4}$ composition-grade, and anything larger identification-grade. The uncertainty is
-the precision of this determination on this scan, not the accuracy of the instrument; calibrate
-against a certified standard such as NIST SRM 640 (silicon) or SRM 660 (lanthanum hexaboride)
-before quoting an absolute value. The strain is along the scattering vector of a symmetric scan,
-normal to the surface, and is not a stress.
-
-### Stage 7 — Cross-check against the other methods
-
-The same assignment of Stage 4, and the same angular floor, pushed through the alternative
-methods: Cohen with no systematic term, Cohen with the Nelson–Riley term (when that is not already
-the reported method), and, for a cubic cell, the average over reflections.
+One row per pass of the re-indexing loop of Stage 3 above.
 
 | Column | Meaning |
 | --- | --- |
-| Method | The first row is the reported determination; the others are alternatives. |
-| a, σ(a) | Cell edge and its standard uncertainty from that method. |
-| Difference from reported a | $10^6\,(a_{\text{method}} - a_{\text{reported}})/a_{\text{reported}}$, in parts per million. |
-| χ²ν | Reduced chi-squared of that method's fit. |
+| Pass | Pass number; pass 1 indexes against the tabulated cell of the selected phase. |
+| a | The cell edge determined from that pass's assignment, in ångströms. For a pass that was not taken, the cell it was indexed against. |
+| Indexed, Unindexed | Peaks assigned and left over in that pass. |
+| M | de Wolff's figure of merit of that pass's assignment. |
+| Mean \|Δ2θ\| | Mean absolute position discrepancy of the assignment, in millidegrees. |
+| Outcome | *taken*, or *not taken: indexed no more* — the pass that ends the loop. |
 
-Because the peaks and the assignment are shared, every difference is due to the method alone. A
-large gap between the fits with and without a systematic term says the term did real work; a gap
-within a few $\sigma(a)$ says the specimen was well aligned. Prefer the method whose $\chi^2_\nu$ is
-closest to 1.
+The metric *Reflections recovered by re-indexing* is the final indexed count minus the first. A
+positive value is the direct evidence that the starting cell misplaced high-angle reflections by
+$\Delta(2\theta) = 2e\tan\theta$ and that re-indexing recovered them.
 
 ### Le Bail runs
 
-A whole-pattern decomposition forms no peak list, so its report has three stages: the scan; the
-**whole-pattern decomposition**, reporting the reflections modelled, the reduced χ², $R_{wp}$ and
-the refined systematic term (specimen displacement in millimetres or detector zero in degrees 2θ);
-and the determined cell. $R_{wp}$ is computed on the background-subtracted profile, so it is
-systematically higher than a Rietveld program's $R_{wp}$ on the raw scan and must not be compared
-with one. The stage is marked **!** when $\chi^2_\nu > 3$; its diagnostic is the difference curve
-in the plot, not a per-reflection residual.
+A whole-pattern decomposition forms no peak list and measures no individual peak position, so its
+report never shows per-reflection residuals: it has the cell (result), the scan and the
+**whole-pattern fit** (evidence). The whole-pattern stage reports the reflections modelled, the
+profile-fit reduced χ², $R_{wp}$ and the refined systematic term (specimen displacement in
+millimetres or detector zero in degrees 2θ), and its figure is the observed, calculated and
+difference profiles with the reflection positions. $R_{wp}$ is computed on the
+background-subtracted profile, so it is systematically higher than a Rietveld program's $R_{wp}$
+on the raw scan and must not be compared with one. The stage is marked **!** when
+$\chi^2_\nu > 3$. On the demonstration scan the difference curve shows a broad hump below
+about 42° 2θ: most of the misfit there is the background estimate, not the peaks.
 
 ## Verification
 
 - `tests/unit/test_xrd_peaks.py`: Validates doublet deconvolution, ESD calculation,
   and Anscombe transformation accuracy.
+- `tests/unit/test_app_xrd_lattice_report.py`: Pins the workbench report: unchanged numbers,
+  normalized residuals that reproduce the lattice-fit χ², the correction curve, the warning
+  conditions, the demonstration-scan accuracy statements, the figures and the exports.
 - `tests/unit/test_xrd_lattice_parameter.py`: Verifies multi-pass re-indexing convergence,
   Cohen metric parameter recovery across all 7 crystal systems, and Le Bail whole-pattern fitting.
 - Executable worked examples:

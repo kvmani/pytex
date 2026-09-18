@@ -386,6 +386,77 @@ class PeakFit:
         theta = np.deg2rad(0.5 * self.two_theta_deg)
         return float(wavelength_angstrom / (2.0 * np.sin(theta)))
 
+    def evaluate(
+        self,
+        two_theta_deg: Any,
+        *,
+        doublet: tuple[float, float] | None = None,
+        include_background: bool = True,
+    ) -> np.ndarray:
+        """Evaluate the fitted model at the given angles.
+
+        Purpose
+        -------
+        Let a report draw the fitted profile over the measured points, which is
+        the one picture that shows whether a quoted position deserves its
+        uncertainty. The model is the one the fit minimized: the profile of
+        :func:`split_pseudo_voigt_profile` at the fitted centre, height, widths
+        and Lorentzian fraction, plus the K-alpha2 partner at its Bragg-law
+        position when the doublet was modelled, plus the straight local
+        background.
+
+        Parameters
+        ----------
+        two_theta_deg : array_like
+            Angles in degrees ``2*theta``.
+        doublet : tuple of (float, float), optional
+            ``(lambda2 / lambda1, I2 / I1)`` of the radiation. Required to
+            reproduce a fit whose ``doublet_modelled`` is true; the pair is not
+            stored on the fit because it belongs to the radiation.
+        include_background : bool
+            Add the fitted local background line. Off, the result is the peak
+            alone above its background.
+
+        Returns
+        -------
+        numpy.ndarray
+            Model intensity at each angle, in the measured intensity unit.
+
+        Raises
+        ------
+        ValueError
+            If the fit modelled the doublet and no ``doublet`` is supplied.
+        """
+
+        if self.doublet_modelled and doublet is None:
+            raise ValueError(
+                "This fit modelled the K-alpha2 partner; pass the radiation's "
+                "(lambda2 / lambda1, I2 / I1) as doublet to evaluate it."
+            )
+        axis = np.asarray(two_theta_deg, dtype=np.float64)
+        total: np.ndarray = self.height * split_pseudo_voigt_profile(
+            axis,
+            centre_deg=self.two_theta_deg,
+            fwhm_left_deg=self.fwhm_left_deg,
+            fwhm_right_deg=self.fwhm_right_deg,
+            eta=self.eta,
+        )
+        if self.doublet_modelled and doublet is not None:
+            wavelength_ratio, intensity_ratio = doublet
+            partner = _kalpha2_position_deg(self.two_theta_deg, wavelength_ratio)
+            total = total + self.height * intensity_ratio * split_pseudo_voigt_profile(
+                axis,
+                centre_deg=partner,
+                fwhm_left_deg=self.fwhm_left_deg,
+                fwhm_right_deg=self.fwhm_right_deg,
+                eta=self.eta,
+            )
+        if include_background:
+            total = total + self.background_intercept + self.background_slope * (
+                axis - self.two_theta_deg
+            )
+        return total
+
     def to_json(self) -> dict[str, Any]:
         """Return the JSON-serializable contract for this fit."""
 
@@ -931,6 +1002,24 @@ def detect_peaks(
 # ---------------------------------------------------------------------------
 
 
+def kalpha_doublet_parameters(
+    radiation: RadiationSpec | None,
+) -> tuple[float, float] | None:
+    """Return ``(lambda2 / lambda1, I2 / I1)`` for a doublet radiation, else ``None``.
+
+    The pair :func:`fit_peaks` uses to place and weight the K-alpha2 partner of
+    every fitted line, and that :meth:`PeakFit.evaluate` needs to redraw such a
+    fit. ``None`` for a radiation that declares no K-alpha2 line.
+    """
+
+    if radiation is None or radiation.kalpha2_wavelength_angstrom is None:
+        return None
+    return (
+        float(radiation.kalpha2_wavelength_angstrom / radiation.wavelength_angstrom),
+        float(radiation.kalpha2_relative_intensity),
+    )
+
+
 def _kalpha2_position_deg(two_theta_one_deg: float, ratio: float) -> float:
     """Return the K-alpha2 position for a K-alpha1 position at the same ``d``.
 
@@ -1251,12 +1340,7 @@ def fit_peaks(
     )
     spec = radiation if radiation is not None else measured.radiation
 
-    doublet: tuple[float, float] | None = None
-    if model_doublet and spec is not None and spec.kalpha2_wavelength_angstrom is not None:
-        doublet = (
-            float(spec.kalpha2_wavelength_angstrom / spec.wavelength_angstrom),
-            float(spec.kalpha2_relative_intensity),
-        )
+    doublet = kalpha_doublet_parameters(spec) if model_doublet else None
 
     candidates = sorted(float(value) for value in centres_deg)
     if not candidates:
@@ -1398,6 +1482,7 @@ __all__ = [
     "detect_and_fit_peaks",
     "detect_peaks",
     "fit_peaks",
+    "kalpha_doublet_parameters",
     "pseudo_voigt_area",
     "pseudo_voigt_profile",
     "split_pseudo_voigt_profile",
