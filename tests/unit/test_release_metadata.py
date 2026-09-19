@@ -40,6 +40,7 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 #: Distribution names that supply an importable module under a different name.
 _IMPORT_NAME_BY_DISTRIBUTION = {
     "pyyaml": "yaml",
+    "pillow": "PIL",
 }
 
 #: Declared dependencies whose top-level module PyTex never imports itself.
