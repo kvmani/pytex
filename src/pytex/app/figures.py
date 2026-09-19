@@ -32,7 +32,7 @@ import io
 import re
 from collections.abc import Callable, Sequence
 from contextlib import ExitStack
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -119,9 +119,10 @@ def render_figure(
 
     with ExitStack() as stack:
         stack.enter_context(publication_style(theme="journal"))
-        stack.enter_context(
-            matplotlib.rc_context({**_RC_OVERRIDES, "svg.hashsalt": f"pytex-{key}"})
-        )
+        # Newer matplotlib stubs type rc keys as a Literal union; the overrides
+        # are plain strings, so the mapping is passed through `Any`.
+        overrides: dict[str, Any] = {**_RC_OVERRIDES, "svg.hashsalt": f"pytex-{key}"}
+        stack.enter_context(matplotlib.rc_context(cast(Any, overrides)))
         figure = Figure(figsize=(width_in, height_in), layout="constrained")
         draw(figure)
         buffer = io.StringIO()

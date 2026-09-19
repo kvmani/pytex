@@ -116,4 +116,4 @@ def test_cli_hrem_simulate_runs_the_pytex_multislice(capsys: pytest.CaptureFixtu
     assert args.func(args) == 0
     printed = capsys.readouterr().out
     assert "Engine: multislice" in printed
-    assert "[1 1 0] slab" in printed
+    assert "[110] slab" in printed

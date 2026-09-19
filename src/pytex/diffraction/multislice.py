@@ -75,6 +75,7 @@ import scipy.fft
 import scipy.special
 
 from pytex.core._chemistry import atomic_number
+from pytex.core.notation import format_miller_indices
 from pytex.core.progress import report
 from pytex.diffraction.hrem import (
     _ELECTRON_MASS_KG,
@@ -600,6 +601,13 @@ class SlicedPotential:
         return prefactor * f0 / (lx * ly * self.thickness_angstrom)
 
 
+def _direction(indices: Any) -> str:
+    """A specific direction [uvw] in the plain notation of `pytex.core.notation`."""
+    return format_miller_indices(
+        tuple(int(v) for v in indices), family="direction", style="plain", scope="specific"
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ZoneAxisCell:
     """An orthogonal, lattice-periodic cell with the zone axis along +z.
@@ -646,13 +654,11 @@ class ZoneAxisCell:
 
     def describe(self) -> str:
         """The cell as a crystallographer writes it."""
-        t1, t2, t3 = (
-            "[" + " ".join(str(int(v)) for v in row) + "]" for row in self.vectors_uvw
-        )
+        t1, t2, t3 = (_direction(row) for row in self.vectors_uvw)
         l1, l2, l3 = self.lengths_angstrom
         return (
             f"Orthogonal periodic cell for zone axis "
-            f"[{' '.join(str(v) for v in self.zone_axis)}]: x ∥ {t1} ({l1:.4f} Å), "
+            f"{_direction(self.zone_axis)}: x ∥ {t1} ({l1:.4f} Å), "
             f"y ∥ {t2} ({l2:.4f} Å), z ∥ {t3} ({l3:.4f} Å), "
             f"{self.cells_per_box} unit cells per box."
         )
@@ -807,13 +813,13 @@ def periodic_slab(
             f"The periodic slab holds {xyz.shape[0]} atoms where {expected} were expected; "
             "the unit cell's sites may not be a complete cell."
         )
-    za = " ".join(str(v) for v in cell.zone_axis)
     snapshot = AtomicSnapshot(
         species=tuple(species),
         positions=xyz,
         cell=np.diag(extent),
         periodicity=(True, True, False),
-        label=label or f"{phase.name} [{za}] slab ({m1}×{m2}×{m3} periodic cells)",
+        label=label
+        or f"{phase.name} {_direction(cell.zone_axis)} slab ({m1}×{m2}×{m3} periodic cells)",
     )
     return snapshot, cell, (m1, m2, m3)
 
