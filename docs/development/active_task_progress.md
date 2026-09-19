@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Full multislice HRTEM (abTEM algorithm), theory, tutorial, focal series, GUI — IN PROGRESS (2026-09-19)
+## Full multislice HRTEM (abTEM algorithm), theory, tutorial, focal series, GUI — COMPLETE (2026-09-19)
 
 **Objective (user goal).** Implement a full multislice HRTEM simulation based on abTEM, with its
 theory, mathematics and algorithm documented, a dedicated tutorial covering different cases and
@@ -45,10 +45,10 @@ focal-series generation, and expose it through the web GUI.
 | Step | Scope | State |
 | --- | --- | --- |
 | 1 | Engine, parametrization table, periodic zone-axis slabs, adapter √2 fix, engine dispatch; `tests/unit/test_multislice.py` and `test_multislice_abtem_parity.py` | Landed `966e920` |
-| 2 | Theory note `docs/site/theory/multislice_hrtem.md`, algorithm page `docs/site/algorithms/multislice_hrtem.md` with generated flow sheet `multislice_hrtem_algorithm.svg`, six worked examples (`multislice-hrtem` group), 14 registry symbols, validation-matrix rows, indexes | Done, this commit |
-| 3 | Tutorial `36_multislice_hrtem.ipynb` (built by a cell script; 12 sections, ~15 s to execute) | Done, this commit |
-| 4 | GUI: engine/Δz/scattering/coherence/tilt/phonon controls on the micrograph view; `tem.hrtem_series` view (tableau SVG in Å, contrast + beam plate, three server figures); periodic slabs for crystal and vacancy specimens; 3 examples; `test_app_hrtem_multislice.py`; browser test extended (3 view tabs, series view); CLI `--engine/--slice-thickness/--zone-axis/--thickness` | Done, this commit |
-| 5 | Full unit suite, browser lane, Sphinx; close this entry | Next |
+| 2 | Theory note `docs/site/theory/multislice_hrtem.md`, algorithm page `docs/site/algorithms/multislice_hrtem.md` with generated flow sheet `multislice_hrtem_algorithm.svg`, six worked examples (`multislice-hrtem` group), 14 registry symbols, validation-matrix rows, indexes | Landed `fc25098` |
+| 3 | Tutorial `36_multislice_hrtem.ipynb` (built by a cell script; 12 sections, ~15 s to execute) | Landed `fc25098` |
+| 4 | GUI: engine/Δz/scattering/coherence/tilt/phonon controls on the micrograph view; `tem.hrtem_series` view (tableau SVG in Å, contrast + beam plate, three server figures); periodic slabs for crystal and vacancy specimens; 3 examples; `test_app_hrtem_multislice.py`; browser test extended (3 view tabs, series view); CLI `--engine/--slice-thickness/--zone-axis/--thickness` | Landed `fc25098` |
+| 5 | Verification; notation fix and CI mypy fix (`9d6a56a`) | Done |
 
 **Findings in steps 2–4.**
 
@@ -64,12 +64,22 @@ focal-series generation, and expose it through the web GUI.
   a 20 Å carbon film at Δ = 40 Å — physics, not error, and the tutorial says so.
 - `pytex.diffraction.multislice` (the function) shadowed the submodule attribute when exported from
   `pytex.diffraction`; the function is no longer exported at package level.
-- Pre-existing, not fixed here: control characters (``, ``, `	`, `` eaten by an old
+- Pre-existing, not fixed here: control characters (``, `
+`, `	`, `` eaten by an old
   heredoc) in `docs/standards/terminology_and_symbol_registry.md` lines ~250–290; offered as a
   separate task.
 
-**Next action.** Step 5: full unit suite (~20 min), browser lane, Sphinx; then mark this entry
-COMPLETE.
+**Verification.** Full local unit suite green (exit 0, coverage floor held); Sphinx zero warnings
+with notebook 36 executed; HRTEM Playwright test green locally and in CI; ruff and strict mypy
+clean. The full suite caught one defect, fixed in `9d6a56a`: `ZoneAxisCell.describe()` formatted
+`[uvw]` inline instead of through `pytex.core.notation`. That commit also fixes a pre-existing CI
+mypy error (`pytex.app.figures`, newer matplotlib stubs) that had stopped the base lane before
+any test ran. With the lane now running, CI shows pre-existing failures unrelated to HRTEM:
+macOS numerics in `test_app_xrd_lattice_report` / `test_app_texture_analysis`, and two browser
+journeys (workspace load, measured texture) that failed identically on the baseline `59e940a`.
+They are offered as a separate task, as is the registry control-character repair.
+
+**Status.** Goal complete. No next action on this entry.
 
 ## XRD reports, HRTEM viewer, thickness and XYZ input; release 0.10.0 — COMPLETE (2026-09-14)
 
