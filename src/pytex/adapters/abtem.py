@@ -26,6 +26,7 @@ from pytex.diffraction.hrem import (
     MicroscopeAberrations,
     pure_python_phase_object_simulation,
 )
+from pytex.diffraction.multislice import HREMEngine, simulate_multislice_hrem
 
 if TYPE_CHECKING:
     import abtem
@@ -84,7 +85,8 @@ def to_abtem_ctf(aberrations: MicroscopeAberrations) -> abtem.transfer.CTF:
     """Construct an abTEM Contrast Transfer Function (CTF) from canonical PyTex aberrations.
 
     Translates electron kinetic energy (eV), defocus (Å), spherical aberration (Å),
-    higher-order aberrations, focal spread (Å, 1/e width), angular spread (mrad),
+    higher-order aberrations, focal spread (Å, converted from PyTex's standard deviation
+    to abTEM's width, see below), angular spread (mrad),
     and objective aperture cutoff (mrad) into abTEM's optical parameter convention.
 
     Parameters
@@ -122,8 +124,10 @@ def to_abtem_ctf(aberrations: MicroscopeAberrations) -> abtem.transfer.CTF:
     else:
         semiangle_cutoff = float("inf")
 
-    # Temporal coherence: 1/e focal spread in Å
-    focal_spread = float(aberrations.focal_spread_angstrom)
+    # Temporal coherence. PyTex's focal spread is the standard deviation Delta of
+    # the Gaussian defocus distribution, giving exp(-pi^2 lambda^2 Delta^2 q^4 / 2);
+    # abTEM's envelope is exp(-(pi lambda f q^2 / 2)^2), so f = sqrt(2) Delta.
+    focal_spread = math.sqrt(2.0) * float(aberrations.focal_spread_angstrom)
 
     # Spatial coherence: angular spread in mrad
     angular_spread = float(aberrations.convergence_semiangle_mrad)
@@ -189,7 +193,7 @@ def simulate_hrem_multislice(
         raise ImportError(
             "abTEM and ASE are required for multislice simulation. "
             "Install them via `pip install abtem ase` or use "
-            "`simulate_hrem(..., prefer_abtem=False)`."
+            "`simulate_hrem(..., engine=\"multislice\")`, PyTex's own multislice."
         )
 
     import abtem
@@ -280,13 +284,30 @@ def simulate_hrem(
     aberrations: MicroscopeAberrations,
     sampling_angstrom: float = 0.1,
     slice_thickness_angstrom: float = 1.0,
-    prefer_abtem: bool = True,
+    prefer_abtem: bool = False,
+    *,
+    engine: HREMEngine | str | None = None,
+    **multislice_options: Any,
 ) -> HREMSimulationResult:
-    """Unified HREM simulation entry point with automatic multislice / pure-Python dispatch.
+    """Unified HREM simulation entry point.
 
-    If `prefer_abtem` is True and the `abtem` package is installed, the simulation
-    employs full multislice propagation through atomic potential slices. Otherwise,
-    it falls back cleanly to the pure-Python phase-object transmission simulation.
+    Three engines produce the same `HREMSimulationResult`:
+
+    ``"multislice"`` (the default)
+        PyTex's own multislice, `pytex.diffraction.multislice`: Lobato
+        potentials, infinite projection, band-limited propagation - abTEM's
+        algorithm, validated against abTEM and against Bloch waves, and always
+        available. ``multislice_options`` pass through to
+        `pytex.diffraction.multislice.simulate_multislice_hrem` (for example
+        ``parametrization``, ``tilt_mrad``, ``temporal_coherence``,
+        ``frozen_phonon_sigma_angstrom``, ``frozen_phonon_configurations``).
+    ``"abtem"``
+        abTEM itself, through this adapter; raises `ImportError` if abTEM is
+        not installed.
+    ``"phase_object"``
+        The single-plane phase-object approximation of
+        `pytex.diffraction.hrem.pure_python_phase_object_simulation`, valid
+        only for very thin, weakly scattering specimens.
 
     Parameters
     ----------
@@ -297,25 +318,40 @@ def simulate_hrem(
     sampling_angstrom : float, default=0.1
         Lateral real-space pixel sampling in Angstrom.
     slice_thickness_angstrom : float, default=1.0
-        Multislice z-slice thickness in Angstrom (used if multislice is enabled).
-    prefer_abtem : bool, default=True
-        Whether to prioritize abTEM multislice if abTEM is installed.
+        Multislice z-slice thickness in Angstrom.
+    prefer_abtem : bool, default=False
+        Kept for compatibility: with no ``engine``, True selects abTEM when it
+        is installed and the PyTex multislice otherwise.
+    engine : HREMEngine or str, optional
+        The engine; see above.
 
     Returns
     -------
     HREMSimulationResult
         The simulated high-resolution micrograph and associated metadata.
     """
-    if prefer_abtem and is_abtem_available():
+    if engine is None:
+        engine = (
+            HREMEngine.ABTEM if prefer_abtem and is_abtem_available() else HREMEngine.MULTISLICE
+        )
+    chosen = HREMEngine(engine)
+    if chosen is HREMEngine.ABTEM:
         return simulate_hrem_multislice(
             snapshot=snapshot,
             aberrations=aberrations,
             sampling_angstrom=sampling_angstrom,
             slice_thickness_angstrom=slice_thickness_angstrom,
         )
-
-    return pure_python_phase_object_simulation(
-        snapshot=snapshot,
-        aberrations=aberrations,
+    if chosen is HREMEngine.PHASE_OBJECT:
+        return pure_python_phase_object_simulation(
+            snapshot=snapshot,
+            aberrations=aberrations,
+            sampling_angstrom=sampling_angstrom,
+        )
+    return simulate_multislice_hrem(
+        snapshot,
+        aberrations,
         sampling_angstrom=sampling_angstrom,
+        slice_thickness_angstrom=slice_thickness_angstrom,
+        **multislice_options,
     )

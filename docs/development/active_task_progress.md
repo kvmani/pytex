@@ -5,6 +5,53 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Full multislice HRTEM (abTEM algorithm), theory, tutorial, focal series, GUI — IN PROGRESS (2026-09-19)
+
+**Objective (user goal).** Implement a full multislice HRTEM simulation based on abTEM, with its
+theory, mathematics and algorithm documented, a dedicated tutorial covering different cases and
+focal-series generation, and expose it through the web GUI.
+
+**Baseline.** Main at `59e940a`. Untracked `PyTex_Comprehensive_Review.pptx`,
+`generate_pytex_ppt.py`, `tests/test_data/` and the modified
+`docs/roadmap/future_development_vision.md` predate this task and are **not** staged.
+
+**Decisions.**
+
+- PyTex's own engine, `pytex.diffraction.multislice`, reproducing abTEM's conventional Fourier
+  multislice step for step (infinite projection, `t = exp(iσv)` band-limited to 2/3 Nyquist with
+  abTEM's 0.01 raised-cosine taper, transmit-then-propagate, tilt in the propagator), rather than
+  wrapping abTEM: abTEM stays optional, and the engine is validated against it.
+- Potentials in Fourier space with exact phase factors, `ṽ(g) = (h²/2πm₀e) Σ f_e(g) e^{-2πig·r}/A`.
+  Lobato (default) and Kirkland tables generated from abTEM's JSON by
+  `scripts/generate_electron_potential_table.py`; `mott_bethe` reuses PyTex's X-ray table so
+  multislice and the Bloch solver can be compared on identical input.
+- **Found and fixed:** `AtomicSnapshot.from_phase` boxes the atoms' bounding box plus a margin
+  (Si: 5.573 Å instead of 5.431 Å), so no periodic simulation of it is periodic — seams, off-grid
+  beams, a non-zero forbidden (200). New `zone_axis_cell` / `periodic_slab` build an exact
+  orthogonal lattice-periodic box for any `[uvw]` (integer search for perpendicular lattice
+  vectors). With it multislice matches Bloch waves (I₀ 0.4111 vs 0.411, I₂₂₀ 0.1148 vs 0.115 at
+  201 Å) and the (200) is 1e-19 (ZOLZ) / 6e-7 (HOLZ double diffraction).
+- **Found and fixed:** `to_abtem_ctf` passed PyTex's focal spread (a standard deviation) straight to
+  abTEM, whose envelope is `exp(-(πλfq²/2)²)`; the mapping is `f = √2 Δ` (image parity 0.09 %
+  fixed vs 16.6 % before).
+- Focal integration (exact temporal coherence) is confined to `E_c ≥ 1e-4`: beyond that a
+  Gauss–Hermite rule cannot resolve the defocus phase and returns spurious transfer. It then
+  agrees with Frank's envelope for a weak object (H: 0.4 %) and departs for a strong one (Au: 16 %).
+- `simulate_hrem` gains `engine=` (`multislice` default, `abtem`, `phase_object`); the workbench
+  now runs the PyTex multislice.
+
+**Plan.**
+
+| Step | Scope | State |
+| --- | --- | --- |
+| 1 | Engine, parametrization table, periodic zone-axis slabs, adapter √2 fix, engine dispatch; `tests/unit/test_multislice.py` (31, analytic + Bloch) and `test_multislice_abtem_parity.py` (6) | Done, this commit |
+| 2 | Theory note `docs/site/theory/multislice_hrtem.md` (derivation, algorithm, sampling, coherence, frozen phonons, validation) + algorithm SVG + worked examples + symbol registry + docs index | Next |
+| 3 | Tutorial notebook `36_multislice_hrtem.ipynb`: cases, thickness series, focal series, defocus–thickness map, coherence, phonons, tilt, defects | |
+| 4 | GUI: engine controls on the micrograph view, a focal/thickness series view, periodic slabs for crystals, examples, tests, browser check | |
+| 5 | Full suite, Sphinx, changelog; close this entry | |
+
+**Next action.** Step 2.
+
 ## XRD reports, HRTEM viewer, thickness and XYZ input; release 0.10.0 — COMPLETE (2026-09-14)
 
 **Objective (user goal).** (1) Lattice-parameter determination, indexing and phase identification

@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from pytex.adapters.abtem import is_abtem_available, simulate_hrem
+from pytex.adapters.abtem import simulate_hrem
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import phase_from_request
 from pytex.app.registry import (
@@ -631,9 +631,9 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
     )
 
     engine_note = (
-        "Simulated using abTEM multislice wave propagation with Kirkland potential slicing."
-        if is_abtem_available()
-        else "Simulated using pure-Python phase-object transmission."
+        "Simulated by PyTex multislice: Lobato-Van Dyck potentials projected into slices, "
+        "band-limited transmission and Fresnel propagation (the algorithm of abTEM, validated "
+        "against it and against Bloch waves)."
     )
 
     mode_display_labels = {
@@ -683,12 +683,6 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
 
     image_rows, image_columns = result.image.shape
     notes: list[str] = [engine_note]
-    if not is_abtem_available():
-        notes.append(
-            "The phase-object fallback projects every atom into a single plane, so the specimen "
-            "thickness strengthens the projected potential but no propagation of the wave "
-            "within the specimen is modelled; install abTEM for multislice."
-        )
     inputs = dict(request)
     if imported:
         # The provenance of the file, not its text: a saved result names what was

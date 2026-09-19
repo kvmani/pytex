@@ -68,7 +68,8 @@ def test_to_abtem_ctf_parameters() -> None:
     ctf = to_abtem_ctf(aberr)
     assert ctf.energy == 300000.0
     assert math.isclose(ctf.semiangle_cutoff, 18.0)
-    assert math.isclose(ctf.focal_spread, 15.0)
+    # abTEM's focal spread is sqrt(2) times PyTex's standard deviation.
+    assert math.isclose(ctf.focal_spread, math.sqrt(2.0) * 15.0)
 
 
 @pytest.mark.skipif(not is_abtem_available(), reason="abTEM required")
