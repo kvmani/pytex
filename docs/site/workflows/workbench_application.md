@@ -384,9 +384,21 @@ right there and is roughly twenty times smaller.
 - **Copy image** puts the PNG on the clipboard. Browsers allow that only on a secure origin (HTTPS
   or `localhost`), so on a plain-HTTP intranet host the copy is refused; the refusal is reported in
   the message log and the download works regardless.
-- A panel whose figure *is* a computed image offers it byte for byte as well: the HRTEM micrograph
-  and its power spectrum download as the simulation's own PNG, at exactly the simulated pixel
-  count, never resampled.
+- A panel whose figure *is* a computed image also offers that image at its own pixels, never
+  resampled, and, where the numbers matter, at full precision:
+
+  | Panel | Native-resolution downloads |
+  | --- | --- |
+  | HRTEM → Micrograph | Micrograph and power spectrum as PNG (one pixel per simulated pixel, as drawn) and as **32-bit float TIFF** (the computed intensity, and $\log_{10}(1 + \lvert\mathrm{FFT}\rvert^2)$ for the spectrum). |
+  | HRTEM → Focal / thickness series | The tableau as one PNG at native pixels, and a **ZIP** of every image as PNG and 32-bit TIFF, with `series.csv` (thickness, defocus, RMS contrast, mean intensity of each image) and a `README.txt` of pixel size, orientation and units. |
+  | CBED | The pattern at one pixel per simulated sample, with the current contrast and with linear intensity. |
+  | EBSD maps | The map with one pixel per measurement point, without boundaries or picks drawn over it. |
+
+  Every file opens the same way up as the panel draws it: the first row is the top of the image.
+  The TIFFs are the data, not a picture of them, so they open in ImageJ/Fiji, DigitalMicrograph,
+  Python or MATLAB for measurement and for comparison with an experimental image. A computed image
+  has exactly the pixels the calculation used; for more pixels, refine the sampling (HRTEM accepts
+  down to 0.02 Å per pixel) rather than enlarging the download.
 
 Everything is done in the page, with no network access, so it works on an air-gapped host.
 

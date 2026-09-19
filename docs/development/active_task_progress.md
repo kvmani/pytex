@@ -5,6 +5,25 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Full-resolution downloads, registry repair, macOS out of CI — COMPLETE (2026-09-20)
+
+**Objective (user request).** (1) Every resulting graphic downloadable at full resolution,
+especially HRTEM simulations and power spectra. (2) Repair the corrupted LaTeX escapes in the
+symbol registry. (3) Remove macOS from CI and document it so no later change reintroduces it.
+
+**Done.**
+
+| Part | Outcome | Commit |
+| --- | --- | --- |
+| macOS out of CI | Matrix is Ubuntu 3.11–3.13 + Windows 3.11; `AGENTS.md` *Continuous Integration Platforms* states the rule and how it may be reversed; `docs/testing/strategy.md` and the development guide agree; `tests/unit/test_ci_policy.py` fails on any macOS runner | `6ad2af0` |
+| Registry repair | `\beta`, `\boldsymbol`, `\varphi`, `\varepsilon`, `\theta`, `\tfrac`, `\rho`, `\rangle` restored in the registry, the Kearns theory note and the MTEX parity matrix; seven split rows rejoined; `test_repo_integrity.py` rejects control characters in tracked text | `7caeec9` |
+| Full-resolution downloads | `pytex.app.rasters` (PNG, 32-bit float TIFF, native montage, ZIP; one orientation rule). HRTEM micrograph and spectrum add float TIFFs; the series offers a native tableau PNG and a ZIP of every image (PNG + TIFF) with `series.csv` and `README.txt`; CBED patterns (as shown and linear) and EBSD maps register their native pixels; the plot frame drops a drawing's rasters when a new drawing replaces it. HRTEM sampling default 0.2 → 0.1 Å, minimum 0.05 → 0.02 Å. Pillow declared. Unit tests decode the TIFF and ZIP; browser test downloads every native raster | this commit |
+
+**Verification.** HRTEM app tests, policy and integrity tests green; browser lane 72/73, the one
+failure the known timing-marginal workspace-load test (fails identically on baseline). CI after
+`6ad2af0`: Windows green; Ubuntu fails only `test_app_xrd_lattice_report` (pre-existing Linux
+numerics), offered as a separate task together with the browser failures.
+
 ## Full multislice HRTEM (abTEM algorithm), theory, tutorial, focal series, GUI — COMPLETE (2026-09-19)
 
 **Objective (user goal).** Implement a full multislice HRTEM simulation based on abTEM, with its

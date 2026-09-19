@@ -305,6 +305,25 @@ export function mount(context) {
       [...children, ...marks],
     );
     frame.setContent(root);
+    // The pattern at one pixel per simulated sample: as shown (with the current
+    // contrast), and with the linear intensity the simulation produced.
+    const { width: columns, height: rows } = state.image;
+    frame.setRasters([
+      {
+        label: `Download PNG (pattern as shown, ${columns} × ${rows} px)`,
+        data: href,
+        filename: `pytex-cbed-pattern-${columns}x${rows}px.png`,
+        width: columns,
+        height: rows,
+      },
+      {
+        label: `Download PNG (pattern, linear intensity, ${columns} × ${rows} px)`,
+        data: toDataUrl(state.image, { gamma: 1, invert: false }),
+        filename: `pytex-cbed-pattern-linear-${columns}x${rows}px.png`,
+        width: columns,
+        height: rows,
+      },
+    ]);
     frame.configure({
       toData: (x, y) => ({ x: (x - SIZE / 2) / scale, y: (SIZE / 2 - y) / scale }),
       formatCursor: (point) => {

@@ -461,9 +461,10 @@ export function mount(context, { colouring = 'ipf' } = {}) {
     const drawWidth = spanX * scale;
     const drawHeight = spanY * scale;
 
+    const mapHref = toDataUrl(data.image);
     const nodes = [
       svg('image', {
-        href: toDataUrl(data.image),
+        href: mapHref,
         x: 0,
         y: 0,
         width: drawWidth,
@@ -506,6 +507,17 @@ export function mount(context, { colouring = 'ipf' } = {}) {
         nodes,
       ),
     );
+    // One pixel per measurement point, without boundaries or picks drawn over it.
+    frame.setRasters([
+      {
+        label: `Download PNG (map, ${data.image.width} × ${data.image.height} px, `
+          + 'one pixel per measurement)',
+        data: mapHref,
+        filename: `pytex-ebsd-map-${data.image.width}x${data.image.height}px.png`,
+        width: data.image.width,
+        height: data.image.height,
+      },
+    ]);
     state.geometry = state.labels
       ? {
           cellWidth: drawWidth / state.labels.width,

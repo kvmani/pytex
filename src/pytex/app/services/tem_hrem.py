@@ -12,6 +12,17 @@ import numpy as np
 from pytex.adapters.abtem import is_abtem_available, simulate_hrem
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import phase_from_request
+from pytex.app.rasters import (
+    PNG_TYPE,
+    ZIP_TYPE,
+    float_tiff_bytes,
+    gray_png_bytes,
+    montage,
+    raster,
+    rgb_png_bytes,
+    tiff_raster,
+    zip_bytes,
+)
 from pytex.app.registry import (
     REGISTRY,
     ChoiceParameter,
@@ -524,8 +535,8 @@ _SIMULATE_PARAMETERS: tuple[Parameter, ...] = (
     NumberParameter(
         name="sampling_angstrom",
         label="Pixel sampling pitch",
-        default=0.2,
-        minimum=0.05,
+        default=0.1,
+        minimum=0.02,
         maximum=0.5,
         units="Å/px",
         row="sampling",
@@ -733,7 +744,7 @@ def _run_multislice(
 ) -> MultisliceExitWave:
     """Run the PyTex multislice for a workbench request, refusing what would not finish."""
 
-    sampling = float(request.get("sampling_angstrom", 0.2))
+    sampling = float(request.get("sampling_angstrom", 0.1))
     slice_thickness = float(request.get("slice_thickness_angstrom", 1.5))
     options = _multislice_options(request)
     grid = MultisliceGrid.from_sampling(
@@ -887,7 +898,7 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
     mode_str = str(request.get("mode", "double_corrected"))
     defocus = float(request.get("defocus_angstrom", -30.0))
     cs_um = float(request.get("cs_um", 0.0))
-    sampling = float(request.get("sampling_angstrom", 0.2))
+    sampling = float(request.get("sampling_angstrom", 0.1))
 
     snap, specimen = _specimen_from_request(request, phase)
     imported = specimen["sample_type"] == "imported"
@@ -1078,6 +1089,18 @@ def _simulate_hrem(request: dict[str, Any]) -> dict[str, Any]:
             # in the viewer shows the real sampling rather than a resampling.
             "image_png": result.to_png_base64(native_resolution=True),
             "power_spectrum_png": result.to_power_spectrum_base64(native_resolution=True),
+            # The computed numbers, not a colour map of them: what a user measures
+            # or compares with an experimental image.
+            "image_tiff": tiff_raster(
+                result.image, name="micrograph", stem="pytex-hrtem-micrograph",
+                quantity="intensity",
+            ),
+            "power_spectrum_tiff": tiff_raster(
+                result.power_spectrum,
+                name="power spectrum",
+                stem="pytex-hrtem-power-spectrum",
+                quantity="log10(1 + |FFT|²)",
+            ),
             "image_shape_px": [int(image_rows), int(image_columns)],
             "nyquist_inv_angstrom": [
                 0.5 * image_columns / float(result.extent_angstrom[0]),
@@ -1844,6 +1867,9 @@ def _hrtem_series(request: dict[str, Any]) -> dict[str, Any]:
             "beam_thickness_angstrom": [float(t) for t in exit_wave.depths_angstrom],
             "beams": beams,
             "multislice": multislice_summary(exit_wave),
+            "downloads": _series_downloads(
+                images, thicknesses, defoci, contrasts, exit_wave, snap.label
+            ),
             "unit_cell_repeats": specimen["unit_cell_repeats"],
             "natoms": snap.natoms,
             "sample_label": snap.label,
@@ -1860,6 +1886,71 @@ def _hrtem_series(request: dict[str, Any]) -> dict[str, Any]:
         ),
     )
     return replace(app_res, figures=tuple(figures)).to_json()
+
+
+def _series_downloads(
+    images: np.ndarray,
+    thicknesses: list[float],
+    defoci: np.ndarray,
+    contrasts: np.ndarray,
+    exit_wave: MultisliceExitWave,
+    label: str,
+) -> list[dict[str, Any]]:
+    """The tableau at native pixels, and every image of it as PNG and 32-bit TIFF.
+
+    The ZIP names each image by its thickness and defocus, and carries an index
+    (`series.csv`) and a README stating orientation, pixel size and units, so the
+    archive can be read without the workbench.
+    """
+
+    rows, columns, ny, nx = images.shape
+    tableau = rgb_png_bytes(montage(images), top_down=True)
+    files: dict[str, bytes] = {"tableau.png": tableau}
+    index = ["row,column,thickness_angstrom,defocus_angstrom,rms_contrast,mean_intensity,file"]
+    for i in range(rows):
+        for j in range(columns):
+            stem = f"t{thicknesses[i]:.1f}A_df{defoci[j]:+.0f}A"
+            files[f"{stem}.png"] = gray_png_bytes(images[i, j])
+            files[f"{stem}.tif"] = float_tiff_bytes(images[i, j])
+            index.append(
+                f"{i + 1},{j + 1},{thicknesses[i]:.4f},{defoci[j]:.4f},"
+                f"{contrasts[i, j]:.6f},{float(np.mean(images[i, j])):.6f},{stem}.tif"
+            )
+    files["series.csv"] = ("\n".join(index) + "\n").encode("utf-8")
+    dx, dy = exit_wave.grid.sampling_angstrom
+    files["README.txt"] = (
+        f"HRTEM series of {label}, simulated by PyTex multislice.\n\n"
+        f"Images: {nx} x {ny} px, pixel {dx:.5f} x {dy:.5f} Angstrom, field "
+        f"{exit_wave.grid.extent_angstrom[0]:.3f} x {exit_wave.grid.extent_angstrom[1]:.3f} "
+        "Angstrom.\n"
+        "Orientation: the first image row is the top of the specimen (largest y); x increases "
+        "to the right.\n"
+        "*.tif: 32-bit float image intensity as computed (incident beam intensity = 1).\n"
+        "*.png: 8-bit grey, each image scaled to its own range, as the workbench draws it.\n"
+        "tableau.png: every image at its native pixels, thickness increasing downwards and "
+        "defocus to the right (negative defocus is underfocus).\n"
+        "series.csv: thickness, defocus, RMS contrast and mean intensity of every image.\n\n"
+        f"{exit_wave.describe()}\n"
+    ).encode()
+    montage_height = rows * ny + (rows - 1) * 4
+    montage_width = columns * nx + (columns - 1) * 4
+    return [
+        raster(
+            f"Download PNG (tableau at native pixels, {montage_width} × {montage_height} px)",
+            tableau,
+            PNG_TYPE,
+            f"pytex-hrtem-tableau-{montage_width}x{montage_height}px.png",
+            (montage_height, montage_width),
+        ),
+        raster(
+            f"Download ZIP (all {rows * columns} images as PNG and 32-bit TIFF, {nx} × {ny} px "
+            "each)",
+            zip_bytes(files),
+            ZIP_TYPE,
+            f"pytex-hrtem-series-{rows}x{columns}-images.zip",
+            (ny, nx),
+        ),
+    ]
 
 
 def _inputs_for_report(request: Mapping[str, Any], specimen: Mapping[str, Any]) -> dict[str, Any]:

@@ -155,3 +155,72 @@ class TestSeries:
                 ),
             )
         assert caught.value.details["field"] == "thickness_steps"
+
+
+def _decode(data_url: str) -> bytes:
+    import base64
+
+    return base64.b64decode(data_url.split(",", 1)[1])
+
+
+class TestFullResolutionDownloads:
+    def test_the_micrograph_tiff_is_the_computed_intensity(self) -> None:
+        import io
+
+        import numpy as np
+        from PIL import Image
+
+        result = REGISTRY.call(_SIMULATE, _request(sampling_angstrom=0.2))
+        tiff = result["data"]["image_tiff"]
+        values = np.asarray(Image.open(io.BytesIO(_decode(tiff["data"]))))
+        rows, columns = result["data"]["image_shape_px"]
+        assert values.dtype == np.float32
+        assert values.shape == (rows, columns) == (tiff["height"], tiff["width"])
+        assert tiff["filename"].endswith("-float32.tif")
+        # The file holds the image intensity itself, the same way up as the
+        # displayed PNG: that PNG is the same array through an 8-bit grey map, so
+        # the TIFF rescaled to 0-255 must match it everywhere within the two levels
+        # that matplotlib's binned colour lookup can differ from rounding.
+        png = np.asarray(Image.open(io.BytesIO(_decode(result["data"]["image_png"]))))
+        grey = (png[..., 0] if png.ndim == 3 else png).astype(float)
+        scaled = 255.0 * (values - values.min()) / (values.max() - values.min())
+        assert float(np.max(np.abs(scaled - grey))) <= 2.0
+        assert np.isfinite(values).all() and float(values.min()) >= 0.0
+
+    def test_the_spectrum_tiff_matches_the_spectrum_png_size(self) -> None:
+        result = REGISTRY.call(_SIMULATE, _request())
+        tiff = result["data"]["power_spectrum_tiff"]
+        rows, columns = result["data"]["image_shape_px"]
+        assert (tiff["height"], tiff["width"]) == (rows, columns)
+        assert "log10" in tiff["label"]
+
+    def test_the_series_zip_holds_every_image_and_its_index(self) -> None:
+        import csv
+        import io
+        import zipfile
+
+        import numpy as np
+        from PIL import Image
+
+        result = REGISTRY.call(
+            _SERIES,
+            _request(
+                zone_axis=[1, 1, 0], supercell_xy=1, thickness_angstrom=40.0, thickness_steps=2,
+                defocus_start_angstrom=-50.0, defocus_stop_angstrom=50.0,
+                defocus_step_angstrom=50.0,
+            ),
+        )
+        tableau, bundle = result["data"]["downloads"]
+        rows, columns = result["data"]["image_shape_px"]
+        montage = Image.open(io.BytesIO(_decode(tableau["data"])))
+        assert montage.size == (3 * columns + 2 * 4, 2 * rows + 4)
+        archive = zipfile.ZipFile(io.BytesIO(_decode(bundle["data"])))
+        names = archive.namelist()
+        assert {"tableau.png", "series.csv", "README.txt"} <= set(names)
+        assert sum(name.endswith(".tif") for name in names) == 6
+        assert sum(name.endswith(".png") for name in names) == 7
+        index = list(csv.DictReader(io.StringIO(archive.read("series.csv").decode())))
+        assert len(index) == 6
+        first = np.asarray(Image.open(io.BytesIO(archive.read(index[0]["file"]))))
+        assert first.shape == (rows, columns) and first.dtype == np.float32
+        assert float(first.mean()) == pytest.approx(float(index[0]["mean_intensity"]), rel=1e-5)

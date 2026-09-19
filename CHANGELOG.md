@@ -37,8 +37,19 @@ downstream analyses depend on them.
   worked examples, the tutorial notebook `36_multislice_hrtem`, an algorithm flow sheet and
   validation-matrix rows.
 
+- **Every computed image downloads at full resolution.** The HRTEM micrograph and power spectrum
+  add 32-bit float TIFFs of the computed values beside their native PNGs; the HRTEM series offers
+  its tableau as a native-resolution PNG and every image as PNG and TIFF in a ZIP with an index;
+  CBED patterns and EBSD maps offer their native pixels (`pytex.app.rasters`). The HRTEM pixel
+  pitch now defaults to 0.1 Å and goes down to 0.02 Å.
+- `tests/unit/test_repo_integrity.py` rejects control characters in tracked text, and
+  `tests/unit/test_ci_policy.py` rejects macOS runners in CI.
+
 ### Fixed
 
+- **LaTeX commands in the symbol registry, the Kearns theory note and the MTEX parity
+  matrix had been turned into control characters** by an old shell heredoc (`\beta`, `\rho`,
+  `\rangle`, `\varphi`, `\tfrac` and others), splitting seven table rows; all are restored.
 - **`to_abtem_ctf` passed the focal spread to abTEM unconverted.** PyTex's focal spread is the
   standard deviation Δ of the defocus distribution; abTEM's envelope is
   exp(−(πλfq²/2)²), so its width is f = √2 Δ. abTEM images through a PyTex lens were damped too
@@ -50,6 +61,8 @@ downstream analyses depend on them.
 
 ### Changed
 
+- **CI runs on Linux and Windows only.** macOS was removed from the matrix by the maintainer's
+  decision; `AGENTS.md` (*Continuous Integration Platforms*) records the rule.
 - The default HRTEM engine is the PyTex multislice rather than abTEM-if-installed-else-phase-object,
   so the same request gives the same image on every server. `simulate_hrem(prefer_abtem=True)`
   still selects abTEM where it is installed.

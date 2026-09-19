@@ -60,6 +60,10 @@ dependencies = [
   # orix supplies the orientation and Miller types the adapters convert to and
   # from, and the crystal-map model KikuchiPy hands back.
   "orix>=0.13.3",
+  # Pillow writes the workbench's computed images at full precision: 32-bit
+  # float TIFFs and native-resolution PNGs (`pytex.app.rasters`). matplotlib
+  # already requires it; it is declared because PyTex now imports it directly.
+  "pillow>=10.0",
   # pymatgen parses CIF structures, determines their space groups through
   # spglib, and is the authority for element data: atomic numbers, radii, and
   # the scattering parameters the X-ray form-factor table is generated from.
@@ -216,6 +220,7 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 # characters in the column headers a microscopist reads.
 "src/pytex/app/services/tem.py" = ["RUF001"]
 "src/pytex/app/services/tem_hrem.py" = ["RUF001"]
+"src/pytex/app/rasters.py" = ["RUF001"]
 "src/pytex/diffraction/hrem.py" = ["RUF001"]
 "src/pytex/diffraction/multislice.py" = ["RUF001"]
 # Sigma is the standard symbol for a standard uncertainty, and the residual

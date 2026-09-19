@@ -904,6 +904,56 @@ test('the HRTEM micrograph downloads at the resolution it was simulated at', asy
   const spectrum = page.locator('#stage .hrem-sim-stage > .plot').nth(1);
   const power = await saveFromMenu(page, spectrum, /spectrum, \d+ × \d+ px/);
   expect(power.name).toMatch(/^pytex-hrtem-power-spectrum-\d+x\d+px\.png$/);
+
+  // The computed numbers themselves: 32-bit float TIFFs at the simulated size.
+  const intensity = await saveFromMenu(page, frame, /Download TIFF \(micrograph/);
+  expect(intensity.name).toBe(
+    `pytex-hrtem-micrograph-${expected.width}x${expected.height}px-float32.tif`,
+  );
+  expect(intensity.bytes.subarray(0, 4).toString('latin1')).toBe('II*\u0000');
+  const powerTiff = await saveFromMenu(page, spectrum, /Download TIFF \(power spectrum/);
+  expect(powerTiff.name).toMatch(/^pytex-hrtem-power-spectrum-\d+x\d+px-float32\.tif$/);
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * Every computed raster the workbench draws can be saved at its own pixels, not
+ * only as a redrawing of the figure: the HRTEM series as a native montage and as
+ * a ZIP of every image, a CBED pattern, and an EBSD map with one pixel per
+ * measurement.
+ */
+test('every computed image downloads at its native resolution', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  const browserErrors = await openWorkbench(page);
+
+  await openPanel(page, 'HRTEM Simulation');
+  await page.locator('#subtabs .viewtab[data-view="tem.hrtem_series"]').click();
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Run series', exact: true }).click(),
+  );
+  const series = page.locator('#stage .hrem-series-stage > .plot').first();
+  await expect(series.locator('svg.hrem-figure image').first()).toBeVisible({ timeout: 60_000 });
+  const tableau = await saveFromMenu(page, series, /tableau at native pixels/);
+  expect(tableau.name).toMatch(/^pytex-hrtem-tableau-\d+x\d+px\.png$/);
+  const bundle = await saveFromMenu(page, series, /Download ZIP/);
+  expect(bundle.name).toMatch(/^pytex-hrtem-series-\d+x\d+-images\.zip$/);
+  expect(bundle.bytes.subarray(0, 2).toString('latin1')).toBe('PK');
+
+  await openPanel(page, 'CBED');
+  const cbed = page.locator('#stage .plot').first();
+  await expect(cbed.locator('svg image').first()).toBeVisible({ timeout: 60_000 });
+  const pattern = await saveFromMenu(page, cbed, /pattern as shown/);
+  const shown = pngSize(pattern.bytes);
+  expect(pattern.name).toBe(`pytex-cbed-pattern-${shown.width}x${shown.height}px.png`);
+  const linear = await saveFromMenu(page, cbed, /linear intensity/);
+  expect(pngSize(linear.bytes)).toEqual(shown);
+
+  await openPanel(page, 'IPF map');
+  const map = page.locator('#stage .plot').first();
+  await expect(map.locator('svg image').first()).toBeVisible({ timeout: 60_000 });
+  const measured = await saveFromMenu(page, map, /one pixel per measurement/);
+  const mapSize = pngSize(measured.bytes);
+  expect(measured.name).toBe(`pytex-ebsd-map-${mapSize.width}x${mapSize.height}px.png`);
   expect(browserErrors).toEqual([]);
 });
 

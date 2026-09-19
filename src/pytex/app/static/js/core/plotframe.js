@@ -442,6 +442,9 @@ export function plotFrame({
     setContent(node, { preserveViewport = false } = {}) {
       const oldBase = view.base;
       const oldCurrent = view.current;
+      // The rasters belong to the drawing they were registered with; a panel
+      // registers the new drawing's after this call.
+      rasters = [];
       clear(canvas);
       if (node === null || node === undefined) {
         view.svg = null;

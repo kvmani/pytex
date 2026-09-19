@@ -351,6 +351,8 @@ export function mount(context) {
           width: columns,
           height: rows,
         },
+        // The computed intensities themselves, for measurement and comparison.
+        ...(data.image_tiff ? [data.image_tiff] : []),
       ]);
       simFrame.setStatus(
         `Field of view ${formatNumber(lx, 1)} × ${formatNumber(ly, 1)} Å at `
@@ -407,6 +409,7 @@ export function mount(context) {
           width: specColumns,
           height: specRows,
         },
+        ...(data.power_spectrum_tiff ? [data.power_spectrum_tiff] : []),
       ]);
       fftFrame.setStatus(
         `Nyquist ±${formatNumber(qx, 2)} Å⁻¹. Dashed rings: point resolution `
@@ -547,6 +550,8 @@ export function mount(context) {
         + `x = ${formatNumber(point.x, 2)} Å, y = ${formatNumber(point.y, 2)} Å`,
     });
     seriesFrame.setContent(figure, { preserveViewport });
+    // The tableau at native pixels, and every image as PNG and 32-bit TIFF.
+    seriesFrame.setRasters(data.downloads || []);
     seriesFrame.setStatus(
       `${rows} × ${columns} images of ${formatNumber(lx, 1)} × ${formatNumber(ly, 1)} Å from one `
         + 'multislice run, each scaled to its own grey range. Hover a tile for its contrast; '
