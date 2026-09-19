@@ -82,3 +82,38 @@ def test_no_reference_pdf_is_tracked() -> None:
     tracked = check_repo_integrity._tracked_files(REPO_ROOT)
     offenders = [path for path in tracked if path.replace("\\", "/").lower().endswith(".pdf")]
     assert not offenders, f"reference PDFs are tracked again: {offenders}"
+
+
+def test_tracked_text_holds_no_control_characters() -> None:
+    """A backslash eaten on the way into a file leaves a control character behind.
+
+    An unquoted shell heredoc or a non-raw Python string turns the LaTeX commands
+    ``\beta``, ``\rho``, ``\varphi`` and ``\tfrac`` into a backspace, a carriage
+    return, a vertical tab and a tab. The page still builds, so nothing else
+    notices: the formula simply renders wrong, and a lost carriage return splits a
+    table row in two. This happened to the symbol registry and was repaired on
+    2026-09-20; tabs and CRLF line endings remain legitimate.
+    """
+
+    import re
+    import subprocess
+
+    root = Path(__file__).resolve().parents[2]
+    listed = subprocess.run(
+        ["git", "ls-files", "*.md", "*.py", "*.js", "*.css", "*.ipynb", "*.yml", "*.toml"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    forbidden = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]|\r(?!\n)")
+    offenders = []
+    for name in listed:
+        path = root / name
+        if not path.is_file():
+            continue
+        text = path.read_bytes().decode("utf-8", errors="replace")
+        for number, line in enumerate(text.split("\n"), 1):
+            if forbidden.search(line.removesuffix("\r")):
+                offenders.append(f"{name}:{number}")
+    assert not offenders, "control characters in tracked text: " + ", ".join(offenders[:20])

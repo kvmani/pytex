@@ -247,24 +247,19 @@ concentration; it carries no independence or confidence-interval claim.
 | Symbol | Meaning |
 | --- | --- |
 | $f$, $f_{\mathrm{RD}}$, $f_{\mathrm{TD}}$, $f_{\mathrm{ND}}$ | Kearns orientation parameter along a specimen direction: the volume-weighted mean of $\cos^{2}$ of the angle between each crystal's basal pole and that direction, and hence the effective fraction of basal poles aligned with it. Bounded to $[0,1]$; exactly $1/3$ for a random texture. Distinct from the ODF density $f(g)$, which is a function on $SO(3)$. |
-| $\mathbf{A}$ | Pole orientation tensor $\langle \mathbf{c}\,\mathbf{c}^{\mathsf{T}}
-angle$ of the basal-pole distribution in the specimen frame, so that $f(\mathbf{d}) = \mathbf{d}^{\mathsf{T}}\mathbf{A}\mathbf{d}$. Unit trace, which is why the Kearns parameters of an orthonormal triad sum identically to 1. The weighted counterpart of the directional-statistics orientation tensor $oldsymbol{\Theta}$. |
-| $\phi$ | Tilt of a crystal's basal pole $[0001]$ from the specimen reference direction. Distinct from the first Euler angle $arphi_1$ and from the pole-figure azimuth. |
+| $\mathbf{A}$ | Pole orientation tensor $\langle \mathbf{c}\,\mathbf{c}^{\mathsf{T}}\rangle$ of the basal-pole distribution in the specimen frame, so that $f(\mathbf{d}) = \mathbf{d}^{\mathsf{T}}\mathbf{A}\mathbf{d}$. Unit trace, which is why the Kearns parameters of an orthonormal triad sum identically to 1. The weighted counterpart of the directional-statistics orientation tensor $\boldsymbol{\Theta}$. |
+| $\phi$ | Tilt of a crystal's basal pole $[0001]$ from the specimen reference direction. Distinct from the first Euler angle $\varphi_1$ and from the pole-figure azimuth. |
 | $I(\phi)$ | Basal-pole density averaged over the full $360^{\circ}$ of azimuth about the reference direction — the *tilt profile*. Kearns' Eq. (5) integrates it against $\sin\phi\cos^{2}\phi$. Scale-free: only ratios of $I$ enter $f$. |
 | $V_{\Delta\phi}$ | Volume fraction of crystals whose basal pole lies in the tilt band $\Delta\phi$, equal to $I(\phi)\sin\phi\,\Delta\phi$ normalized over $[0,\pi/2]$. Vanishes at $\phi = 0$ however intense the pole is there, because the band has no area. |
-| $\phi_{hkil}$ | Fixed angle between the $(hkil)$ plane normal and $[0001]$, from the phase's reciprocal metric. What lets a $	heta$-$2	heta$ peak intensity be read as a basal-pole density at a known tilt. |
-| $
-ho$, $eta$ | ODF kernel shrinkage: $
-ho = \langle\cos^{2}eta
-angle$ of a pole smeared by the kernel, and $eta = (3
-ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ from $\mathbf{I}/3$. Here $eta$ is a scalar shrinkage factor, distinct from the lattice angle $eta$ and the holder tilt $eta$. |
+| $\phi_{hkil}$ | Fixed angle between the $(hkil)$ plane normal and $[0001]$, from the phase's reciprocal metric. What lets a $\theta$-$2\theta$ peak intensity be read as a basal-pole density at a known tilt. |
+| $\rho$, $\beta$ | ODF kernel shrinkage: $\rho = \langle\cos^{2}\beta\rangle$ of a pole smeared by the kernel, and $\beta = (3\rho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ from $\mathbf{I}/3$. Here $\beta$ is a scalar shrinkage factor, distinct from the lattice angle $\beta$ and the holder tilt $\beta$. |
 
 ### Directional statistics
 
 | Symbol | Meaning |
 | --- | --- |
-| $oldsymbol{\Theta}$ | Orientation tensor $	frac{1}{n}\sum_i \hat{\mathbf{v}}_i\hat{\mathbf{v}}_i^{\mathsf{T}}$ of a direction set. Invariant under $\hat{\mathbf{v}} \mapsto -\hat{\mathbf{v}}$, so it is the correct summary for axial data where the resultant cancels. Unit trace. Distinct from the rigid placement $\mathbf{T}$. |
-| $\lambda_1 \le \lambda_2 \le \lambda_3$ | Eigenvalues of $oldsymbol{\Theta}$; non-negative and summing to 1. $(	frac13,	frac13,	frac13)$ uniform, $(0,	frac12,	frac12)$ girdle, $(0,0,1)$ cluster. A mean axis is identified only when $\lambda_3 > \lambda_2$. |
+| $\boldsymbol{\Theta}$ | Orientation tensor $\tfrac{1}{n}\sum_i \hat{\mathbf{v}}_i\hat{\mathbf{v}}_i^{\mathsf{T}}$ of a direction set. Invariant under $\hat{\mathbf{v}} \mapsto -\hat{\mathbf{v}}$, so it is the correct summary for axial data where the resultant cancels. Unit trace. Distinct from the rigid placement $\mathbf{T}$. |
+| $\lambda_1 \le \lambda_2 \le \lambda_3$ | Eigenvalues of $\boldsymbol{\Theta}$; non-negative and summing to 1. $(\tfrac13,\tfrac13,\tfrac13)$ uniform, $(0,\tfrac12,\tfrac12)$ girdle, $(0,0,1)$ cluster. A mean axis is identified only when $\lambda_3 > \lambda_2$. |
 
 ### Elastic properties
 
@@ -283,11 +278,11 @@ ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ 
 | Symbol | Meaning |
 | --- | --- |
 | $m$ | Schmid factor $\cos\phi\cos\lambda$ of a slip system under uniaxial stress. Bounded above by exactly $1/2$, attained at $\phi = \lambda = 45^{\circ}$. |
-| $\mathbf{N}^{(s)}$ | Symmetric Schmid tensor of slip system $s$, $	frac{1}{2}(\hat{\mathbf{d}}\hat{\mathbf{n}}^{\mathsf{T}} + \hat{\mathbf{n}}\hat{\mathbf{d}}^{\mathsf{T}})$, expressed in the sample frame. |
+| $\mathbf{N}^{(s)}$ | Symmetric Schmid tensor of slip system $s$, $\tfrac{1}{2}(\hat{\mathbf{d}}\hat{\mathbf{n}}^{\mathsf{T}} + \hat{\mathbf{n}}\hat{\mathbf{d}}^{\mathsf{T}})$, expressed in the sample frame. |
 | $\gamma^{(s)}$ | Slip amount on system $s$; non-negative, with the two shear senses carried as separate systems. Distinct from the IPF saturation $\gamma_{s}$. |
 | $\Gamma$ | Total slip $\sum_s \gamma^{(s)}$ minimised by the full-constraint Taylor problem. |
-| $M$ | Taylor factor $\Gamma / arepsilon_{\mathrm{eq}}$. Unique even when the slip combination attaining it is not. |
-| $arepsilon_{\mathrm{eq}}$ | Von Mises equivalent strain $\sqrt{	frac{2}{3}oldsymbol{arepsilon}:oldsymbol{arepsilon}}$. |
+| $M$ | Taylor factor $\Gamma / \varepsilon_{\mathrm{eq}}$. Unique even when the slip combination attaining it is not. |
+| $\varepsilon_{\mathrm{eq}}$ | Von Mises equivalent strain $\sqrt{\tfrac{2}{3}\boldsymbol{\varepsilon}:\boldsymbol{\varepsilon}}$. |
 
 ### Diffraction
 

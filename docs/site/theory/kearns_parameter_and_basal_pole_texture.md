@@ -286,7 +286,7 @@ Four approximations enter, in decreasing order of consequence.
    therefore over-estimates $f$. This, and not the quadrature, is why the three sections' values
    do not sum to 1 and are normalized before use.
 2. **The reference intensities.** Raw peak areas are not pole densities: in a *random* powder
-   $(10ar{1}1)$ and $(20ar{2}0)$ differ by a factor of twenty from structure factor and
+   $(10\bar{1}1)$ and $(20\bar{2}0)$ differ by a factor of twenty from structure factor and
    multiplicity alone, so every reflection needs an $I_{0}$. It may be measured on a powder
    standard or calculated from the structure — only ratios enter $f$, so arbitrary units serve.
    The classical Harris texture coefficient rescales $I/I_{0}$ to a mean of one over the measured

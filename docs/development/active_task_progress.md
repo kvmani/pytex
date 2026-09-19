@@ -64,10 +64,10 @@ focal-series generation, and expose it through the web GUI.
   a 20 Å carbon film at Δ = 40 Å — physics, not error, and the tutorial says so.
 - `pytex.diffraction.multislice` (the function) shadowed the submodule attribute when exported from
   `pytex.diffraction`; the function is no longer exported at package level.
-- Pre-existing, not fixed here: control characters (``, `
-`, `	`, `` eaten by an old
-  heredoc) in `docs/standards/terminology_and_symbol_registry.md` lines ~250–290; offered as a
-  separate task.
+- Pre-existing: LaTeX commands in `docs/standards/terminology_and_symbol_registry.md` had been
+  turned into control characters by an old heredoc (backslash-b, -r, -t and -v eaten). Repaired
+  on 2026-09-20 with the same damage in the Kearns theory note and the MTEX parity matrix, and
+  `tests/unit/test_repo_integrity.py` now rejects control characters in tracked text files.
 
 **Verification.** Full local unit suite green (exit 0, coverage floor held); Sphinx zero warnings
 with notebook 36 executed; HRTEM Playwright test green locally and in CI; ruff and strict mypy
