@@ -61,6 +61,7 @@ notebooks/32_ecci_workflow_from_ebsd
 notebooks/33_quantitative_xrd_background_instrument_and_rietveld
 notebooks/34_precise_lattice_parameters
 notebooks/35_hrem_simulation
+notebooks/36_multislice_hrtem
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -262,4 +263,14 @@ For the validated fixture-to-diffraction route, continue with:
     Scherzer underfocus (dark atomic columns) and Negative Spherical Aberration Imaging (NCSI, bright
     atomic columns). Evaluates atomic vacancies and continuum Volterra edge dislocations, and
     simulates amorphous carbon foils with 2D FFT Thon ring power spectra for microscope calibration.
+
+13. `36_multislice_hrtem` — multislice HRTEM from atoms to focal series with
+    `pytex.diffraction.multislice`: electron scattering factors and sliced projected potentials;
+    why a crystal must sit in an exactly periodic zone-axis box (the forbidden 200 of diamond appears
+    in a padded box); sampling and the band limit; exit waves through 400 Å of silicon [110] with
+    channelling and Pendellösung curves; diffraction patterns and beam tilt; images under
+    uncorrected, $C_s$-corrected and NCSI optics; a focal series and its contrast curve from one
+    exit wave; a defocus-thickness map; Frank's envelope against exact focal integration; frozen
+    phonons and thermal diffuse scattering; titanium [0001], an empty column and amorphous-carbon
+    Thon rings; and agreement with Bloch waves once the slices are thin enough.
 

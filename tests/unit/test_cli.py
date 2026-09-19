@@ -103,3 +103,17 @@ def test_cli_hrem_commands() -> None:
     assert sim_args.voltage == 200.0
     assert sim_args.mode == "double_corrected"
 
+
+
+def test_cli_hrem_simulate_runs_the_pytex_multislice(capsys: pytest.CaptureFixture[str]) -> None:
+    parser = build_parser()
+    args = parser.parse_args([
+        "hrem", "simulate", "--phase", "ni_fcc", "--zone-axis", "1", "1", "0",
+        "--thickness", "15", "--sampling", "0.25", "--slice-thickness", "1.25",
+    ])
+    assert args.engine == "multislice"
+    assert args.zone_axis == [1, 1, 0]
+    assert args.func(args) == 0
+    printed = capsys.readouterr().out
+    assert "Engine: multislice" in printed
+    assert "[1 1 0] slab" in printed

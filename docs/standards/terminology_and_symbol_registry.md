@@ -341,6 +341,20 @@ ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ 
 | $C_{23}$ | Three-fold astigmatism (trefoil) amplitude, entering the wave aberration as $\tfrac{2}{3}\pi\lambda^{2}q^{3}C_{23}\cos 3(\theta_{q}-\varphi_{23})$. |
 | $\varphi_{23}$ | Azimuth of the trefoil axis in the back focal plane. |
 | $\theta_{q}$ | Azimuth in the back focal plane at which a transfer profile is cut. For a round lens every cut is identical; once $C_{12}$, $C_{21}$ or $C_{23}$ is nonzero a single cut describes one direction rather than the lens. |
+| $\mathbf{g}$ | Lateral spatial frequency on the multislice Fourier grid, in Å⁻¹ with no factor $2\pi$; at a Bragg beam it is the reciprocal-lattice vector of that reflection. The CTF note writes the same frequency as $q$, which elsewhere denotes a quaternion. |
+| $\sigma_{e}$ | Relativistic interaction parameter of the beam electron, $2\pi m e\lambda/h^{2}$ in V⁻¹ Å⁻¹: the phase shift per unit projected potential. Subscripted to keep it distinct from the EBSD stage tilt $\sigma$. |
+| $v_{n}(\mathbf{r})$ | Projected potential of multislice slice $n$, $\int V\,dz$ over the slice, in V Å. |
+| $\tau_{n}(\mathbf{r})$ | Transmission function of slice $n$, $e^{i\sigma_{e}v_{n}}$, band-limited: a pure phase grating. Written $\tau$ because $t$ is the foil thickness. |
+| $\Delta z$ | Slice thickness of a multislice calculation. |
+| $\mathcal{P}_{\Delta z}(\mathbf{g})$ | Fresnel propagator over $\Delta z$, $e^{-i\pi\lambda g^{2}\Delta z}$ (with a tilt ramp when the beam is tilted). |
+| $\psi_{n}(\mathbf{r})$ | Electron wave at the entrance of slice $n$; $\psi_{\mathrm{exit}}$ is the wave at the exit surface. Subscripted to keep it distinct from the polar angle $\psi$. |
+| $g_{\max}$ | Band limit of the multislice grid: two thirds of the Nyquist frequency, $1/(3\Delta x)$. |
+| $\chi(\mathbf{g})$ | Wave aberration of the objective lens, in radians. |
+| $E_{c}$, $E_{s}$ | Temporal (focal-spread) and spatial (illumination-angle) coherence envelopes of the objective-lens transfer. |
+| $V_{0}$ | Mean inner potential of a crystal, in volts. |
+| $u_{\mathrm{th}}$ | One-axis RMS thermal displacement of an atom, $\sqrt{B/8\pi^{2}}$; the frozen-phonon and Debye–Waller parameter. Subscripted to keep it distinct from the detector coordinate $u$. |
+| $N_{\mathrm{fp}}$ | Number of frozen-phonon configurations averaged. |
+| $\boldsymbol{\theta}_{\mathrm{tilt}}$ | Beam tilt $(\theta_{x}, \theta_{y})$ from the zone axis in a multislice calculation, in mrad. |
 
 ## References
 

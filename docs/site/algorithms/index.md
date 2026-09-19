@@ -46,6 +46,7 @@ documents so the code and the description cannot drift apart.
 | {doc}`cbed_thickness_and_symmetry` | Two-beam dynamical fringe fitting, specimen thickness extraction, and diffraction group symmetry |
 | {doc}`tem_tilt_navigation` | Double-tilt gimbal angle kinematics, rotation matrix decomposition, and shortest-path tilt planning |
 | {doc}`composite_saed_assembly` | Orientation-relationship variant mapping, reciprocal lattice transformation, and composite pattern synthesis |
+| {doc}`multislice_hrtem` | Periodic zone-axis slabs, Fourier-space projected potentials, band-limited transmission and Fresnel propagation, and HRTEM focal and thickness series |
 
 **Crystal mechanics and properties**
 
@@ -99,6 +100,7 @@ composite_saed_assembly
 saed_pattern_indexing
 tem_tilt_navigation
 cbed_thickness_and_symmetry
+multislice_hrtem
 phase_identification
 precise_lattice_parameter_determination
 pole_figure_inversion

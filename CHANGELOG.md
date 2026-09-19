@@ -11,6 +11,51 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **A full multislice HRTEM engine, `pytex.diffraction.multislice`.** abTEM's conventional
+  Fourier multislice, step for step, in PyTex: Lobato–Van Dyck (default), Kirkland or Mott–Bethe
+  scattering factors projected into slices with exact phase factors; transmission functions and
+  propagators band-limited to two thirds of Nyquist; beam tilt; exit waves stored at any set of
+  depths in one pass, with identical slices built once; static Debye–Waller damping and frozen
+  phonons. `MultisliceExitWave` images through `MicroscopeAberrations` quasi-coherently or by
+  exact focal integration, and gives focal series (`FocalSeries`), defocus-thickness maps
+  (`DefocusThicknessMap`), diffraction patterns and beam intensities, each with `describe()`.
+- **Periodic zone-axis slabs.** `zone_axis_cell` finds three perpendicular lattice vectors with
+  `[uvw]` along the beam and `periodic_slab` fills that box exactly, so a periodic simulation of a
+  crystal has no seam.
+- `simulate_hrem(..., engine=...)`: `"multislice"` (PyTex, now the default), `"abtem"` or
+  `"phase_object"`. The CLI's `pytex hrem simulate` gains `--engine`, `--slice-thickness`,
+  `--zone-axis` and `--thickness`.
+- **Workbench:** the HRTEM panel runs the PyTex multislice, reports its slices, band limit and
+  retained intensity, and offers the engine, slice thickness, scattering factors, focal-spread
+  treatment, beam tilt and frozen phonons; a new **Focal / thickness series** view
+  (`tem.hrtem_series`) draws a defocus-thickness tableau from one multislice run beside the
+  contrast through focus and the beam intensities against thickness.
+- Documentation: the theory note `docs/site/theory/multislice_hrtem.md` (paraxial equation, operator splitting,
+  potentials, band limit, coherence, frozen phonons, series), the algorithm page, six computed
+  worked examples, the tutorial notebook `36_multislice_hrtem`, an algorithm flow sheet and
+  validation-matrix rows.
+
+### Fixed
+
+- **`to_abtem_ctf` passed the focal spread to abTEM unconverted.** PyTex's focal spread is the
+  standard deviation Δ of the defocus distribution; abTEM's envelope is
+  exp(−(πλfq²/2)²), so its width is f = √2 Δ. abTEM images through a PyTex lens were damped too
+  weakly (a 16.6 % image difference in the parity test, now 0.09 %).
+- **The workbench's crystal specimens were not periodic.** `AtomicSnapshot.from_phase` boxes the
+  atoms' bounding box plus a margin (5.573 Å instead of 5.431 Å for silicon), so every simulation
+  of it had a seam and forbidden reflections. The workbench and the CLI now build crystals with
+  `periodic_slab`; `from_phase` itself is unchanged.
+
+### Changed
+
+- The default HRTEM engine is the PyTex multislice rather than abTEM-if-installed-else-phase-object,
+  so the same request gives the same image on every server. `simulate_hrem(prefer_abtem=True)`
+  still selects abTEM where it is installed.
+- The workbench's crystal slabs are measured in periodic cells of the zone-axis box (reported as
+  "Periodic-cell repeats across × across × along the beam") rather than in conventional unit cells.
+
 ## [0.10.0] - 2026-09-14
 
 ### Added

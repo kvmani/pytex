@@ -29,6 +29,8 @@ Outputs (tracked as canonical documentation assets):
 - ``docs/figures/ebsd_grain_metrics_algorithm.svg`` — grains, the local
   misorientation family, and GND density.
 - ``docs/figures/kikuchi_geometry_algorithm.svg`` — the Kikuchi forward model.
+- ``docs/figures/multislice_hrtem_algorithm.svg`` — multislice propagation and HRTEM
+  image formation, including focal and thickness series.
 
 Each figure states its stages, the constraint governing each stage, and — in the
 footer — what the algorithm deliberately does not do.
@@ -1568,6 +1570,143 @@ def phase_identification_figure() -> str:
     )
 
 
+def multislice_hrtem_figure() -> str:
+    """Flow sheet for `multislice` and the imaging that follows it."""
+
+    return algorithm_flow_svg(
+        [
+            (
+                "1 - specimen and potential",
+                [
+                    AlgorithmStage(
+                        label="Periodic zone-axis slab",
+                        role="input",
+                        formula="t1 _|_ t2 _|_ t3 || [uvw]",
+                        detail=[
+                            "Perpendicular lattice vectors, so the",
+                            "box tiles the crystal with no seam.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Slice along the beam",
+                        formula="n = ceil(Lz / dz), atom -> slice of its centre",
+                        detail=[
+                            "Infinite projection: only (Z, x, y)",
+                            "matter, so repeated slices build once.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Projected potential",
+                        formula="v_n(g) = (h^2/2 pi m0 e) sum f_e(g) e^(-2 pi i g.r) / A",
+                        detail=[
+                            "Lobato or Kirkland f_e; exact phase",
+                            "factors on the Fourier grid.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "2 - through the specimen",
+                [
+                    AlgorithmStage(
+                        label="Transmit",
+                        formula="tau_n = exp(i sigma_e v_n), band-limited",
+                        detail=[
+                            "Band limit 2/3 of Nyquist so the",
+                            "product psi tau cannot alias.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Propagate",
+                        formula="psi_n+1 = F^-1[ F(psi_n tau_n) P_dz ]",
+                        detail=[
+                            "P_dz = exp(-i pi lambda g^2 dz), tilt",
+                            "as a phase ramp; repeat for every slice.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Exit waves",
+                        role="output",
+                        formula="psi at each requested depth",
+                        detail=[
+                            "A thickness series costs one pass;",
+                            "frozen phonons repeat the pass.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "3 - through the objective lens",
+                [
+                    AlgorithmStage(
+                        label="Lens transfer",
+                        formula="H = A E_s E_c exp(-i chi(g))",
+                        detail=[
+                            "Quasi-coherent envelopes, or exact",
+                            "Gauss-Hermite focal integration.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Image",
+                        role="output",
+                        formula="I = < |F^-1[ F(psi) H ]|^2 >_phonons",
+                        detail=[
+                            "Intensities, not waves, are averaged",
+                            "over thermal configurations.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Focal and thickness series",
+                        role="output",
+                        formula="I(t_i, df_j) from one multislice run",
+                        detail=[
+                            "The exit wave does not depend on the",
+                            "lens, so only step 3 is repeated.",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        title="Multislice HRTEM simulation",
+        subtitle="multislice, hrtem_image, focal_series - the algorithm of abTEM, in PyTex",
+        description=(
+            "Three-lane flow sheet. Lane 1 builds an exactly periodic orthogonal slab with the "
+            "zone axis along the beam, cuts it into slices, and forms each slice's projected "
+            "potential in Fourier space from parametrized electron scattering factors. Lane 2 "
+            "alternates transmission through the band-limited phase grating of each slice with "
+            "Fresnel propagation to the next, storing the exit wave at the requested depths. "
+            "Lane 3 applies the objective lens transfer function with its coherence envelopes, "
+            "forms intensities averaged over frozen-phonon configurations, and repeats only the "
+            "lens step for every image of a focal or thickness series."
+        ),
+        notes=[
+            SideNote(
+                stage_index=3,
+                title="Constraint: band limit",
+                lines=[
+                    "Scattering beyond 2/3 of Nyquist is removed",
+                    "and reported as lost intensity; a large loss",
+                    "means the sampling is too coarse.",
+                ],
+            ),
+            SideNote(
+                stage_index=6,
+                title="Reading: focal integration",
+                lines=[
+                    "Frank's envelope is exact only for the linear",
+                    "image terms. A strong (heavy-atom) object",
+                    "needs the focal spread integrated.",
+                ],
+            ),
+        ],
+        footer=[
+            "Elastic, independent-atom, paraxial: no bonding redistribution of charge, no",
+            "inelastic (plasmon, core-loss) scattering, no back-scattering; thermal diffuse",
+            "scattering only through frozen phonons; no detector MTF or shot noise.",
+        ],
+    )
+
+
 def main() -> int:
     """Write every algorithm figure into ``docs/figures/``."""
 
@@ -1581,6 +1720,7 @@ def main() -> int:
         "phase_identification_algorithm.svg": phase_identification_figure(),
         "ebsd_grain_metrics_algorithm.svg": ebsd_grain_metrics_figure(),
         "kikuchi_geometry_algorithm.svg": kikuchi_geometry_figure(),
+        "multislice_hrtem_algorithm.svg": multislice_hrtem_figure(),
     }
     FIGURES.mkdir(parents=True, exist_ok=True)
     for name, svg in figures.items():

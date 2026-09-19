@@ -273,7 +273,12 @@ def _cmd_hrem_simulate(args: argparse.Namespace) -> int:
         elif sample_type == "dislocation":
             snap = AtomicSnapshot.crystalline_with_dislocation(phase, supercell=(3, 3, 2))
         else:
-            snap = AtomicSnapshot.from_phase(phase, supercell=(2, 2, 2), zone_axis=(0, 0, 1))
+            from pytex.diffraction.multislice import periodic_slab
+
+            zone = tuple(int(value) for value in args.zone_axis)
+            snap, _cell, _repeats = periodic_slab(
+                phase, (zone[0], zone[1], zone[2]), (2, 2), thickness_angstrom=args.thickness
+            )
 
     mode_map = {
         "conventional": DoubleCorrectionMode.UNCORRECTED,
@@ -301,8 +306,15 @@ def _cmd_hrem_simulate(args: argparse.Namespace) -> int:
         mode=mode,
     )
 
-    result = simulate_hrem(snap, aberr, sampling_angstrom=args.sampling)
+    result = simulate_hrem(
+        snap,
+        aberr,
+        sampling_angstrom=args.sampling,
+        slice_thickness_angstrom=args.slice_thickness,
+        engine=args.engine,
+    )
     print("HREM Simulation Completed:")
+    print(f"  Engine: {args.engine}")
     print(f"  Sample: {snap.label} ({snap.natoms} atoms)")
     print(
         f"  Microscope: {aberr.energy_kev:.1f} kV, {aberr.mode.value} "
@@ -435,7 +447,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     hrem_sim_parser = hrem_subparsers.add_parser(
         "simulate",
-        help="Run multislice or phase-object HRTEM simulation.",
+        help="Run a multislice (PyTex or abTEM) or phase-object HRTEM simulation.",
     )
     hrem_sim_parser.add_argument(
         "--phase",
@@ -478,6 +490,32 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.15,
         help="Real-space pixel sampling in Angstrom.",
+    )
+    hrem_sim_parser.add_argument(
+        "--engine",
+        choices=["multislice", "abtem", "phase_object"],
+        default="multislice",
+        help="PyTex multislice (default), abTEM itself, or the single phase object.",
+    )
+    hrem_sim_parser.add_argument(
+        "--slice-thickness",
+        type=float,
+        default=1.5,
+        help="Multislice slice thickness in Angstrom.",
+    )
+    hrem_sim_parser.add_argument(
+        "--zone-axis",
+        type=int,
+        nargs=3,
+        default=[0, 0, 1],
+        metavar=("U", "V", "W"),
+        help="Zone axis [uvw] of a crystalline specimen, along the beam.",
+    )
+    hrem_sim_parser.add_argument(
+        "--thickness",
+        type=float,
+        default=20.0,
+        help="Crystalline specimen thickness in Angstrom (whole periods at or above it).",
     )
     hrem_sim_parser.add_argument(
         "--output",

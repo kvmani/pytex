@@ -405,7 +405,7 @@ The figures each analysis adds to the panel's own plot:
 | XRD → Background, Rietveld, Crystallite size, Identify, Powder pattern | Background under the scan; Rietveld observed/calculated/difference, weighted residuals and parameter shifts in σ; Caglioti calibration, width decomposition, Williamson–Hall line with its ±1σ band, Scherrer sizes; every candidate's lines under the scan and its score breakdown; the pattern and the factors behind each intensity. |
 | Kearns parameter (every route) | Tilt profile, volume share and the running Kearns sum ending at f; the triad against 1/3; c-axis tilt distributions with a sampling standard error; each section's scan with its reflections. |
 | Measured texture | Recalculated against measured pole figures; misfit against tilt; component fractions against random. |
-| TEM Solver, HRTEM, CBED | Picks against lattice nodes with magnified residuals; measured against calculated spacings and every candidate's score; the micrograph's spectrum against the lens transfer function; the two-beam thickness fit with its uncertainty. |
+| TEM Solver, HRTEM, CBED | Picks against lattice nodes with magnified residuals; measured against calculated spacings and every candidate's score; the micrograph's spectrum against the lens transfer function; the defocus-thickness tableau, contrast through focus and beams against thickness; the two-beam thickness fit with its uncertainty. |
 | EBSD, Variants | Indexing-quality and grain-size distributions with the CI threshold; each measured pair against the fitted orientation relationship, and the distance to every catalogued one. |
 
 **Re-plottable numbers, and a readable account of them.** Five formats. The CSV is one row per
@@ -888,9 +888,10 @@ person on a shared intranet server.
 so this list grows as loops are instrumented rather than by a setting: phase identification reports
 the fraction of candidate phases scored; Rietveld refinement reports the share of its evaluation
 budget spent, with the stage naming the evaluation number so the bar reads as an upper bound rather
-than a fraction of the fit; HRTEM simulation reports the fraction of atoms placed in the pure-Python
-path, and the sequence of named stages in the abTEM multislice path, which exposes no per-slice
-callback. Everything else shows elapsed time and, after a couple of runs, an estimate.
+than a fraction of the fit; HRTEM simulation reports
+the fraction of slices propagated in the PyTex multislice (per frozen-phonon configuration), the
+fraction of atoms placed in the phase-object path, and the sequence of named stages in the abTEM
+path, which exposes no per-slice callback. Everything else shows elapsed time and, after a couple of runs, an estimate.
 
 The console and the bar are interface aids, not a scientific record. Reproducible parameters and
 provenance remain in result exports and reports; the log is bounded and is discarded when the
@@ -1270,6 +1271,59 @@ shows as a point off the line rather than only as a wrong number.
 spacing `H` behind them. This is the one dimension a zone-axis pattern is blind to — every
 zeroth-zone reflection is perpendicular to the zone axis — and a change in `H` is a change in the
 lattice parameter along the beam, which is how CBED measures local strain and composition.
+
+## The HRTEM Panel
+
+**TEM Analysis → HRTEM Simulation** simulates high-resolution TEM images with PyTex's own
+multislice engine, `pytex.diffraction.multislice`, which implements the algorithm of abTEM step for
+step (see {doc}`../algorithms/multislice_hrtem` and {doc}`../theory/multislice_hrtem`). It has
+three views, reached from the strip under the panel tabs:
+
+| View | Operation | What it answers |
+| --- | --- | --- |
+| **Micrograph** | `tem.simulate_hrem` | One image at one defocus, with its power spectrum and the lens transfer function over the rotational average of that spectrum. |
+| **Focal / thickness series** | `tem.hrtem_series` | Images at every defocus of a series and, with more than one thickness row, the defocus-thickness tableau used to match an experimental image; the RMS contrast of every image; and, for a crystal, the transmitted and strongest diffracted beams against thickness. |
+| **Transfer function** | `tem.ctf_calculator` | The objective-lens CTF, its coherence envelopes and its azimuthal anisotropy. |
+
+**The specimen.** A crystal (perfect or with a vacancy) is built in an exact lattice-periodic box
+with the zone axis along the beam: three perpendicular *lattice* vectors, found by
+`zone_axis_cell`, so that the periodic calculation has no seam at the box edge. The note under the
+result names them — for silicon [110], $x \parallel [001]$, $y \parallel [1\bar10]$,
+$z \parallel [110]$ — and the *Supercell size* repeats that cell across the beam. The thickness is
+delivered as a whole number of periods at or above the request, and the table reports both.
+
+**The engine controls**, under *Pixel sampling pitch*:
+
+- *Δz* — the slice thickness; 1–2 Å is usual.
+- *Simulation engine* — the PyTex multislice (default), a single phase object (every atom projected
+  into one plane: only for a very thin, weak specimen), or abTEM itself where it is installed on
+  the server.
+- *Scattering factors* — Lobato & Van Dyck (default), Kirkland, or Mott–Bethe.
+- Under **Advanced**: the focal-spread treatment (Frank's envelope, or exact focal integration),
+  a beam tilt in mrad, and a frozen-phonon ensemble (number of configurations and the RMS thermal
+  displacement $u_{\mathrm{th}}$).
+
+**Reading the diagnostics.** The table reports the slices and the number of distinct slice
+potentials actually built (a crystal repeats), the band limit in Å⁻¹ and as the largest scattering
+angle, and the **retained intensity** at the exit surface — the fraction of the beam still inside
+the band limit. Below 0.95 a note says so: the sampling is too coarse for the scattering, and fine
+detail should not be trusted until the pixel is refined.
+
+**The series view** draws the tableau as one figure in ångströms, thickness increasing downwards
+and defocus to the right. Each tile is a full micrograph at its physical size, scaled to its own
+grey range; hovering a tile gives its thickness, defocus and RMS contrast, and the plot frame's zoom
+compares one column across the whole tableau. Beside it, the upper plate is RMS contrast through
+focus for every thickness and the lower the beams against thickness — the Pendellösung exchange
+that makes contrast reverse with thickness as well as with focus. Every image comes from one exit
+wave, because defocusing the lens is propagation of that wave through vacuum; the series costs one
+multislice run however many defoci it holds. A single thickness row is a plain focal series.
+
+Guard rails, each with a message beside the control to change: at most 1024 × 1024 grid points,
+at most $4\times10^{8}$ grid points × slices × configurations of work, at most 25 defoci and 96
+images in a series, and a zone axis must admit an orthogonal periodic cell.
+
+The examples under *Try an example* include a Cs-corrected focal series of silicon [110], a
+defocus-thickness tableau with its beam plot, and a crystal tilted 10 mrad off its zone axis.
 
 ## The EBSD Workspace
 

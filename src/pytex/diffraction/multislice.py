@@ -72,6 +72,7 @@ from typing import Any
 
 import numpy as np
 import scipy.fft
+import scipy.special
 
 from pytex.core._chemistry import atomic_number
 from pytex.core.progress import report
@@ -99,6 +100,7 @@ __all__ = [
     "TemporalCoherence",
     "ZoneAxisCell",
     "antialias_aperture",
+    "focal_integration_nodes",
     "fresnel_propagator",
     "hrtem_image",
     "multislice",
@@ -127,9 +129,10 @@ ANTIALIAS_CUTOFF_FRACTION = 2.0 / 3.0
 #: :math:`1/\Delta x`, as abTEM's default ``antialias.taper``.
 ANTIALIAS_TAPER = 0.01
 
-#: Focal integration is confined to the frequencies where Frank's temporal
-#: envelope is at least this; see `hrtem_image`.
-FOCAL_ENVELOPE_FLOOR = 1e-4
+#: The most Gauss-Hermite nodes focal integration uses. With the node rule of
+#: `focal_integration_nodes` it resolves a defocus phase rate a <= 44.5; see
+#: `hrtem_image`.
+MAX_FOCAL_INTEGRATION_POINTS = 512
 
 _DATA_PACKAGE = "pytex.diffraction._data"
 _TABLE_FILENAME = "electron_potential_parametrizations.json"
@@ -972,7 +975,7 @@ class MultisliceExitWave:
         aberrations: MicroscopeAberrations,
         depth_index: int = -1,
         temporal_coherence: TemporalCoherence | str = TemporalCoherence.QUASI_COHERENT,
-        focal_integration_points: int = 24,
+        focal_integration_points: int | None = None,
     ) -> np.ndarray:
         """HRTEM image intensity at one depth; see `hrtem_image`."""
         return hrtem_image(
@@ -1044,6 +1047,33 @@ class MultisliceExitWave:
             temporal_coherence=TemporalCoherence(temporal_coherence),
             grid=self.grid,
             label=self.snapshot.label,
+        )
+
+    def hrem_result(
+        self,
+        aberrations: MicroscopeAberrations,
+        depth_index: int = -1,
+        temporal_coherence: TemporalCoherence | str = TemporalCoherence.QUASI_COHERENT,
+    ) -> HREMSimulationResult:
+        """The image at one depth packaged as an `HREMSimulationResult`.
+
+        Adds the power spectrum of the image and the one-dimensional CTF of the
+        lens, so a multislice image reads the same as any other engine's.
+        """
+
+        image = self.image(aberrations, depth_index, temporal_coherence)
+        dx, _dy = self.grid.sampling_angstrom
+        fluctuation = image - np.mean(image)
+        spectrum = np.fft.fftshift(np.abs(scipy.fft.fft2(fluctuation, workers=-1)) ** 2)
+        return HREMSimulationResult(
+            image=image,
+            exit_wave=self.wave(depth_index),
+            pixel_size_angstrom=float(dx),
+            extent_angstrom=self.grid.extent_angstrom,
+            power_spectrum=np.log10(1.0 + spectrum),
+            ctf=aberrations.evaluate_ctf_1d(max_q_inv_angstrom=1.0 / (2.0 * dx)),
+            aberrations=aberrations,
+            snapshot=self.snapshot,
         )
 
     def describe(self) -> str:
@@ -1267,13 +1297,36 @@ def _lens_transfer(grid: MultisliceGrid, aberrations: MicroscopeAberrations) -> 
     return np.asarray(envelope * np.exp(-1j * chi))
 
 
+def focal_integration_nodes(
+    phase_rate: float, requested: int | None = None
+) -> tuple[int, float]:
+    """Gauss-Hermite node count for a defocus phase rate, and the rate it resolves.
+
+    An :math:`n`-node Gauss-Hermite rule integrates :math:`e^{-x^2 + iax}`
+    to better than :math:`10^{-8}` for :math:`a \\le 2\\sqrt{n - 16}` (checked
+    numerically up to 512 nodes). Given the largest rate ``phase_rate`` a
+    calculation needs, this returns the smallest such :math:`n` (at least 24,
+    at most ``MAX_FOCAL_INTEGRATION_POINTS``), or ``requested`` if given, and
+    the rate :math:`2\\sqrt{n - 16}` that count resolves.
+    """
+
+    if requested is not None:
+        count = int(requested)
+        if count < 1:
+            raise ValueError(f"Focal integration needs at least one node, got {requested}.")
+    else:
+        count = max(24, math.ceil(phase_rate * phase_rate / 4.0) + 16)
+        count = min(count, MAX_FOCAL_INTEGRATION_POINTS)
+    return count, 2.0 * math.sqrt(max(count - 16, 0))
+
+
 def hrtem_image(
     exit_waves: np.ndarray,
     grid: MultisliceGrid,
     aberrations: MicroscopeAberrations,
     *,
     temporal_coherence: TemporalCoherence | str = TemporalCoherence.QUASI_COHERENT,
-    focal_integration_points: int = 24,
+    focal_integration_points: int | None = None,
 ) -> np.ndarray:
     """Image intensity of exit wave(s) through the objective lens.
 
@@ -1295,10 +1348,16 @@ def hrtem_image(
                \\bigl|\\mathcal F^{-1}\\{\\mathcal F\\{\\psi\\}
                H_{\\Delta f + \\sqrt2\\,\\Delta\\,x_k}\\}\\bigr|^2,
 
-        over Gauss-Hermite nodes :math:`x_k` and weights :math:`w_k`, confined to
-        the frequencies where :math:`E_c \\ge` ``FOCAL_ENVELOPE_FLOOR``: beyond
-        them the linear transfer is nil, and only non-linear pair terms of two
-        weak high-angle beams are dropped.
+        over Gauss-Hermite nodes :math:`x_k` and weights :math:`w_k`. The
+        defocus phase of a pair of beams varies across the spread as
+        :math:`e^{iax}` with :math:`a = \\sqrt2\\,\\pi\\lambda\\Delta
+        |g^2 - g'^2|`, and an :math:`n`-node rule integrates that exactly only
+        up to :math:`a \\approx 2\\sqrt{n - 16}`. The node count is therefore
+        chosen from the highest frequency the aperture and the grid pass
+        (`focal_integration_nodes`), up to ``MAX_FOCAL_INTEGRATION_POINTS``;
+        frequencies beyond what that many nodes resolve - where Frank's
+        envelope is below :math:`e^{-495}` - are excluded, which drops only the
+        interference of two such beams.
 
     Parameters
     ----------
@@ -1311,7 +1370,8 @@ def hrtem_image(
     temporal_coherence:
         See `TemporalCoherence`.
     focal_integration_points:
-        Gauss-Hermite nodes for focal integration.
+        Gauss-Hermite nodes for focal integration; chosen automatically when
+        None.
 
     Returns
     -------
@@ -1327,17 +1387,15 @@ def hrtem_image(
     if mode is TemporalCoherence.QUASI_COHERENT or aberrations.focal_spread_angstrom <= 0.0:
         lenses = [(1.0, _lens_transfer(grid, aberrations))]
     else:
-        nodes, weights = np.polynomial.hermite.hermgauss(int(focal_integration_points))
         spread = aberrations.focal_spread_angstrom
-        # The defocus phase of a beam g varies across the spread at the rate
-        # a(g) = sqrt(2) pi lambda Delta g^2, and Frank's envelope is exactly
-        # exp(-a^2 / 4). A quadrature resolves exp(i a x) only up to a modest a,
-        # and beyond it returns spurious transfer where the true linear transfer
-        # is nil. Integration is therefore confined to E_c >= FOCAL_ENVELOPE_FLOOR
-        # (a <= 6.1, where 24 nodes are exact to 1e-10).
-        coherent_band = aberrations.temporal_envelope(grid.frequency_magnitude()) >= (
-            FOCAL_ENVELOPE_FLOOR
+        g = grid.frequency_magnitude()
+        passed = g[aberrations.aperture_mask(g) > 0.0]
+        rate = math.sqrt(2.0) * math.pi * aberrations.wavelength_angstrom * spread
+        count, resolved = focal_integration_nodes(
+            rate * float(np.max(passed)) ** 2 if passed.size else 0.0, focal_integration_points
         )
+        nodes, weights = scipy.special.roots_hermite(count)
+        coherent_band = rate * g * g <= resolved
         lenses = [
             (
                 float(w) / math.sqrt(math.pi),
@@ -1513,31 +1571,10 @@ def simulate_multislice_hrem(
         seed=seed,
     )
     report(1.0, stage="Applying the objective lens transfer function")
-    image = exit_wave.image(aberrations, temporal_coherence=temporal_coherence)
-    return _result_from(exit_wave, image, aberrations)
+    return exit_wave.hrem_result(aberrations, temporal_coherence=temporal_coherence)
 
 
-def _result_from(
-    exit_wave: MultisliceExitWave, image: np.ndarray, aberrations: MicroscopeAberrations
-) -> HREMSimulationResult:
-    dx, _dy = exit_wave.grid.sampling_angstrom
-    fluctuation = image - np.mean(image)
-    spectrum = np.fft.fftshift(np.abs(scipy.fft.fft2(fluctuation, workers=-1)) ** 2)
-    power = np.log10(1.0 + spectrum)
-    ctf = aberrations.evaluate_ctf_1d(max_q_inv_angstrom=1.0 / (2.0 * dx))
-    return HREMSimulationResult(
-        image=image,
-        exit_wave=exit_wave.wave(-1),
-        pixel_size_angstrom=float(dx),
-        extent_angstrom=exit_wave.grid.extent_angstrom,
-        power_spectrum=power,
-        ctf=ctf,
-        aberrations=aberrations,
-        snapshot=exit_wave.snapshot,
-    )
-
-
-def summary(exit_wave: MultisliceExitWave) -> dict[str, Any]:
+def multislice_summary(exit_wave: MultisliceExitWave) -> dict[str, Any]:
     """Machine-readable diagnostics of a run, for reports and the workbench."""
     ny, nx = exit_wave.grid.shape
     return {

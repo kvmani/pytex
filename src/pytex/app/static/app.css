@@ -4465,7 +4465,19 @@ dl.detail dd {
   height: calc(100% - 1.5rem);
 }
 
+/* The series view: the tableau is the figure, the contrast and beam plate reads
+ * beside it, narrower, because its curves are read for their shape. */
+.hrem-series-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1rem;
+  flex: none;
+  min-height: 0;
+  height: calc(100% - 1.5rem);
+}
+
 .hrem-sim-stage > .plot,
+.hrem-series-stage > .plot,
 .hrem-ctf-stage > .plot {
   height: 100%;
 }
@@ -4481,6 +4493,15 @@ dl.detail dd {
   }
 
   .hrem-sim-stage > .plot {
+    height: calc(100vh - 12rem);
+  }
+
+  .hrem-series-stage {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .hrem-series-stage > .plot {
     height: calc(100vh - 12rem);
   }
 }
@@ -4512,7 +4533,8 @@ dl.detail dd {
   font-weight: 600;
 }
 
-.hrem-ctf-chart {
+.hrem-ctf-chart,
+.hrem-series-chart {
   background: var(--bg-raised);
   border-radius: var(--radius);
 }

@@ -202,6 +202,18 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
                 "Azimuth of the trefoil axis in the back focal plane.",
             ),
             _entry(
+                "slice_thickness",
+                "Δz",
+                r"\Delta z",
+                "Slice thickness of a multislice calculation.",
+            ),
+            _entry(
+                "thermal_displacement",
+                "uₜₕ",
+                r"u_{\mathrm{th}}",
+                "One-axis RMS thermal displacement of an atom.",
+            ),
+            _entry(
                 "ctf_azimuth",
                 "θ",
                 r"\theta_{q}",

@@ -1,8 +1,9 @@
 /**
  * HRTEM Simulation and Objective Lens Contrast Transfer Function panel.
  *
- * Two views: a multislice phase-contrast micrograph with its Thon-ring power
- * spectrum, and the objective lens transfer function. They are sub-tabs in the
+ * Three views: a multislice phase-contrast micrograph with its Thon-ring power
+ * spectrum, the objective lens transfer function, and a focal or
+ * defocus-thickness series computed from one multislice run. They are sub-tabs in the
  * shell's own strip rather than a pair of buttons on the rail, because a view
  * tab and a workspace sub-tab are the same affordance and a strip drawn on the
  * stage would push the plot card past the bottom of it.
@@ -27,6 +28,7 @@ import { el, formatNumber, svg } from '../core/dom.js';
 import { explainer } from '../core/explainer.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
+import { symbolText } from '../core/symbols.js';
 
 export const panel = {
   id: 'tem_hrem',
@@ -36,6 +38,7 @@ export const panel = {
 
 const SIMULATE = 'tem.simulate_hrem';
 const CTF = 'tem.ctf_calculator';
+const SERIES = 'tem.hrtem_series';
 
 const VIEWS = [
   {
@@ -43,6 +46,12 @@ const VIEWS = [
     title: 'Micrograph',
     summary: 'Phase-contrast image and its Thon-ring power spectrum.',
     action: 'Run HRTEM simulation',
+  },
+  {
+    id: SERIES,
+    title: 'Focal / thickness series',
+    summary: 'A focal series or defocus-thickness tableau from one multislice run.',
+    action: 'Run series',
   },
   {
     id: CTF,
@@ -60,6 +69,10 @@ const COLOR_UNDAMPED = '#94a3b8';
 const COLOR_BAND = '#818cf8';
 const COLOR_POINT_RES = '#10b981';
 const COLOR_INFO_LIMIT = '#ef4444';
+// One colour and one dash per series line, so a plate stays readable in print.
+const SERIES_COLORS = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#0891b2',
+  '#db2777', '#65a30d'];
+const SERIES_DASHES = ['', '6,3', '2,3', '8,3,2,3', '', '6,3', '2,3', '8,3,2,3'];
 
 const STRUCTURE_IDLE = 'No structure file open. The specimen is built from the crystal phase.';
 
@@ -88,6 +101,12 @@ export function mount(context) {
   });
   const simFrame = plotFrame({ title: 'Simulated Micrograph', units: 'Å', toolbar: [pixelButton] });
   const fftFrame = plotFrame({ title: 'Power Spectrum (Thon Rings)', units: 'Å⁻¹', toolbar: [] });
+  const seriesFrame = plotFrame({ title: 'Defocus-thickness tableau', units: 'Å', toolbar: [] });
+  const seriesChartFrame = plotFrame({
+    title: 'Contrast through focus and beams with thickness',
+    units: '',
+    toolbar: [],
+  });
   const ctfFrame = plotFrame({
     title: 'Contrast Transfer Function & Envelopes',
     units: 'Å⁻¹',
@@ -99,15 +118,21 @@ export function mount(context) {
   // figure stage would be drawn over the figures it describes.
   const simStage = el('div.hrem-sim-stage', {}, [simFrame.element, fftFrame.element]);
   const ctfStage = el('div.hrem-ctf-stage', {}, [ctfFrame.element]);
+  const seriesStage = el('div.hrem-series-stage', {}, [
+    seriesFrame.element,
+    seriesChartFrame.element,
+  ]);
   const legend = el('div.hrem-legend');
   const details = el('div');
-  context.stage.append(simStage, ctfStage, legend, details);
+  context.stage.append(simStage, seriesStage, ctfStage, legend, details);
 
   const formHosts = {};
   for (const view of operations) {
     const host = el('div.hrem-form');
     state.forms[view.id] = buildForm(view.operation, { initial: {}, onChange: () => {} });
-    if (view.id === SIMULATE) hideRawField(state.forms[view.id], 'structure_file');
+    if (view.id === SIMULATE || view.id === SERIES) {
+      hideRawField(state.forms[view.id], 'structure_file');
+    }
     host.append(state.forms[view.id].element);
     formHosts[view.id] = host;
   }
@@ -190,10 +215,12 @@ export function mount(context) {
 
   function applyView() {
     const isSim = state.view.id === SIMULATE;
+    const isSeries = state.view.id === SERIES;
     markActiveTab(state.view.id);
     simStage.hidden = !isSim;
-    ctfStage.hidden = isSim;
-    structureGroup.hidden = !isSim;
+    seriesStage.hidden = !isSeries;
+    ctfStage.hidden = state.view.id !== CTF;
+    structureGroup.hidden = !(isSim || isSeries);
     for (const [id, host] of Object.entries(formHosts)) {
       host.hidden = id !== state.view.id;
     }
@@ -215,7 +242,7 @@ export function mount(context) {
     form.clearErrors();
     try {
       const values = { ...form.values() };
-      if (launched.id === SIMULATE) {
+      if (launched.id === SIMULATE || launched.id === SERIES) {
         if (state.structure) values.structure_file = state.structure;
         else delete values.structure_file;
       }
@@ -226,6 +253,7 @@ export function mount(context) {
       state.results[launched.id] = result;
       if (state.view !== launched) return;
       if (launched.id === SIMULATE) drawSimulation(preserve);
+      else if (launched.id === SERIES) drawSeries(preserve);
       else drawCTF();
       updateLegend();
       updateDetails();
@@ -264,7 +292,8 @@ export function mount(context) {
         : `${file.name} (${size}) opened. The specimen is now this structure.`;
       structureClose.hidden = false;
       state.forms[SIMULATE]?.setValues({ sample_type: 'imported' });
-      if (state.view.id === SIMULATE) await runCurrent();
+      state.forms[SERIES]?.setValues({ sample_type: 'imported' });
+      if (state.view.id === SIMULATE || state.view.id === SERIES) await runCurrent();
     } catch (error) {
       state.structure = null;
       structureClose.hidden = true;
@@ -278,16 +307,18 @@ export function mount(context) {
     structureInput.value = '';
     structureClose.hidden = true;
     structureStatus.textContent = STRUCTURE_IDLE;
-    const form = state.forms[SIMULATE];
-    if (form && form.values().sample_type === 'imported') {
-      form.setValues({ sample_type: 'crystalline' });
+    for (const id of [SIMULATE, SERIES]) {
+      const form = state.forms[id];
+      if (form && form.values().sample_type === 'imported') {
+        form.setValues({ sample_type: 'crystalline' });
+      }
     }
   }
 
   function togglePixels() {
     state.pixels = !state.pixels;
     pixelButton.setAttribute('aria-pressed', String(state.pixels));
-    for (const node of simStage.querySelectorAll('svg.hrem-figure')) {
+    for (const node of context.stage.querySelectorAll('svg.hrem-figure')) {
       node.dataset.pixels = String(state.pixels);
     }
   }
@@ -409,6 +440,266 @@ export function mount(context) {
       }),
     );
     return node;
+  }
+
+  /**
+   * The defocus-thickness tableau as one SVG in ångströms: each tile is a
+   * micrograph at its physical size, so the plot frame's zoom and pan compare
+   * one column across the whole tableau, and the cursor names the tile and the
+   * position in it.
+   */
+  function drawSeries(preserveViewport = false) {
+    const res = state.results[SERIES];
+    if (!res || !res.data) return;
+    const data = res.data;
+    const [lx, ly] = data.extent_angstrom || [10, 10];
+    const defoci = data.defoci_angstrom || [];
+    const thicknesses = data.thicknesses_angstrom || [];
+    const columns = defoci.length;
+    const rows = thicknesses.length;
+    if (!columns || !rows) return;
+
+    const size = Math.max(lx, ly);
+    const gap = 0.08 * size;
+    const header = 0.22 * size;
+    const gutter = 0.5 * size;
+    const width = gutter + columns * lx + (columns - 1) * gap;
+    const height = header + rows * ly + (rows - 1) * gap;
+    const df = symbolText('defocus');
+    const t = symbolText('foil_thickness');
+    const fontSize = 0.1 * size;
+
+    const figure = svg('svg', {
+      class: 'hrem-figure',
+      viewBox: `0 0 ${width} ${height}`,
+      width: '100%',
+      height: '100%',
+      preserveAspectRatio: 'xMidYMid meet',
+      role: 'img',
+      'aria-label': `HRTEM images at ${rows} thicknesses and ${columns} defoci`,
+      'data-pixels': String(state.pixels),
+    });
+    const origin = (row, column) => [
+      gutter + column * (lx + gap),
+      header + row * (ly + gap),
+    ];
+    for (const tile of data.tiles || []) {
+      const row = thicknesses.indexOf(tile.thickness_angstrom);
+      const column = defoci.indexOf(tile.defocus_angstrom);
+      if (row < 0 || column < 0) continue;
+      const [x, y] = origin(row, column);
+      figure.append(
+        svg('image', {
+          class: 'hrem-figure__image',
+          href: tile.png,
+          x,
+          y,
+          width: lx,
+          height: ly,
+          preserveAspectRatio: 'none',
+        }, [
+          svg('title', {
+            text: `${t} = ${formatNumber(tile.thickness_angstrom, 1)} Å, `
+              + `${df} = ${formatNumber(tile.defocus_angstrom, 0)} Å, RMS contrast `
+              + `${formatNumber(100 * tile.contrast, 1)} %`,
+          }),
+        ]),
+      );
+    }
+    defoci.forEach((value, column) => {
+      const [x] = origin(0, column);
+      figure.append(svg('text', {
+        class: 'hrem-figure__label',
+        x: x + lx / 2,
+        y: header - 0.06 * size,
+        'text-anchor': 'middle',
+        'font-size': fontSize,
+        text: `${df} = ${formatNumber(value, 0)} Å`,
+      }));
+    });
+    thicknesses.forEach((value, row) => {
+      const [, y] = origin(row, 0);
+      figure.append(svg('text', {
+        class: 'hrem-figure__label',
+        x: gutter - 0.06 * size,
+        y: y + ly / 2,
+        'text-anchor': 'end',
+        'dominant-baseline': 'middle',
+        'font-size': fontSize,
+        text: `${t} = ${formatNumber(value, 0)} Å`,
+      }));
+    });
+
+    seriesFrame.configure({
+      toData: (x, y) => {
+        const column = Math.floor((x - gutter) / (lx + gap));
+        const row = Math.floor((y - header) / (ly + gap));
+        if (column < 0 || column >= columns || row < 0 || row >= rows) return null;
+        const [x0, y0] = origin(row, column);
+        const u = x - x0;
+        const v = y - y0;
+        if (u < 0 || u > lx || v < 0 || v > ly) return null;
+        return { row, column, x: u, y: ly - v };
+      },
+      formatCursor: (point) =>
+        `${t} = ${formatNumber(thicknesses[point.row], 1)} Å, `
+        + `${df} = ${formatNumber(defoci[point.column], 0)} Å; `
+        + `x = ${formatNumber(point.x, 2)} Å, y = ${formatNumber(point.y, 2)} Å`,
+    });
+    seriesFrame.setContent(figure, { preserveViewport });
+    seriesFrame.setStatus(
+      `${rows} × ${columns} images of ${formatNumber(lx, 1)} × ${formatNumber(ly, 1)} Å from one `
+        + 'multislice run, each scaled to its own grey range. Hover a tile for its contrast; '
+        + 'scroll to zoom.',
+    );
+    drawSeriesChart();
+  }
+
+  /** Contrast against defocus, and the beams against thickness, on one plate. */
+  function drawSeriesChart() {
+    const data = state.results[SERIES]?.data;
+    if (!data) return;
+    // Narrow and tall: the plate shares the stage with the tableau, and its
+    // curves are read for their shape rather than their absolute values.
+    const width = 420;
+    const panels = (data.beams || []).length ? 2 : 1;
+    const panelHeight = 270;
+    const height = panels * panelHeight;
+    const chart = svg('svg', {
+      class: 'hrem-series-chart',
+      viewBox: `0 0 ${width} ${height}`,
+      width: '100%',
+      height: '100%',
+      role: 'img',
+      'aria-label': 'Image contrast against defocus and beam intensities against thickness',
+    });
+    const df = symbolText('defocus');
+    const t = symbolText('foil_thickness');
+    lineChart(chart, {
+      top: 0,
+      width,
+      height: panelHeight,
+      xs: data.defoci_angstrom,
+      series: (data.thicknesses_angstrom || []).map((thickness, row) => ({
+        label: `${t} = ${formatNumber(thickness, 0)} Å`,
+        ys: (data.contrasts[row] || []).map((value) => 100 * value),
+      })),
+      xLabel: `${df} (Å)`,
+      yLabel: 'RMS contrast (%)',
+    });
+    if (panels === 2) {
+      lineChart(chart, {
+        top: panelHeight,
+        width,
+        height: panelHeight,
+        xs: data.beam_thickness_angstrom,
+        series: data.beams.map((beam) => ({ label: beam.label, ys: beam.intensity })),
+        xLabel: `${t} (Å)`,
+        yLabel: 'Beam intensity',
+      });
+    }
+    seriesChartFrame.setContent(chart);
+    seriesChartFrame.setStatus(
+      panels === 2
+        ? 'Top: contrast of each image through focus. Bottom: the transmitted and strongest '
+          + 'diffracted beams of the exit wave against thickness.'
+        : 'Contrast of each image through focus. Beams are shown for crystal specimens.',
+    );
+  }
+
+  function lineChart(chart, { top, width, height, xs, series, xLabel, yLabel }) {
+    if (!xs || xs.length < 1 || !series.length) return;
+    const margin = { top: 14, right: 104, bottom: 40, left: 54 };
+    const innerW = width - margin.left - margin.right;
+    const innerH = height - margin.top - margin.bottom;
+    const xMin = Math.min(...xs);
+    const xMax = Math.max(...xs);
+    const all = series.flatMap((entry) => entry.ys).filter(Number.isFinite);
+    const yMax = Math.max(...all, 1e-12) * 1.05;
+    const xScale = (x) => margin.left + (xMax > xMin ? ((x - xMin) / (xMax - xMin)) * innerW : innerW / 2);
+    const yScale = (y) => top + margin.top + innerH - (y / yMax) * innerH;
+    for (let step = 0; step <= 4; step += 1) {
+      const value = (yMax * step) / 4;
+      chart.append(
+        svg('line', {
+          x1: margin.left,
+          y1: yScale(value),
+          x2: margin.left + innerW,
+          y2: yScale(value),
+          stroke: 'var(--border-color, #ccc)',
+          'stroke-width': step === 0 ? '1' : '0.5',
+          'stroke-dasharray': step === 0 ? '' : '2,4',
+        }),
+        svg('text', {
+          x: margin.left - 6,
+          y: yScale(value) + 4,
+          'text-anchor': 'end',
+          'font-size': '10',
+          fill: 'currentColor',
+          text: formatNumber(value, value < 1 ? 2 : 0),
+        }),
+      );
+    }
+    for (let step = 0; step <= 4; step += 1) {
+      const value = xMin + ((xMax - xMin) * step) / 4;
+      chart.append(svg('text', {
+        x: xScale(value),
+        y: top + margin.top + innerH + 15,
+        'text-anchor': 'middle',
+        'font-size': '10',
+        fill: 'currentColor',
+        text: formatNumber(value, 0),
+      }));
+    }
+    series.forEach((entry, index) => {
+      const color = SERIES_COLORS[index % SERIES_COLORS.length];
+      const dash = SERIES_DASHES[index % SERIES_DASHES.length];
+      chart.append(svg('polyline', {
+        points: xs.map((x, i) => `${xScale(x)},${yScale(entry.ys[i] ?? 0)}`).join(' '),
+        fill: 'none',
+        stroke: color,
+        'stroke-width': '1.8',
+        'stroke-dasharray': dash,
+      }));
+      const ly = top + margin.top + 12 + index * 16;
+      chart.append(
+        svg('line', {
+          x1: margin.left + innerW + 12,
+          y1: ly - 4,
+          x2: margin.left + innerW + 32,
+          y2: ly - 4,
+          stroke: color,
+          'stroke-width': '2',
+          'stroke-dasharray': dash,
+        }),
+        svg('text', {
+          x: margin.left + innerW + 36,
+          y: ly,
+          'font-size': '11',
+          fill: 'currentColor',
+          text: entry.label,
+        }),
+      );
+    });
+    chart.append(
+      svg('text', {
+        x: margin.left + innerW / 2,
+        y: top + height - 6,
+        'text-anchor': 'middle',
+        'font-size': '12',
+        fill: 'currentColor',
+        text: xLabel,
+      }),
+      svg('text', {
+        x: 16,
+        y: top + margin.top + innerH / 2,
+        'text-anchor': 'middle',
+        'font-size': '12',
+        fill: 'currentColor',
+        transform: `rotate(-90 16 ${top + margin.top + innerH / 2})`,
+        text: yLabel,
+      }),
+    );
   }
 
   function drawCTF() {

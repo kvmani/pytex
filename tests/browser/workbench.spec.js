@@ -730,9 +730,9 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
 
   const view = (id) => page.locator(`#subtabs .viewtab[data-view="${id}"]`).click();
 
-  // Both views must be reachable from the shell's strip: a view without a tab
+  // Every view must be reachable from the shell's strip: a view without a tab
   // is a view no user can open.
-  await expect(page.locator('#subtabs .viewtab')).toHaveCount(2);
+  await expect(page.locator('#subtabs .viewtab')).toHaveCount(3);
   await expect(page.locator('#subtabs .viewtab[aria-selected="true"]')).toHaveText('Micrograph');
 
   // The micrograph is an SVG image in angstroms, not an <img>: the plot frame's
@@ -777,6 +777,22 @@ test('the HRTEM workspace images a crystal and shows what a residual aberration 
   expect(fits.count).toBe(2);
   for (const cardBottom of fits.cards) expect(cardBottom).toBeLessThanOrEqual(fits.stage);
   expect(fits.drawing).toBeGreaterThan(150);
+
+  // The series view: one multislice run imaged at every defocus of the series,
+  // drawn as one tableau in angstroms beside the contrast and beam plate. The
+  // default series is seven defoci, so the status names a seven-column tableau.
+  await view('tem.hrtem_series');
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Run series', exact: true }).click(),
+  );
+  const seriesStage = page.locator('#stage .hrem-series-stage');
+  await expect(seriesStage.locator('svg.hrem-figure image').first()).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(seriesStage).toContainText('× 7 images');
+  await expect(seriesStage).toContainText('from one multislice run');
+  await expect(seriesStage.locator('svg.hrem-series-chart polyline').first()).toBeVisible();
+  await view('tem.simulate_hrem');
 
   // An .xyz structure opened in the rail becomes the specimen: the result names
   // the file and reports its atom count rather than the built-in crystal's.

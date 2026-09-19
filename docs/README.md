@@ -155,6 +155,7 @@ index with cross-links to the matching implementation pages.
 - [Identifying A Phase Among Candidate Structures (algorithm)](site/algorithms/phase_identification.md)
 - [Precise Lattice-Parameter Determination](site/theory/precise_lattice_parameter_determination.md)
 - [Determining A Lattice Parameter Precisely (algorithm)](site/algorithms/precise_lattice_parameter_determination.md)
+- [Multislice HRTEM Simulation (algorithm)](site/algorithms/multislice_hrtem.md)
 - [Correcting The Ghosts In A Pole-Figure ODF (algorithm)](site/algorithms/ghost_correction.md)
 - [Ratio/Angle Indexing Of A Measured SAED Pattern](site/theory/saed_ratio_angle_indexing.md)
 - [Fitting The Pattern Lattice, And Scoring The Solutions](site/theory/lattice_fit_and_solution_scoring.md)
@@ -164,6 +165,7 @@ index with cross-links to the matching implementation pages.
 - [Convergent-Beam Electron Diffraction](site/theory/convergent_beam_electron_diffraction.md)
 - [Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, and Point-Group Determination](site/theory/dynamical_cbed_and_symmetry_determination.md)
 - [High-Resolution Electron Microscopy: Multislice Propagation and Contrast Transfer Function](site/theory/hrem_multislice_and_ctf.md)
+- [Multislice HRTEM Simulation: Theory and Mathematics](site/theory/multislice_hrtem.md)
 - [Foundation Feature Priorities](site/theory/foundation_feature_priorities.md)
 
 ### Validation

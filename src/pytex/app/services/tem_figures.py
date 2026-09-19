@@ -23,6 +23,7 @@ import numpy as np
 from pytex.app.figures import COLORS, render_figure
 from pytex.app.fitstats import fit_line
 from pytex.app.results import ResultFigure
+from pytex.core.symbols import symbol_text
 
 __all__ = [
     "hrem_spectrum_figure",
@@ -421,4 +422,115 @@ def thickness_figure(
             height_in=3.2,
         ),
         statistics,
+    )
+
+
+def hrtem_tableau_figure(
+    *,
+    images: np.ndarray,
+    defoci_angstrom: Sequence[float],
+    thicknesses_angstrom: Sequence[float],
+    extent_angstrom: tuple[float, float],
+) -> ResultFigure:
+    """The defocus-thickness tableau: thickness down, defocus across, each tile its own scale."""
+
+    stack = np.asarray(images, dtype=float)
+    rows, columns = stack.shape[:2]
+    lx, ly = extent_angstrom
+
+    df, t = symbol_text("defocus"), symbol_text("foil_thickness")
+
+    def draw(figure: Any) -> None:
+        axes = np.atleast_2d(figure.subplots(rows, columns, squeeze=False))
+        for i in range(rows):
+            for j in range(columns):
+                ax = axes[i, j]
+                ax.imshow(stack[i, j], cmap="gray", origin="lower", extent=(0.0, lx, 0.0, ly))
+                ax.set_xticks([])
+                ax.set_yticks([])
+                if i == 0:
+                    ax.set_title(f"{df} = {defoci_angstrom[j]:.0f} Å", fontsize=7)
+                if j == 0:
+                    ax.set_ylabel(f"{t} = {thicknesses_angstrom[i]:.0f} Å", fontsize=7)
+
+    return render_figure(
+        draw,
+        key="hrtem_defocus_thickness_tableau",
+        title="Defocus-thickness tableau",
+        caption=(
+            "Simulated HRTEM images, thickness increasing downwards and defocus to the right "
+            "(negative is underfocus). Every tile is scaled to its own grey range."
+        ),
+        interpretation=(
+            "Contrast reverses with defocus through the lens and with thickness through "
+            "channelling in the crystal; neither can be read from one image. Matching an "
+            "experimental image against a tableau like this one is how both are determined."
+        ),
+        height_in=max(2.2, 1.25 * rows + 0.6),
+    )
+
+
+def focal_contrast_figure(
+    *,
+    defoci_angstrom: Sequence[float],
+    thicknesses_angstrom: Sequence[float],
+    contrasts: np.ndarray,
+) -> ResultFigure:
+    """RMS image contrast against defocus, one curve per thickness."""
+
+    values = np.asarray(contrasts, dtype=float) * 100.0
+
+    def draw(figure: Any) -> None:
+        ax = figure.subplots()
+        for row, thickness in enumerate(thicknesses_angstrom):
+            ax.plot(defoci_angstrom, values[row], marker="o", ms=3, lw=1.0,
+                    label=f"{symbol_text('foil_thickness')} = {thickness:.0f} Å")
+        ax.set_xlabel(f"Defocus {symbol_text('defocus')} (Å), negative = underfocus")
+        ax.set_ylabel("RMS contrast (%)")
+        ax.legend(loc="best", frameon=False, fontsize=7)
+
+    return render_figure(
+        draw,
+        key="hrtem_focal_contrast",
+        title="Image contrast through focus",
+        caption="Standard deviation of each image divided by its mean, against defocus.",
+        interpretation=(
+            "For a weak phase object the contrast is least near Gaussian focus; crystals of "
+            "different thickness reach their strongest contrast at different defoci, which is "
+            "one reason a single through-focus image cannot fix the thickness."
+        ),
+        height_in=3.0,
+    )
+
+
+def beam_thickness_figure(
+    *,
+    thickness_angstrom: Sequence[float],
+    beams: Sequence[tuple[str, Sequence[float]]],
+) -> ResultFigure:
+    """Beam intensities against specimen thickness: the Pendellösung of the exit wave."""
+
+    def draw(figure: Any) -> None:
+        ax = figure.subplots()
+        for label, intensity in beams:
+            ax.plot(thickness_angstrom, intensity, lw=1.1, label=label)
+        ax.set_xlabel(f"Thickness {symbol_text('foil_thickness')} (Å)")
+        ax.set_ylabel("Beam intensity")
+        ax.set_ylim(bottom=0.0)
+        ax.legend(loc="best", frameon=False, fontsize=7)
+
+    return render_figure(
+        draw,
+        key="hrtem_beam_intensities_with_thickness",
+        title="Beam intensities with thickness",
+        caption=(
+            "Intensity of the transmitted beam and the strongest diffracted beams of the exit "
+            "wave, against the depth at which the wave leaves the crystal."
+        ),
+        interpretation=(
+            "Dynamical scattering exchanges intensity between the beams as the wave goes "
+            "deeper (Pendellösung). Where the transmitted beam is weak, the image of the "
+            "columns is dominated by diffracted-beam interference and its contrast can reverse."
+        ),
+        height_in=3.0,
     )

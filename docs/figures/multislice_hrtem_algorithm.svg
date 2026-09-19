@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1196" height="842" viewBox="0 0 1196 842" role="img">
+  <title>Multislice HRTEM simulation</title>
+  <desc>Three-lane flow sheet. Lane 1 builds an exactly periodic orthogonal slab with the zone axis along the beam, cuts it into slices, and forms each slice's projected potential in Fourier space from parametrized electron scattering factors. Lane 2 alternates transmission through the band-limited phase grating of each slice with Fresnel propagation to the next, storing the exit wave at the requested depths. Lane 3 applies the objective lens transfer function with its coherence envelopes, forms intensities averaged over frozen-phonon configurations, and repeats only the lens step for every image of a focal or thickness series.</desc>
+  <defs>
+    <marker id="pytex-algo-arrow" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#40506f"/>
+    </marker>
+    <marker id="pytex-algo-arrow-flow" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <rect width="1196" height="842" fill="#fbfdff"/>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Multislice HRTEM simulation</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">multislice, hrtem_image, focal_series - the algorithm of abTEM, in PyTex</text>
+  <text x="40.0" y="96.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">1 - specimen and potential</text>
+  <rect x="40.0" y="108.0" width="236.0" height="165.0" rx="8" fill="#eef7f0" stroke="#a7ccb4" stroke-width="1.4"/>
+  <text x="54.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold">Periodic zone-axis slab</text>
+  <text x="54.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">t1 _|_ t2 _|_ t3 || [uvw]</text>
+  <text x="54.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Perpendicular lattice vectors,</text>
+  <text x="54.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">so the</text>
+  <text x="54.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">box tiles the crystal with no</text>
+  <text x="54.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">seam.</text>
+  <rect x="310.0" y="108.0" width="236.0" height="165.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="324.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Slice along the beam</text>
+  <text x="324.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">n = ceil(Lz / dz), atom -&gt;</text>
+  <text x="324.0" y="176.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">slice of its centre</text>
+  <text x="324.0" y="195.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Infinite projection: only (Z,</text>
+  <text x="324.0" y="211.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">x, y)</text>
+  <text x="324.0" y="227.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">matter, so repeated slices</text>
+  <text x="324.0" y="243.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">build once.</text>
+  <line x1="276.0" y1="190.5" x2="306.0" y2="190.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="108.0" width="236.0" height="165.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="594.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Projected potential</text>
+  <text x="594.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">v_n(g) = (h^2/2 pi m0 e) sum</text>
+  <text x="594.0" y="176.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">f_e(g) e^(-2 pi i g.r) / A</text>
+  <text x="594.0" y="195.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Lobato or Kirkland f_e; exact</text>
+  <text x="594.0" y="211.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">phase</text>
+  <text x="594.0" y="227.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">factors on the Fourier grid.</text>
+  <line x1="546.0" y1="190.5" x2="576.0" y2="190.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <line x1="158.0" y1="273.0" x2="158.0" y2="313.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
+  <text x="40.0" y="307.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">2 - through the specimen</text>
+  <rect x="40.0" y="319.0" width="236.0" height="165.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="54.0" y="346.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Transmit</text>
+  <text x="54.0" y="368.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">tau_n = exp(i sigma_e v_n),</text>
+  <text x="54.0" y="387.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">band-limited</text>
+  <text x="54.0" y="406.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Band limit 2/3 of Nyquist so</text>
+  <text x="54.0" y="422.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the</text>
+  <text x="54.0" y="438.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">product psi tau cannot alias.</text>
+  <rect x="310.0" y="319.0" width="236.0" height="165.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="324.0" y="346.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Propagate</text>
+  <text x="324.0" y="368.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">psi_n+1 = F^-1[ F(psi_n</text>
+  <text x="324.0" y="387.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">tau_n) P_dz ]</text>
+  <text x="324.0" y="406.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">P_dz = exp(-i pi lambda g^2</text>
+  <text x="324.0" y="422.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">dz), tilt</text>
+  <text x="324.0" y="438.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">as a phase ramp; repeat for</text>
+  <text x="324.0" y="454.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">every slice.</text>
+  <line x1="276.0" y1="401.5" x2="306.0" y2="401.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="319.0" width="236.0" height="165.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.4"/>
+  <text x="594.0" y="346.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">Exit waves</text>
+  <text x="594.0" y="368.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">psi at each requested depth</text>
+  <text x="594.0" y="387.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A thickness series costs one</text>
+  <text x="594.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">pass;</text>
+  <text x="594.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">frozen phonons repeat the pass.</text>
+  <line x1="546.0" y1="401.5" x2="576.0" y2="401.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="856.0" y="319.0" width="300.0" height="103.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <text x="872.0" y="344.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: band limit</text>
+  <text x="872.0" y="367.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Scattering beyond 2/3 of Nyquist is removed</text>
+  <text x="872.0" y="386.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">and reported as lost intensity; a large loss</text>
+  <text x="872.0" y="405.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">means the sampling is too coarse.</text>
+  <line x1="158.0" y1="484.0" x2="158.0" y2="524.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
+  <text x="40.0" y="518.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">3 - through the objective lens</text>
+  <rect x="40.0" y="530.0" width="236.0" height="184.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="54.0" y="557.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Lens transfer</text>
+  <text x="54.0" y="579.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">H = A E_s E_c exp(-i chi(g))</text>
+  <text x="54.0" y="598.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Quasi-coherent envelopes, or</text>
+  <text x="54.0" y="614.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">exact</text>
+  <text x="54.0" y="630.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Gauss-Hermite focal</text>
+  <text x="54.0" y="646.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">integration.</text>
+  <rect x="310.0" y="530.0" width="236.0" height="184.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.4"/>
+  <text x="324.0" y="557.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">Image</text>
+  <text x="324.0" y="579.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">I = &lt; |F^-1[ F(psi) H ]|^2</text>
+  <text x="324.0" y="598.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">&gt;_phonons</text>
+  <text x="324.0" y="617.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Intensities, not waves, are</text>
+  <text x="324.0" y="633.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">averaged</text>
+  <text x="324.0" y="649.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">over thermal configurations.</text>
+  <line x1="276.0" y1="622.0" x2="306.0" y2="622.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="530.0" width="236.0" height="184.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.4"/>
+  <text x="594.0" y="557.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">Focal and thickness</text>
+  <text x="594.0" y="576.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">series</text>
+  <text x="594.0" y="598.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">I(t_i, df_j) from one</text>
+  <text x="594.0" y="617.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">multislice run</text>
+  <text x="594.0" y="636.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The exit wave does not depend</text>
+  <text x="594.0" y="652.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">on the</text>
+  <text x="594.0" y="668.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">lens, so only step 3 is</text>
+  <text x="594.0" y="684.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">repeated.</text>
+  <line x1="546.0" y1="622.0" x2="576.0" y2="622.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="856.0" y="530.0" width="300.0" height="103.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <text x="872.0" y="555.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Reading: focal integration</text>
+  <text x="872.0" y="578.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Frank's envelope is exact only for the linear</text>
+  <text x="872.0" y="597.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">image terms. A strong (heavy-atom) object</text>
+  <text x="872.0" y="616.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">needs the focal spread integrated.</text>
+  <text x="40.0" y="766.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Elastic, independent-atom, paraxial: no bonding redistribution of charge, no</text>
+  <text x="40.0" y="784.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">inelastic (plasmon, core-loss) scattering, no back-scattering; thermal diffuse</text>
+  <text x="40.0" y="802.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">scattering only through frozen phonons; no detector MTF or shot noise.</text>
+</svg>

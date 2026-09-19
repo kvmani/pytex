@@ -42,6 +42,7 @@ ALGORITHM_FIGURES = (
     "phase_identification_algorithm.svg",
     "ebsd_grain_metrics_algorithm.svg",
     "kikuchi_geometry_algorithm.svg",
+    "multislice_hrtem_algorithm.svg",
 )
 
 #: Figures produced by scripts/generate_reference_frame_figures.py.
@@ -322,6 +323,7 @@ def test_algorithm_figures_are_deterministic() -> None:
         composite_saed_figure,
         ebsd_grain_metrics_figure,
         kikuchi_geometry_figure,
+        multislice_hrtem_figure,
         or_determination_figure,
         pole_figure_inversion_figure,
         rietveld_refinement_figure,
@@ -338,6 +340,7 @@ def test_algorithm_figures_are_deterministic() -> None:
         "rietveld_refinement_algorithm.svg": rietveld_refinement_figure(),
         "ebsd_grain_metrics_algorithm.svg": ebsd_grain_metrics_figure(),
         "kikuchi_geometry_algorithm.svg": kikuchi_geometry_figure(),
+        "multislice_hrtem_algorithm.svg": multislice_hrtem_figure(),
     }
     for name, svg in produced.items():
         committed = (FIGURES_DIR / name).read_text(encoding="utf-8")

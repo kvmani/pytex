@@ -16,6 +16,7 @@ from . import (
     hrem_simulation,
     ipf_coloring,
     kearns_parameter,
+    multislice_hrtem,
     orientation_and_misorientation,
     orientation_representations,
     phase_identification,
@@ -64,6 +65,7 @@ GROUPS: tuple[ExampleGroup, ...] = (
     visualization_composition.GROUP,
     workbench_service_layer.GROUP,
     hrem_simulation.GROUP,
+    multislice_hrtem.GROUP,
     weighted_or_fitting.GROUP,
 )
 

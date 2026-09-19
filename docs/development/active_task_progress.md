@@ -44,13 +44,32 @@ focal-series generation, and expose it through the web GUI.
 
 | Step | Scope | State |
 | --- | --- | --- |
-| 1 | Engine, parametrization table, periodic zone-axis slabs, adapter √2 fix, engine dispatch; `tests/unit/test_multislice.py` (31, analytic + Bloch) and `test_multislice_abtem_parity.py` (6) | Done, this commit |
-| 2 | Theory note `docs/site/theory/multislice_hrtem.md` (derivation, algorithm, sampling, coherence, frozen phonons, validation) + algorithm SVG + worked examples + symbol registry + docs index | Next |
-| 3 | Tutorial notebook `36_multislice_hrtem.ipynb`: cases, thickness series, focal series, defocus–thickness map, coherence, phonons, tilt, defects | |
-| 4 | GUI: engine controls on the micrograph view, a focal/thickness series view, periodic slabs for crystals, examples, tests, browser check | |
-| 5 | Full suite, Sphinx, changelog; close this entry | |
+| 1 | Engine, parametrization table, periodic zone-axis slabs, adapter √2 fix, engine dispatch; `tests/unit/test_multislice.py` and `test_multislice_abtem_parity.py` | Landed `966e920` |
+| 2 | Theory note `docs/site/theory/multislice_hrtem.md`, algorithm page `docs/site/algorithms/multislice_hrtem.md` with generated flow sheet `multislice_hrtem_algorithm.svg`, six worked examples (`multislice-hrtem` group), 14 registry symbols, validation-matrix rows, indexes | Done, this commit |
+| 3 | Tutorial `36_multislice_hrtem.ipynb` (built by a cell script; 12 sections, ~15 s to execute) | Done, this commit |
+| 4 | GUI: engine/Δz/scattering/coherence/tilt/phonon controls on the micrograph view; `tem.hrtem_series` view (tableau SVG in Å, contrast + beam plate, three server figures); periodic slabs for crystal and vacancy specimens; 3 examples; `test_app_hrtem_multislice.py`; browser test extended (3 view tabs, series view); CLI `--engine/--slice-thickness/--zone-axis/--thickness` | Done, this commit |
+| 5 | Full unit suite, browser lane, Sphinx; close this entry | Next |
 
-**Next action.** Step 2.
+**Findings in steps 2–4.**
+
+- The first Bloch test passed by luck at two depths: with one slice per period the multislice
+  carries a ~1 % splitting error at 108 Å. The projected-potential multislice split eight ways
+  agrees with Bloch waves within 4.4e-4 (converged grid; Bloch converged in beams). Test and worked
+  example now use that; `multislice()` with Δz = a is asserted equal to the one-slice loop.
+- Focal integration: a fixed 24-node rule with an `E_c ≥ 1e-4` band dropped the non-linear
+  interference of equivalent beams (±g), which the focal spread does *not* damp. Now the node count
+  is `⌈a²/4⌉ + 16` (24–512, SciPy `roots_hermite`; NumPy `hermgauss` overflows above 370) from the
+  highest frequency the aperture and grid pass. Checked against a 20 001-point brute-force defocus
+  average to 6e-12; a test does the same at 4001 points. Frank's envelope is off by 33 % even for
+  a 20 Å carbon film at Δ = 40 Å — physics, not error, and the tutorial says so.
+- `pytex.diffraction.multislice` (the function) shadowed the submodule attribute when exported from
+  `pytex.diffraction`; the function is no longer exported at package level.
+- Pre-existing, not fixed here: control characters (``, ``, `	`, `` eaten by an old
+  heredoc) in `docs/standards/terminology_and_symbol_registry.md` lines ~250–290; offered as a
+  separate task.
+
+**Next action.** Step 5: full unit suite (~20 min), browser lane, Sphinx; then mark this entry
+COMPLETE.
 
 ## XRD reports, HRTEM viewer, thickness and XYZ input; release 0.10.0 — COMPLETE (2026-09-14)
 

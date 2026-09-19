@@ -13,8 +13,10 @@ geometric aberrations, aperture cutoffs, and partial coherence damping envelopes
 
 This note develops the electron optics contrast transfer function (CTF), higher-order aberration
 corrections, chromatic and spatial coherence damping envelopes, the Cowley–Moodie multislice
-propagation algorithm, and Thon-ring power spectra. The canonical Python implementation is
-`pytex.diffraction.hrem` and the multislice bridge is `pytex.adapters.abtem`.
+propagation algorithm, and Thon-ring power spectra. The optics are implemented in
+`pytex.diffraction.hrem`; the multislice engine is `pytex.diffraction.multislice`, whose full
+derivation, sampling rules, coherence treatments, frozen phonons and focal and thickness series
+are in {doc}`multislice_hrtem`. `pytex.adapters.abtem` remains as a bridge to abTEM itself.
 
 ---
 
@@ -215,6 +217,9 @@ $$ (eq-hrem-aperture)
 
 ## The Multislice Algorithm
 
+This section summarises the method; {doc}`multislice_hrtem` derives it and
+{doc}`../algorithms/multislice_hrtem` states the algorithm as implemented.
+
 For specimens thicker than a few nanometres, multiple scattering and dynamical interactions
 invalidate the single-phase-object approximation. Cowley & Moodie (1957) formulated the multislice
 method, which slices the atomic potential along the beam propagation direction $z$ into thin
@@ -304,7 +309,9 @@ dynamical scattering and the channelling of the wave along atom columns develop 
 pure-Python fallback is a single phase object: every atom is projected into one plane, so thickness
 only scales the projected potential and the phase shift $\sigma v(x, y)$. That approximation holds
 for a thin weak phase object and fails as $\sigma v$ approaches order one (Kirkland, 2010); results
-from the fallback at large $t$ should be read as qualitative, and the workbench says so in a note.
+from the fallback at large $t$ should be read as qualitative. The workbench therefore runs the
+multislice engine of {doc}`multislice_hrtem`, and builds crystal slabs in an exact lattice-periodic
+box so that the periodic calculation has no seam.
 
 ### Imported atomic structures
 
@@ -362,14 +369,21 @@ The HREM capability is partitioned into decoupled layers:
    - `HREMSimulationResult`: 2D micrograph intensity, exit wave, FFT power spectrum, contrast metrics, line profiles, base64 rendering, and `.describe()`.
    - `pure_python_phase_object_simulation`: fallback phase-object propagation.
 
-2. **`pytex.adapters.abtem`:**
-   - Adapter bridging PyTex structures with the open-source `abtem` multislice engine and `ase.Atoms`.
-   - Automatic dispatch: uses multislice if `abtem` is present; falls back gracefully to pure-Python phase-object simulation if absent.
+2. **`pytex.diffraction.multislice`:**
+   - PyTex's multislice engine, abTEM's algorithm step for step: periodic zone-axis slabs, Lobato /
+     Kirkland / Mott-Bethe potentials, band-limited transmission and propagation, tilt, frozen
+     phonons, exit waves at any depths, quasi-coherent or focal-integrated imaging, focal series
+     and defocus-thickness maps. See {doc}`multislice_hrtem`.
 
-3. **`pytex.cli`:**
+3. **`pytex.adapters.abtem`:**
+   - `simulate_hrem(..., engine=...)`: `"multislice"` (PyTex, the default), `"abtem"` (abTEM itself,
+     when installed) or `"phase_object"` (the single-plane approximation above).
+   - Conversion of snapshots to `ase.Atoms` and of `MicroscopeAberrations` to an abTEM CTF.
+
+4. **`pytex.cli`:**
    - Command-line interfaces: `pytex hrem simulate` and `pytex hrem ctf`.
 
-4. **`pytex.app.services.tem_hrem` and `src/pytex/app/static/js/panels/hrem.js`:**
+5. **`pytex.app.services.tem_hrem` and `src/pytex/app/static/js/panels/hrem.js`:**
    - Interactive GUI submodule integrated into the TEM Analysis workspace.
 
 ---
@@ -383,7 +397,10 @@ defocus, twofold astigmatism, coma, trefoil, and third- and fifth-order spherica
 aberration. Amplitudes are converted to angstroms and azimuths from degrees to radians.
 PyTex's defocus is the coefficient multiplying the positive quadratic term in
 `wave_aberration`, so it maps directly to abTEM's `C10`; abTEM's `defocus` alias has
-the opposite sign. These conventions follow the
+the opposite sign. PyTex's focal spread $\Delta$ is the standard deviation of the defocus
+distribution, and abTEM's `focal_spread` enters its envelope as $\exp[-(\pi\lambda f q^2/2)^2]$, so
+the adapter passes $f = \sqrt2\,\Delta$; the multislice parity test compares full images through
+such a lens. These conventions follow the
 [abTEM CTF documentation](https://abtem.readthedocs.io/en/latest/user_guide/walkthrough/contrast_transfer_function.html).
 
 `tests/unit/test_abtem_aberration_parity.py` compares the complex phase transfer

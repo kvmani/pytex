@@ -226,30 +226,56 @@ def test_repeated_crystal_slices_are_built_once() -> None:
     assert sliced.unique_slice_count == 4
 
 
-def test_multislice_agrees_with_bloch_waves_on_identical_potential() -> None:
-    # Two different solutions of the same Schrodinger equation, from the same
-    # Mott-Bethe scattering factors, zero-order Laue zone only (one slice per
-    # period projects every atom, so no HOLZ enters the multislice either).
+def _projected_multislice(phase, grid, periods, splits, depths):  # type: ignore[no-untyped-def]
+    """ZOLZ multislice: one period's projected potential split into ``splits`` slices."""
+    a = phase.lattice.a
+    cell, _, _ = periodic_slab(phase, (0, 0, 1), (1, 1))
+    v = slice_potential(cell.species, cell.positions[:, :2], grid, "mott_bethe")
+    sigma = relativistic_interaction_parameter_inv_v_angstrom(200.0)
+    phase_grating = np.exp(1j * sigma * v / splits)
+    tau = scipy.fft.ifft2(scipy.fft.fft2(phase_grating) * antialias_aperture(grid))
+    propagator = fresnel_propagator(grid, 200.0, a / splits)
+    psi = np.ones(grid.shape, dtype=complex)
+    stored = []
+    for step in range(periods * splits):
+        psi = scipy.fft.ifft2(scipy.fft.fft2(psi * tau) * propagator)
+        if (step + 1) % splits == 0 and (step + 1) // splits in depths:
+            stored.append(psi)
+    return stored
+
+
+def test_one_slice_per_period_is_the_projected_multislice() -> None:
     phase = _phase("si_diamond")
     a = phase.lattice.a
-    snap, _, _ = periodic_slab(phase, (0, 0, 1), (1, 1), beam_repeats=37)
-    exit_wave = multislice(
-        snap, 200.0, grid=MultisliceGrid((64, 64), (a, a)),
-        slice_thickness_angstrom=a / 4, parametrization=PotentialParametrization.MOTT_BETHE,
-        exit_depths_angstrom=[10 * a, 37 * a],
-    )
+    grid = MultisliceGrid((64, 64), (a, a))
+    snap, _, _ = periodic_slab(phase, (0, 0, 1), (1, 1), beam_repeats=10)
+    wave = multislice(snap, 200.0, grid=grid, slice_thickness_angstrom=a,
+                      parametrization=PotentialParametrization.MOTT_BETHE)
+    (manual,) = _projected_multislice(phase, grid, 10, 1, {10})
+    np.testing.assert_allclose(wave.wave(), manual, atol=1e-12)
+
+
+def test_multislice_converges_to_bloch_waves_on_identical_potential() -> None:
+    # Two solutions of the same Schrodinger equation from the same Mott-Bethe
+    # potential, zero-order Laue zone only. One slice per period carries the
+    # splitting error of a 5.4 Å slice (about 1 % in the transmitted beam at
+    # 108 Å); split into eight, the multislice agrees with Bloch waves.
+    phase = _phase("si_diamond")
+    a = phase.lattice.a
+    grid = MultisliceGrid((64, 64), (a, a))
+    depths = (10, 20, 37)
+    waves = _projected_multislice(phase, grid, 37, 8, set(depths))
     beams = beam_set_for_zone(
         phase, ZoneAxis(indices=(0, 0, 1), phase=phase), beam_energy_kev=200.0,
         max_index=24, g_max_inv_angstrom=3.9, max_excitation_error_inv_angstrom=0.6,
     )
     hkl = [(0, 0, 0), (2, 2, 0), (4, 0, 0)]
-    g = np.array([[h / a, k / a] for h, k, _ in hkl])
-    for index, depth in enumerate(exit_wave.depths_angstrom):
-        bloch = solve_bloch_waves(beams, [[0.0, 0.0]], thickness_angstrom=float(depth))
+    for periods, psi in zip(depths, waves, strict=True):
+        spectrum = scipy.fft.fft2(psi, norm="forward")
+        ours = [abs(spectrum[k % 64, h % 64]) ** 2 for h, k, _ in hkl]
+        bloch = solve_bloch_waves(beams, [[0.0, 0.0]], thickness_angstrom=periods * a)
         expected = [float(bloch.intensity_of(h)[0]) for h in hkl]
-        np.testing.assert_allclose(
-            exit_wave.beam_intensities(g, index), expected, atol=4e-3
-        )
+        np.testing.assert_allclose(ours, expected, atol=1.5e-3)
 
 
 def test_forbidden_reflection_stays_forbidden_in_a_periodic_cell() -> None:
@@ -419,3 +445,26 @@ def test_grid_rejects_nonsense() -> None:
         MultisliceGrid((10, 10), (0.0, 5.0))
     with pytest.raises(ValueError):
         MultisliceGrid.from_sampling((5.0, 5.0), 0.0)
+
+
+def test_focal_integration_equals_a_dense_defocus_average() -> None:
+    # The adaptive Gauss-Hermite rule against brute force: the image averaged
+    # over a dense uniform grid of defoci with Gaussian weights.
+    from pytex.diffraction.multislice import _lens_transfer
+
+    film = AtomicSnapshot.amorphous_sample(
+        species="C", density_g_cm3=2.0, dimensions_angstrom=(6.0, 6.0, 10.0), seed=5
+    )
+    wave = multislice(film, 300.0, sampling_angstrom=0.1, slice_thickness_angstrom=2.0)
+    lens = _lens(energy_kev=300.0, defocus_angstrom=-40.0, cs_mm=0.005, focal_spread_angstrom=40.0)
+    exact = wave.image(lens, temporal_coherence="focal_integration")
+    spectrum = scipy.fft.fft2(wave.wave())
+    total = np.zeros(wave.grid.shape)
+    weights = 0.0
+    for delta in np.linspace(-320.0, 320.0, 4001):
+        weight = math.exp(-0.5 * (delta / 40.0) ** 2)
+        focused = replace(lens, defocus_angstrom=-40.0 + delta, focal_spread_angstrom=0.0)
+        image = scipy.fft.ifft2(spectrum * _lens_transfer(wave.grid, focused))
+        total += weight * np.abs(image) ** 2
+        weights += weight
+    np.testing.assert_allclose(exact, total / weights, atol=1e-8)
