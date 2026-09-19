@@ -22,7 +22,9 @@ PyTex treats the test and quality surface as two explicit lanes:
 - `browser lane`: Python 3.11 plus Node 22 and pinned Playwright/Chromium for the shared workbench's
   critical user journeys; the dependency is test-only and the delivered frontend stays self-contained
 
-The base CI matrix covers Ubuntu and macOS on Python 3.11–3.13 plus Windows on Python 3.11.
+The base CI matrix covers Ubuntu on Python 3.11–3.13 plus Windows on Python 3.11. **macOS is
+not a CI platform**, by project policy (see *Continuous Integration Platforms* in `AGENTS.md`):
+no workflow may schedule a macOS runner, and `tests/unit/test_ci_policy.py` fails if one does.
 The Ubuntu/Python 3.11 job owns the executable Sphinx build and runs
 `python scripts/check_sphinx_warnings.py --max-warnings 0`. The release build admits no warnings;
 any warning fails CI.

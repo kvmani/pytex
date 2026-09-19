@@ -33,7 +33,8 @@ Facts checked directly against the working tree, not inherited from prior notes:
   a runtime of about 12 minutes on the Windows development machine.
 - Strict mypy and Ruff lint pass; `py.typed` ships; pytest treats new runtime warnings as errors;
   CI enforces an 87% whole-package coverage floor.
-- The base CI lane covers Python 3.11–3.13 on Ubuntu and macOS. Windows coverage and a Sphinx
+- The base CI lane covers Python 3.11–3.13 on Ubuntu, and Python 3.11 on Windows; macOS was
+  removed from CI by policy on 2026-09-19 (`AGENTS.md`). Windows coverage and a Sphinx
   warning-count ratchet are part of the 2026-08-15 governance increment; the full-scientific
   no-skip lane remains pinned to Ubuntu/Python 3.11.
 - Worked-example framework, parity ledgers (MTEX, VESTA, diffraction, structure, plotting,
@@ -170,8 +171,9 @@ This is the designated flagship, and it is also where the gap between "primitive
 18. **[P1] Warning hygiene.** 117 warnings in a green run, including matplotlib figure leaks
     ("More than 20 figures") from plotting tests. Add an autouse close-figures fixture, then turn
     on `filterwarnings = error` with explicit, commented exemptions.
-19. **[P2] CI breadth.** Matrix ubuntu+macos × Python 3.11–3.13 for the base lane (full lane may
-    stay pinned); publish the coverage artifact.
+19. **[P2] CI breadth.** Matrix ubuntu × Python 3.11–3.13 plus Windows for the base lane (full
+    lane may stay pinned); publish the coverage artifact. macOS is deliberately not a CI
+    platform (superseded 2026-09-19; see `AGENTS.md`).
 20. **[P2] Property-based tests.** Orientation algebra, symmetry reduction, index round-trips,
     and OR variant orbits are ideal Hypothesis targets (composition laws, involution of
     inverses, orbit invariance). Currently absent.

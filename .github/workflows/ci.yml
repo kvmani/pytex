@@ -9,7 +9,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Linux and Windows only. macOS runners are deliberately excluded by
+        # project policy (AGENTS.md, "Continuous integration platforms"), and
+        # tests/unit/test_ci_policy.py fails if one is added back.
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
         exclude:
           - os: windows-latest

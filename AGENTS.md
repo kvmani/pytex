@@ -117,6 +117,17 @@ If implementation choices conflict with these documents, stop and reconcile the 
 - Construction-time invariant checks are preferred over downstream error recovery.
 - Any stable workflow that crosses a tool boundary must eventually have a machine-readable manifest and schema.
 
+## Continuous Integration Platforms
+
+CI runs on **Linux (Ubuntu) and Windows only**. macOS runners are excluded by the maintainer's
+decision (2026-09-19): no job in `.github/workflows/` may use a `macos-*` runner, a `macos` matrix
+entry, or any other way of scheduling work on macOS, and a failure that reproduces only on macOS
+does not block a change. PyTex remains installable and usable on macOS, and a contributor may run
+the suite there locally; the rule concerns the CI matrix only. `tests/unit/test_ci_policy.py`
+enforces it, so this is checked rather than remembered. Adding a macOS runner requires the
+maintainer to reverse this decision explicitly, and that change must update this section, the test
+and `docs/testing/strategy.md` together.
+
 ## Engineering Priorities
 
 1. correctness
