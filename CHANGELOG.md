@@ -11,6 +11,8 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-20
+
 ### Added
 
 - **A full multislice HRTEM engine, `pytex.diffraction.multislice`.** abTEM's conventional
@@ -47,6 +49,32 @@ downstream analyses depend on them.
 
 ### Fixed
 
+- **A fitted XRD peak position depended on the machine that fitted it.** `fit_peaks` gave
+  `scipy.optimize.least_squares` no Jacobian, so the trust region stepped on a forward
+  difference accurate to about the square root of the machine epsilon and stopped on a
+  step test with the projected gradient still near 1e-5. Which iterate tripped that test
+  followed the platform's `exp` in its last bit, and fitted centres differed by 1e-11
+  degrees between Windows and Linux — which a lattice-parameter residual, a difference of
+  two angles near 2θ = 100° that comes out near 1e-4°, magnified into its eighth
+  significant figure. The split pseudo-Voigt now differentiates in closed form (doublet
+  partner, split widths and sloping background included) and that exact Jacobian is used
+  both to step and to invert for the covariance; the fit is scaled by it; and a
+  Gauss-Newton polish afterwards takes the answer to the stationary point rather than to
+  the iterate the trust region halted on, snapping parameters the fit drove onto a bound
+  exactly onto it — a Lorentzian fraction that has collapsed is now `0.0`, not one
+  machine's `1e-22`. All six peak centres of the demonstration scan are now bit-identical
+  between Windows and Linux. The Le Bail refinement gains a central-difference Jacobian
+  for the same reason. Reported cells, uncertainties and χ² move in their twelfth
+  significant figure — five orders of magnitude below the uncertainty the same fit
+  reports — and no conclusion drawn from them changes.
+- **Three Playwright journeys waited a render's worth of time for a calculation.**
+  Selecting the lattice-parameter sub-workspace runs it once by itself, so the completed
+  calculation the helper counted was that run and not the button's, and the figure
+  assertion then had five seconds while the real determination was still in flight. The
+  workspace walk failed the same way on a cold stage, and `measured texture` allowed its
+  assertions sixty seconds each inside a test whose own budget was thirty. Stage waits are
+  now named `STAGE_TIMEOUT_MS`, and the three tests carry budgets that match what they
+  await. No assertion was weakened.
 - **LaTeX commands in the symbol registry, the Kearns theory note and the MTEX parity
   matrix had been turned into control characters** by an old shell heredoc (`\beta`, `\rho`,
   `\rangle`, `\varphi`, `\tfrac` and others), splitting seven table rows; all are restored.
