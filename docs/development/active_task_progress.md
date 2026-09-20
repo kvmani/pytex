@@ -8416,3 +8416,78 @@ overlaid on the model where it makes sense. Validated numerics must not change.
 
 **Status: the goal is met.** Every item of the objective is implemented, tested, documented and
 on `main`.
+
+## Goal - a green Linux lane: the XRD fit reproducible, the browser waits honest (opened 2026-09-20)
+
+### Objective, as the user stated it
+
+CI runs Ubuntu (3.11-3.13) and Windows (3.11); Windows base passes. Fix, in the source
+rather than the tolerance: (1) `test_app_xrd_lattice_report.py` lines 128 and 132 failing
+on every Ubuntu version - `reduced_chi_squared`, `a_standard_uncertainty`,
+`c_standard_uncertainty` and all six residuals; (2) the browser test
+`a server-drawn figure downloads as PNG and SVG from its own card`, Linux only;
+(3) `loads every scientific workspace without browser errors`, which fails the same way
+on the baseline, and the flaky `measured texture: one set of inputs, every reading in
+tabs`.
+
+### What was actually wrong
+
+- **The peak fit stopped in a different place on each platform.** `_fit_one_peak` gave
+  `least_squares` no Jacobian, so the trust region stepped on a forward difference good
+  to about `sqrt(eps)` and terminated on a step test with the projected gradient still
+  near 1e-5. Which iterate tripped that test depended on the platform's `exp` in its last
+  bit; the fitted centres differed by ~1e-11 degrees. A residual is a difference of two
+  angles near 2 theta = 100 that comes out near 1e-4 degrees, so it carries eight fewer
+  significant figures than its inputs, and 1e-11 degrees surfaced as a part in 1e7.
+  Measured, not assumed: the same script run on Windows and in the WSL Ubuntu lane, first
+  on the peak centres alone, then on the whole pipeline.
+- A second, smaller term: the Lorentzian fraction is driven onto its lower bound by this
+  Gaussian demonstration scan, and the bound was reported as whatever the iteration last
+  held there - 1.1e-15 on one machine, 4.9e-324 on the other.
+- **The Le Bail refinement** had the same forward-difference Jacobian, and its cell
+  uncertainty - an element of an inverted Hessian - differed by a part in 1e8.
+- **The browser failures were not the XRD numbers.** The saved page snapshot from the CI
+  artifact shows the stage *empty*, not mis-drawn. Selecting the lattice-parameter
+  sub-workspace runs it once by itself, so the success entry
+  `expectNewCompletedCalculation` counted was that run and not the button's; the figure
+  assertion then had Playwright's five-second default while the real determination was
+  still in flight. `loads every scientific workspace` fails the same way on the Calculator
+  stage, and `measured texture` awaits four inversions it allows sixty seconds each for,
+  inside a test whose own budget is thirty.
+
+### Increments
+
+- **Increment 1 - the peak fit lands on the stationary point (landed, fcbd3ba).**
+  Closed-form partials for the pseudo-Voigt and the split pseudo-Voigt
+  (`_pseudo_voigt_partials`, `_split_pseudo_voigt_partials`), assembled into an exact
+  Jacobian for the fitted model - doublet partner with its `dtheta2/dtheta1` chain factor,
+  split widths, sloping background - used both for stepping and for the covariance.
+  `x_scale="jac"` and machine-level tolerances, as the Le Bail fit already had. Then
+  `_polish`: parameters the fit pushed onto a bound are snapped exactly onto it and held,
+  and the rest take full Gauss-Newton steps. The steps that matter buy a cost reduction
+  below the rounding of the cost itself, so the loop deliberately accepts steps a
+  sufficient-decrease test would reject; without that it broke on the first iteration and
+  changed nothing. The Le Bail fit gets `jac="3-point"`.
+  Result, Windows against Ubuntu 24.04 in WSL: all six fitted centres bit-identical
+  (they differed by 1e-11 degrees); the Cohen cell to 2e-12, its residuals to 1e-10, its
+  chi-squared to 7e-12; the Le Bail cell to 6e-15 and its uncertainty to 7e-10.
+  The pins move in their twelfth significant figure and are re-taken; the tolerances are
+  now per quantity - a part in 1e9 for a cell parameter, a part in 1e7 for the
+  uncertainties, chi-squared and residuals, which no finite-difference Hessian pins
+  tighter. `tests/unit/test_app_xrd_lattice_report.py`, `test_xrd_peaks.py` and
+  `test_xrd_lattice_parameter.py`: 110 passed on Windows and 110 passed in WSL.
+- **Increment 2 - browser waits that match what is being waited for (landed).**
+  `STAGE_TIMEOUT_MS` (60 s) for a stage that fills from a server round trip rather than a
+  render, applied to the figure card and to both `not.toBeEmpty()` walks, and test budgets
+  of 300 s / 180 s / 300 s on the three tests that await several of them. Each carries the
+  reason in a comment; no assertion was weakened, only its clock.
+
+### Verification of record
+
+- WSL Ubuntu 24.04 (`~/pytexenv`, Python 3.12, numpy 2.4.6, scipy 1.18.1): the three XRD
+  suites 110 passed, against 6 failures before the change.
+- Windows: the same 110 passed; ruff and mypy clean on every touched module.
+- Playwright against a freshly started server on :8791: the three named tests 3/3 in 52 s.
+  A warm server passed them before as well - the change is for the cold Linux runner, and
+  the proof that the diagnosis is right is the CI page snapshot, not this run.
+- Not verified here: the Ubuntu browser job itself, which only CI runs.

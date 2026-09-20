@@ -2,6 +2,17 @@ import { readFileSync } from 'node:fs';
 
 import { expect, test } from '@playwright/test';
 
+/*
+ * How long a stage may take to fill.
+ *
+ * Playwright's five-second default is a budget for a render. Filling a
+ * workbench stage is a calculation on the server, and the first one a freshly
+ * started server serves also pays for importing pymatgen, orix and matplotlib.
+ * A Linux CI runner with one worker and no warm page cache has been seen to
+ * need well over five seconds for that, which is slow but not wrong.
+ */
+const STAGE_TIMEOUT_MS = 60_000;
+
 const WORKSPACES = [
   'Crystal Viewer',
   'TEM Analysis',
@@ -417,14 +428,20 @@ test('the lattice cell editor labels its boxes with the lattice symbols', async 
 });
 
 test('loads every scientific workspace without browser errors', async ({ page }) => {
+  // Every workspace and every panel of the grouped one, each filling its
+  // stage from a calculation on the server. The default five-second
+  // assertion budget is a render budget; these are round trips, and the
+  // first one a cold server serves also pays for importing the scientific
+  // stack behind it.
+  test.setTimeout(300_000);
   const browserErrors = await openWorkbench(page);
   await expect(workspaceTabs(page)).toHaveText(WORKSPACES);
 
   for (const workspace of WORKSPACES) {
     await workspaceTab(page, workspace).click();
     await expect(workspaceTab(page, workspace)).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('#stage')).not.toBeEmpty();
-    await expect(page.locator('#rail-body')).not.toBeEmpty();
+    await expect(page.locator('#stage')).not.toBeEmpty({ timeout: STAGE_TIMEOUT_MS });
+    await expect(page.locator('#rail-body')).not.toBeEmpty({ timeout: STAGE_TIMEOUT_MS });
   }
 
   // And every panel of the grouped workspace, which the tab bar no longer names.
@@ -434,7 +451,7 @@ test('loads every scientific workspace without browser errors', async ({ page })
       'aria-selected',
       'true',
     );
-    await expect(page.locator('#stage')).not.toBeEmpty();
+    await expect(page.locator('#stage')).not.toBeEmpty({ timeout: STAGE_TIMEOUT_MS });
   }
 
   expect(browserErrors).toEqual([]);
@@ -958,6 +975,7 @@ test('every computed image downloads at its native resolution', async ({ page })
 });
 
 test('a server-drawn figure downloads as PNG and SVG from its own card', async ({ page }) => {
+  test.setTimeout(180_000);
   await page.setViewportSize({ width: 1400, height: 900 });
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'XRD');
@@ -967,7 +985,11 @@ test('a server-drawn figure downloads as PNG and SVG from its own card', async (
     ),
   );
   const card = page.locator('#stage .result-figure[data-figure="normalized_residuals"]');
-  await expect(card.locator('img')).toBeVisible();
+  // Selecting the sub-workspace runs it once on its own, so the success
+  // entry the helper counted is that run, not the button's. The button's
+  // determination - six peak fits, a Le Bail decomposition and half a dozen
+  // server-drawn figures - is still in flight when this line is reached.
+  await expect(card.locator('img')).toBeVisible({ timeout: STAGE_TIMEOUT_MS });
   const png = await saveFromMenu(page, card, 'Download PNG');
   expect(png.name).toBe('pytex-normalized-residuals.png');
   // 300 dpi at the figure's drawn width of 6.4 inches.
@@ -2247,6 +2269,12 @@ test('measured pole figures can be drawn as one labelled comparison plate', asyn
  * sees.
  */
 test('measured texture: one set of inputs, every reading in tabs', async ({ page }) => {
+  // Four inversions in one test - the demonstration figures, the LaboTeX
+  // section set, the phi-1 sections and the opened XRDML files - each of
+  // which the assertions below already allow sixty seconds for. Without a
+  // matching test budget the default thirty seconds ends the test while the
+  // last of them is still being awaited.
+  test.setTimeout(300_000);
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'Measured texture');
 
