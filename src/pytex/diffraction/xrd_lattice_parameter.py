@@ -1645,6 +1645,16 @@ def determine_lattice_parameters_le_bail(
             # Jacobian scaling the trust region is set by whichever happens to
             # be largest and the cell barely moves.
             x_scale="jac",
+            # A central-difference Jacobian. The forward difference that
+            # least_squares uses by default is accurate only to the square root
+            # of the machine epsilon, and this model - whose reflection windows
+            # are cut at eight widths and whose profiles are renormalized to
+            # unit sum - turns that into an inverse-Hessian, and so a cell
+            # uncertainty, that differs between platforms in its eighth
+            # significant figure. The central difference costs one extra model
+            # evaluation per parameter and holds the cell itself to a part in
+            # 1e14 across libm implementations.
+            jac="3-point",
             max_nfev=600,
         )
         parameters = solution.x

@@ -55,7 +55,7 @@ doublet separation.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Literal
@@ -87,6 +87,15 @@ _LORENTZIAN_AREA = float(np.pi / 2.0)
 _CITATION_CULLITY = (
     "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed., Prentice Hall (2001), Chs. 6, 11."
 )
+# The Gauss-Newton polish that makes a converged fit reproducible: a few
+# quadratically convergent steps are enough from anywhere in the basin, and
+# the loop stops as soon as a step moves nothing at double precision.
+_POLISH_STEPS = 8
+_POLISH_TOLERANCE = 1.0e-15
+_POLISH_MAX_STEP = 1.0e-3
+_POLISH_SLACK = 1.0e-9
+
+
 _CITATION_TORAYA = (
     "Toraya, J. Appl. Crystallogr. 19 (1986) 440, doi:10.1107/S0021889886088982."
 )
@@ -216,6 +225,70 @@ def split_pseudo_voigt_profile(
     left = pseudo_voigt_profile(axis, centre_deg=centre_deg, fwhm_deg=fwhm_left_deg, eta=eta)
     right = pseudo_voigt_profile(axis, centre_deg=centre_deg, fwhm_deg=fwhm_right_deg, eta=eta)
     return np.where(axis < centre_deg, left, right)
+
+
+def _pseudo_voigt_partials(
+    axis: np.ndarray,
+    centre_deg: float,
+    fwhm_deg: float,
+    eta: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return the pseudo-Voigt profile and its partials in centre, width and ``eta``.
+
+    The mixture of :func:`pseudo_voigt_profile` differentiates in closed form
+    through the reduced coordinate ``u = 2 (x - c) / w``::
+
+        dP/du = -2 u (eta L^2 + (1 - eta) ln2 G)
+        du/dc = -2 / w,  du/dw = -u / w,  dP/deta = L - G
+
+    A finite-difference Jacobian of this model is accurate to about the square
+    root of the machine epsilon, which leaves the fitted centre uncertain in
+    its eleventh decimal and makes it depend on the platform's libm. The
+    closed form removes that floor; see :func:`fit_peaks`.
+    """
+
+    reduced = 2.0 * (axis - centre_deg) / fwhm_deg
+    squared = np.square(reduced)
+    gaussian = np.exp(-np.log(2.0) * squared)
+    lorentzian = 1.0 / (1.0 + squared)
+    profile = eta * lorentzian + (1.0 - eta) * gaussian
+    d_reduced = -2.0 * reduced * (
+        eta * np.square(lorentzian) + (1.0 - eta) * np.log(2.0) * gaussian
+    )
+    return (
+        profile,
+        d_reduced * (-2.0 / fwhm_deg),
+        d_reduced * (-reduced / fwhm_deg),
+        lorentzian - gaussian,
+    )
+
+
+def _split_pseudo_voigt_partials(
+    axis: np.ndarray,
+    centre_deg: float,
+    fwhm_left_deg: float,
+    fwhm_right_deg: float,
+    eta: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return the split profile and its partials in centre, both widths and ``eta``.
+
+    Each half carries the partials of :func:`_pseudo_voigt_partials` for its own
+    width, selected by the same ``axis < centre`` test that
+    :func:`split_pseudo_voigt_profile` uses, so the Jacobian is the exact
+    derivative of the model on either side of the centre.
+    """
+
+    left = _pseudo_voigt_partials(axis, centre_deg, fwhm_left_deg, eta)
+    right = _pseudo_voigt_partials(axis, centre_deg, fwhm_right_deg, eta)
+    below = axis < centre_deg
+    zero = np.zeros_like(axis)
+    return (
+        np.where(below, left[0], right[0]),
+        np.where(below, left[1], right[1]),
+        np.where(below, left[2], zero),
+        np.where(below, zero, right[2]),
+        np.where(below, left[3], right[3]),
+    )
 
 
 def pseudo_voigt_area(*, height: float, fwhm_deg: float, eta: float) -> float:
@@ -1053,6 +1126,82 @@ def _weights(
     return np.ones_like(intensity)
 
 
+def _polish(
+    parameters: np.ndarray,
+    *,
+    residual: Callable[[np.ndarray], np.ndarray],
+    jacobian: Callable[[np.ndarray], np.ndarray],
+    lower: np.ndarray,
+    upper: np.ndarray,
+) -> np.ndarray:
+    """Return the stationary point of ``residual`` nearest ``parameters``.
+
+    Purpose
+    -------
+    Make a converged fit a property of the data rather than of the path the
+    trust region took to it. ``least_squares`` terminates on a step-size or
+    cost-reduction test, so two machines whose libm differs in the last bit
+    of ``exp`` stop at iterates that differ far above the rounding of the
+    parameters themselves.
+
+    Method
+    ------
+    Parameters that the fit has driven onto a bound are snapped exactly onto
+    it and held there - a Lorentzian fraction that has collapsed to zero is
+    reported as zero, not as some machine's 1e-22. The rest take full
+    Gauss-Newton steps, solving ``J^T J s = -J^T f`` on the free block, for
+    as long as the cost keeps falling. Convergence is quadratic, so a handful
+    of steps from anywhere in the basin lands within an ulp of the same
+    point on every platform.
+
+    Returns
+    -------
+    np.ndarray
+        The polished parameters, inside the same bounds.
+    """
+
+    current = np.array(parameters, dtype=np.float64, copy=True)
+    margin = 1.0e-8 * np.maximum(1.0, np.abs(current))
+    current = np.where(current - lower <= margin, lower, current)
+    current = np.where(upper - current <= margin, upper, current)
+    free = (current > lower + margin) & (current < upper - margin)
+    if not np.any(free):
+        return current
+    cost = float(np.sum(np.square(residual(current))))
+    for _ in range(_POLISH_STEPS):
+        values = residual(current)
+        columns = jacobian(current)[:, free]
+        try:
+            step = np.linalg.solve(columns.T @ columns, -(columns.T @ values))
+        except np.linalg.LinAlgError:  # pragma: no cover - degenerate windows only
+            break
+        if not np.all(np.isfinite(step)):  # pragma: no cover - degenerate windows only
+            break
+        scale = np.maximum(np.abs(current[free]), 1.0)
+        # A large step means the trust region did not leave us in the basin
+        # after all; its answer is the safer one.
+        if np.any(np.abs(step) > _POLISH_MAX_STEP * scale):  # pragma: no cover
+            break
+        trial = current.copy()
+        trial[free] = np.clip(current[free] + step, lower[free], upper[free])
+        trial_cost = float(np.sum(np.square(residual(trial))))
+        # The last steps buy a reduction far below the rounding of the sum
+        # of squares itself, so requiring the cost to fall would reject
+        # exactly the steps that do the reproducibility work. Only a real
+        # ascent ends the loop.
+        if not np.isfinite(trial_cost) or trial_cost > cost * (1.0 + _POLISH_SLACK):
+            break
+        settled = bool(
+            np.all(
+                np.abs(trial - current) <= _POLISH_TOLERANCE * np.maximum(np.abs(current), 1.0)
+            )
+        )
+        current, cost = trial, min(cost, trial_cost)
+        if settled:
+            break
+    return current
+
+
 def _fit_one_peak(
     axis: np.ndarray,
     intensity: np.ndarray,
@@ -1123,22 +1272,101 @@ def _fit_one_peak(
         weighted: np.ndarray = (model(parameters) - intensity) * weights
         return weighted
 
+    def jacobian(parameters: np.ndarray) -> np.ndarray:
+        centre = float(parameters[0])
+        height = float(parameters[1])
+        fwhm_left = float(parameters[2])
+        if split:
+            fwhm_right = float(parameters[3])
+            eta = float(parameters[4])
+            slope = float(parameters[6])
+        else:
+            fwhm_right = fwhm_left
+            eta = float(parameters[3])
+            slope = float(parameters[5])
+        profile, d_centre, d_left, d_right, d_eta = _split_pseudo_voigt_partials(
+            axis, centre, fwhm_left, fwhm_right, eta
+        )
+        by_centre = height * d_centre - slope
+        by_height = profile
+        by_left = height * d_left
+        by_right = height * d_right
+        by_eta = height * d_eta
+        if doublet is not None:
+            wavelength_ratio, intensity_ratio = doublet
+            partner = _kalpha2_position_deg(centre, wavelength_ratio)
+            (
+                partner_profile,
+                partner_centre,
+                partner_left,
+                partner_right,
+                partner_eta,
+            ) = _split_pseudo_voigt_partials(axis, partner, fwhm_left, fwhm_right, eta)
+            # sin(theta2) = ratio sin(theta1) differentiates to
+            # dtheta2/dtheta1 = ratio cos(theta1) / cos(theta2), and the
+            # degree-to-radian factors cancel between the two positions.
+            chain = (
+                wavelength_ratio
+                * np.cos(np.deg2rad(0.5 * centre))
+                / np.cos(np.deg2rad(0.5 * partner))
+            )
+            scale = height * intensity_ratio
+            by_centre = by_centre + scale * partner_centre * chain
+            by_height = by_height + intensity_ratio * partner_profile
+            by_left = by_left + scale * partner_left
+            by_right = by_right + scale * partner_right
+            by_eta = by_eta + scale * partner_eta
+        columns = [by_centre, by_height]
+        if split:
+            columns.extend([by_left, by_right])
+        else:
+            columns.append(by_left + by_right)
+        columns.extend([by_eta, np.ones_like(axis), axis - centre])
+        stacked: np.ndarray = np.column_stack(columns) * weights[:, None]
+        return stacked
+
     solution = least_squares(
         residual,
         x0=np.asarray(start, dtype=np.float64),
         bounds=(np.asarray(lower, dtype=np.float64), np.asarray(upper, dtype=np.float64)),
         method="trf",
+        jac=jacobian,
+        x_scale="jac",
+        # The closed-form Jacobian is exact, so the fit can be driven to the
+        # stationary point itself rather than to the point where a
+        # finite-difference gradient stops being trustworthy. Without this the
+        # centre is reproducible only to about 1e-11 degrees, and the
+        # millidegree residuals that the lattice fit forms from it - a
+        # difference of two angles near 2 theta = 100 - differ between
+        # platforms in their eighth significant figure.
+        ftol=1e-14,
+        xtol=1e-14,
+        gtol=1e-14,
         max_nfev=4000,
     )
 
-    parameters = solution.x
+    # The trust region stops on a step or cost test, which leaves the answer
+    # at whichever iterate tripped it rather than at the stationary point:
+    # a one-ulp difference in the platform's exp() sends the iteration down
+    # a slightly different path and moves the fitted centre in its twelfth
+    # decimal. Gauss-Newton from there converges quadratically on the
+    # stationary point itself, so the reported centre is a property of the
+    # data rather than of the route taken to it.
+    parameters = _polish(
+        np.asarray(solution.x, dtype=np.float64),
+        residual=residual,
+        jacobian=jacobian,
+        lower=np.asarray(lower, dtype=np.float64),
+        upper=np.asarray(upper, dtype=np.float64),
+    )
+    fitted_residual = residual(parameters)
     degrees_of_freedom = max(axis.size - parameters.size, 1)
-    residual_sum = float(np.sum(np.square(solution.fun)))
+    residual_sum = float(np.sum(np.square(fitted_residual)))
     reduced_chi_squared = residual_sum / degrees_of_freedom
 
     # Goodness-of-fit-scaled covariance: (J^T J)^-1 times the reduced chi-squared.
-    jacobian = np.asarray(solution.jac, dtype=np.float64)
-    normal = jacobian.T @ jacobian
+    fitted_jacobian = jacobian(parameters)
+    normal = fitted_jacobian.T @ fitted_jacobian
     try:
         covariance = np.linalg.inv(normal) * reduced_chi_squared
         position_variance = float(covariance[0, 0])
