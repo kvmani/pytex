@@ -5,6 +5,29 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
+
+**Objective.** Provide a small Windows/VS Code-driven script that reads an atomic snapshot from
+CIF and generates focal and thickness HRTEM series for a double-corrected microscope.
+
+**Implementation.** Added `scripts/hrtem_cif_series.py`. It reads ordered orthogonal CIF
+supercells directly as atomic snapshots, places the selected CIF cell vector along the beam,
+runs one native PyTex multislice calculation with exit waves stored at several thicknesses, and
+images every stored wave across the requested defocus range. It writes the lossless four-
+dimensional intensity array and axes to compressed NPZ, a contrast CSV, run parameters, an
+explainable text report, common-scale focal/thickness PNGs and a labelled defocus-thickness
+tableau. Double-corrected defaults are explicit and every principal value can be changed from
+the VS Code terminal. Added focused tests for inclusive defocus sampling, beam-axis permutation,
+and refusal of non-orthogonal CIF cells, plus algorithm-page usage documentation.
+
+**Verification.** Both new Python files compile and have no lines above the repository's
+100-character limit. The focused runtime tests could not be executed in the connector scratch
+environment because pymatgen and the repository package are not installed there; CI is the
+authoritative full-dependency verification.
+
+**Status.** Requested workflow implemented in this commit; no generated simulation output is
+tracked.
+
 ## Full-resolution downloads, registry repair, macOS out of CI — COMPLETE (2026-09-20)
 
 **Objective (user request).** (1) Every resulting graphic downloadable at full resolution,

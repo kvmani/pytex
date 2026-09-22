@@ -122,6 +122,28 @@ envelope), a second method (Bloch waves on the same potential) and a second code
 installed). The corresponding rows of the {doc}`diffraction validation matrix
 <../validation/diffraction_validation_matrix>` point at the tests.
 
+## 6. Standalone CIF snapshot driver
+
+For an ordered MD snapshot stored in an orthogonal CIF supercell, the standalone driver creates
+both a focal series at the full specimen thickness and a thickness series at a selected defocus.
+From the repository root in a Windows VS Code terminal:
+
+```powershell
+python scripts/hrtem_cif_series.py C:\data\snapshot.cif --beam-axis c --energy 300 --defocus-start -100 --defocus-stop 100 --defocus-step 25 --thickness-count 5
+```
+
+The selected CIF cell vector (`a`, `b` or `c`) is placed along the electron beam. The script
+refuses non-orthogonal cells because the native multislice grid is orthogonal; export an
+orthogonal MD supercell instead of silently changing its geometry. It also refuses disordered
+sites because one MD atom must have one element identity.
+
+The output directory contains the raw intensity tensor and axes in `hrtem_series.npz`,
+`series.csv`, the full run parameters, an explainable simulation report, individual
+common-scale PNG files, and `defocus_thickness_tableau.png`. The NPZ intensities—not the
+display-normalised PNG files—are the quantitative result. Use `--help` for residual spherical
+aberration, fifth-order aberration, focal-spread, convergence and aperture controls. For a
+strong object or a large focal spread, use `--temporal-coherence focal_integration`.
+
 ## References
 
 - Kirkland, E. J. (2010). *Advanced Computing in Electron Microscopy*, 2nd ed., ch. 6. Springer.
