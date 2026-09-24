@@ -62,6 +62,7 @@ notebooks/33_quantitative_xrd_background_instrument_and_rietveld
 notebooks/34_precise_lattice_parameters
 notebooks/35_hrem_simulation
 notebooks/36_multislice_hrtem
+notebooks/37_residual_stress_sin2psi
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -273,4 +274,15 @@ For the validated fixture-to-diffraction route, continue with:
     exit wave; a defocus-thickness map; Frank's envelope against exact focal integration; frozen
     phonons and thermal diffuse scattering; titanium [0001], an empty column and amorphous-carbon
     Thon rings; and agreement with Bloch waves once the slices are thin enough.
+
+14. `37_residual_stress_sin2psi` — the step the lattice-parameter notebook stops short of: a
+    stress. Tilting the specimen brings inclined planes into reflection, and the change of their
+    spacing with sin²ψ is the stress. On a synthetic ferrite (211) measurement with Cr Kα of a
+    known shot-peened stress it computes the diffraction elastic constants of four
+    grain-interaction models (and why (211) is the reflection of choice), locates every peak with
+    its uncertainty, draws d against sin²ψ at three azimuths, and recovers the tensor. Then, one
+    ingredient at a time: the uncertainty budget and why d₀ dominates it while leaving the slopes
+    untouched; d₀ determined from the data under plane stress; out-of-plane shear splitting the
+    ψ > 0 and ψ < 0 branches; and why the Kα2 line must be stripped before a parabola is fitted at
+    stress angles — or better, modelled.
 

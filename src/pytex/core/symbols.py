@@ -241,6 +241,51 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry(
                 "detector_distance", "z*", "z^{*}", "Detector distance in detector-width fractions."
             ),
+            # -- residual stress (sin^2 psi) ------------------------------------
+            _entry(
+                "stress_tilt",
+                "ψ",
+                r"\psi",
+                "Tilt of the scattering vector from the specimen surface normal.",
+            ),
+            _entry(
+                "stress_azimuth",
+                "φ",
+                r"\varphi",
+                "Azimuth of the tilt plane in the specimen surface, from S1 towards S2.",
+            ),
+            _entry("sigma_11", "σ₁₁", r"\sigma_{11}", "Normal stress along specimen axis S1."),
+            _entry("sigma_22", "σ₂₂", r"\sigma_{22}", "Normal stress along specimen axis S2."),
+            _entry("sigma_33", "σ₃₃", r"\sigma_{33}", "Normal stress along the surface normal S3."),
+            _entry("sigma_12", "σ₁₂", r"\sigma_{12}", "In-plane shear stress on the S1-S2 axes."),
+            _entry("sigma_13", "σ₁₃", r"\sigma_{13}", "Out-of-plane shear stress on S1 and S3."),
+            _entry("sigma_23", "σ₂₃", r"\sigma_{23}", "Out-of-plane shear stress on S2 and S3."),
+            _entry(
+                "sigma_phi",
+                "σφ",
+                r"\sigma_{\varphi}",
+                "Normal stress along an azimuth in the specimen surface.",
+            ),
+            _entry(
+                "dec_s1",
+                "S₁",
+                "S_{1}",
+                "First diffraction elastic constant of a reflection, -nu/E when isotropic.",
+            ),
+            _entry(
+                "dec_half_s2",
+                "½S₂",
+                r"\frac{1}{2}S_{2}",
+                "Second diffraction elastic constant of a reflection, (1 + nu)/E when isotropic.",
+            ),
+            _entry("d_zero", "d₀", "d_{0}", "Stress-free interplanar spacing of a reflection."),
+            _entry("a_zero", "a₀", "a_{0}", "Stress-free lattice parameter along the a axis."),
+            _entry("c_zero", "c₀", "c_{0}", "Stress-free lattice parameter along the c axis."),
+            _entry("youngs_modulus", "E", "E", "Young's modulus of an isotropic solid."),
+            _entry("poisson_ratio", "ν", r"\nu", "Poisson's ratio of an isotropic solid."),
+            _entry("stiffness_c11", "C₁₁", "C_{11}", "Single-crystal stiffness C11 in Voigt form."),
+            _entry("stiffness_c12", "C₁₂", "C_{12}", "Single-crystal stiffness C12 in Voigt form."),
+            _entry("stiffness_c44", "C₄₄", "C_{44}", "Single-crystal stiffness C44 in Voigt form."),
             # -- texture -------------------------------------------------------
             _entry("halfwidth", "ψ", r"\psi", "Halfwidth of an ODF kernel."),
             # -- misc ----------------------------------------------------------

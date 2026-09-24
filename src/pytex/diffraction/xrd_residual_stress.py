@@ -142,6 +142,7 @@ from typing import Any, Literal
 import numpy as np
 
 from pytex.core.lattice import Phase
+from pytex.core.notation import format_miller_indices
 from pytex.diffraction.xrd import RadiationSpec
 from pytex.diffraction.xrd_corrections import strip_kalpha2
 from pytex.diffraction.xrd_measurement import MeasuredPowderPattern
@@ -806,7 +807,11 @@ class DiffractionElasticConstants:
             "user": "user-supplied values",
         }
         reflection = (
-            "" if self.hkl is None else f" of the ({''.join(map(str, self.hkl))}) reflection"
+            ""
+            if self.hkl is None
+            else " of the "
+            + format_miller_indices(self.hkl, family="plane", style="plain")
+            + " reflection"
         )
         uncertainty = (
             f" A relative standard uncertainty of {100 * self.relative_standard_uncertainty:.1f} %"
@@ -1028,6 +1033,9 @@ class StressPeak:
     uncertainty_is_nominal : bool
         The position came with no uncertainty and carries a placeholder; the
         stress uncertainty is then taken from the scatter alone.
+    lpa_reference_deg : float
+        The angle at which the LPA factor was normalized to one, so a figure
+        can put the corrected counts on the scale the peak was located on.
     peak_fit : PeakFit, optional
         The profile fit, for ``"pseudo_voigt"``.
     """
@@ -1045,6 +1053,7 @@ class StressPeak:
     lpa_corrected: bool = False
     kalpha2_stripped: bool = False
     uncertainty_is_nominal: bool = False
+    lpa_reference_deg: float = float("nan")
     peak_fit: PeakFit | None = None
 
     def __post_init__(self) -> None:
@@ -1243,6 +1252,7 @@ def locate_stress_peak(
         uncertainty = np.asarray(stated, dtype=float)
     else:
         uncertainty = np.sqrt(np.maximum(counts, 1.0))
+    reference = float(axis[axis.size // 2])
     if lpa_correction:
         factor = lpa_factor(axis, psi_deg=scan.psi_deg, geometry=geometry)
         factor = factor / factor[axis.size // 2]
@@ -1288,6 +1298,7 @@ def locate_stress_peak(
             point_count=int(fit.point_count),
             converged=bool(fit.converged),
             lpa_corrected=lpa_correction,
+            lpa_reference_deg=reference,
             peak_fit=fit,
         )
 
@@ -1372,6 +1383,7 @@ def locate_stress_peak(
             point_count=int(x.size),
             converged=bool(x[0] <= centre + vertex <= x[-1]),
             lpa_corrected=lpa_correction,
+            lpa_reference_deg=reference,
             kalpha2_stripped=stripped,
         )
 
@@ -1441,6 +1453,7 @@ def locate_stress_peak(
         point_count=int(point_count),
         converged=bool(point_count >= 3 and moved < 1e-6),
         lpa_corrected=lpa_correction,
+        lpa_reference_deg=reference,
         kalpha2_stripped=stripped,
     )
 

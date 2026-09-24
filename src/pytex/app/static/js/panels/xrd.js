@@ -6,6 +6,7 @@ import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
+import { symbolText } from '../core/symbols.js';
 import { patternControls, adoptForm, withPattern } from '../core/xrdscan.js';
 
 export const panel = {
@@ -39,6 +40,7 @@ const VIEWS = [
   'xrd.phase_identification',
   'xrd.background',
   'xrd.lattice_parameters',
+  'xrd.residual_stress',
   'xrd.rietveld',
   'xrd.size_strain',
 ];
@@ -57,6 +59,7 @@ const VIEW_MODES = {
   'xrd.phase_identification': 'identification',
   'xrd.background': 'overlay',
   'xrd.lattice_parameters': 'lattice',
+  'xrd.residual_stress': 'stress',
   'xrd.rietveld': 'overlay',
   'xrd.size_strain': 'scatter',
 };
@@ -67,9 +70,16 @@ const VIEW_ACTIONS = {
   'xrd.phase_identification': ['Identify the phase', 'Ranking candidates…'],
   'xrd.background': ['Estimate background', 'Estimating…'],
   'xrd.lattice_parameters': ['Determine lattice parameters', 'Determining…'],
+  'xrd.residual_stress': ['Determine the stress', 'Evaluating…'],
   'xrd.rietveld': ['Refine against the scan', 'Refining…'],
   'xrd.size_strain': ['Separate size and strain', 'Fitting…'],
 };
+
+/** Views whose drawing is not an intensity profile, so the vertical scale does not apply. */
+const UNSCALED_MODES = new Set(['scatter', 'lattice', 'stress']);
+
+/** One colour per azimuth of a stress measurement, matching the report figures. */
+const AZIMUTH_COLORS = ['#1d4ed8', '#b45309', '#0f766e', '#7c3aed', '#be123c', '#4d7c0f'];
 
 /** Curves drawn by the overlay views, in draw order, with their roles. */
 const OVERLAY_SERIES = {
@@ -171,8 +181,9 @@ export function mount(context) {
     legend.replaceChildren();
     details.replaceChildren();
     appearance.hidden = mode() !== 'profile';
-    scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
+    scaleControl.hidden = UNSCALED_MODES.has(mode());
     pattern.element.hidden = !PATTERN_OPERATIONS.has(chosen.id);
+    stressFile.hidden = mode() !== 'stress';
     // A run left in flight by the previous view will decline to touch the
     // button, so the new view has to hand it back itself.
     runButton.disabled = false;
@@ -187,8 +198,33 @@ export function mount(context) {
   pattern.element.hidden = !PATTERN_OPERATIONS.has(state.operation.id);
   markActiveTab(state.operation.id);
 
+  // A stress measurement is a table of many scans (or of peak positions), not
+  // one diffractogram, so it has its own loader. The file is read here and
+  // handed to the form's text box, where it stays visible and editable; the
+  // data source follows what the table looks like.
+  const stressFile = el('label.field', { hidden: mode() !== 'stress' }, [
+    el('span.field__label', { text: 'Open a measurement file' }),
+    el('input', {
+      type: 'file',
+      accept: '.txt,.csv,.dat,.xy,.tsv',
+      onchange: async (event) => {
+        const [file] = event.currentTarget.files ?? [];
+        if (!file) return;
+        const text = await file.text();
+        state.form.setValues({ measurement: text, data_source: stressTableKind(text) });
+      },
+    }),
+    el('span.field__hint', {
+      text: `A table of whole scans (${symbolText('stress_azimuth')} ${symbolText('stress_tilt')} `
+        + `2θ intensity per point) or of located peaks (${symbolText('stress_azimuth')} `
+        + `${symbolText('stress_tilt')} 2θ, optionally u(2θ)). Its contents appear under `
+        + 'Measured data.',
+    }),
+  ]);
+
   context.rail.append(
     pattern.element,
+    stressFile,
     formHost,
     runButton,
     scaleControl,
@@ -232,8 +268,9 @@ export function mount(context) {
       markActiveTab(state.operation.id);
       frame.setTitle(target.title);
       appearance.hidden = mode() !== 'profile';
-      scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
+      scaleControl.hidden = UNSCALED_MODES.has(mode());
       pattern.element.hidden = !PATTERN_OPERATIONS.has(target.id);
+      stressFile.hidden = mode() !== 'stress';
       runButton.disabled = false;
       runButton.textContent = VIEW_ACTIONS[target.id][0];
     }
@@ -280,6 +317,7 @@ export function mount(context) {
     if (mode() === 'overlay') return drawOverlay();
     if (mode() === 'scatter') return drawScatter();
     if (mode() === 'lattice') return drawLattice();
+    if (mode() === 'stress') return drawStress();
     return drawProfile();
   }
 
@@ -385,6 +423,37 @@ export function mount(context) {
       + `σ/a = ${data.relative_uncertainty.toExponential(1)} · ${drift} · `
       + `χ²ᵥ = ${formatNumber(data.reduced_chi_squared, 3)}`,
     );
+  }
+
+  /**
+   * The stress view draws the picture the method is named for: d against
+   * sin²ψ, one colour per azimuth, filled for ψ ≥ 0 and open for ψ < 0, with
+   * the weighted line of each azimuth and the prediction of the jointly fitted
+   * tensor. The full set of figures is in the report below it.
+   */
+  function drawStress() {
+    const data = state.result.data;
+    frame.configure({ toData: () => null, formatCursor: () => '' });
+    frame.setContent(renderStress(data));
+    const phi = symbolText('stress_azimuth');
+    legend.replaceChildren(...data.series.map((series, index) =>
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', {
+          style: `background:${AZIMUTH_COLORS[index % AZIMUTH_COLORS.length]}`,
+        }),
+        el('span', {
+          text: `${phi} = ${formatNumber(series.phi_deg, 1)}°: ${symbolText('sigma_phi')} = `
+            + `${formatNumber(series.sigma_phi_mpa, 0)} ± `
+            + `${formatNumber(series.sigma_phi_uncertainty_mpa, 0)} MPa`,
+        }),
+      ])));
+    const tensor = data.tensor;
+    frame.setStatus(tensor
+      ? Object.entries(tensor)
+        .map(([name, entry]) => `${symbolText(name)} = ${formatNumber(entry.value_mpa, 0)} ± `
+          + `${formatNumber(entry.uncertainty_mpa, 0)} MPa`)
+        .join(' · ') + ` · χ²ᵥ = ${formatNumber(data.reduced_chi_squared, 2)}`
+      : 'No stress tensor from these azimuths; each line still gives the stress along it.');
   }
 
   /** The legend names what the red mark means, which differs by plot kind. */
@@ -1240,6 +1309,130 @@ function renderWilliamsonHall(data) {
       fill: '#2563eb', 'fill-opacity': 0.85,
     }));
   }
+  return root;
+}
+
+/** Guess whether a pasted stress table holds whole scans or located peaks. */
+function stressTableKind(text) {
+  const rows = text.split(/\r?\n/)
+    .map((line) => line.split('#')[0].trim())
+    .filter((line) => line && /^[-+0-9.]/.test(line))
+    .map((line) => line.split(/[\s,;]+/));
+  const keys = new Set(rows.map((fields) => `${fields[0]} ${fields[1]}`));
+  // A scan table repeats each (phi, psi) once per measured point.
+  return rows.length > 2 * keys.size && rows.every((fields) => fields.length >= 4)
+    ? 'scans'
+    : 'positions';
+}
+
+/** d against sin²ψ for every azimuth of a stress result, on one axis. */
+function renderStress(data) {
+  const root = svg('svg', {
+    viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+    preserveAspectRatio: 'xMidYMid meet',
+    'aria-label': 'Interplanar spacing against sin squared psi for each azimuth',
+  });
+  const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
+  const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
+  let maxX = 0;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const series of data.series) {
+    series.sin2psi.forEach((x, index) => {
+      const d = series.d_angstrom[index];
+      const u = series.d_uncertainty_angstrom[index];
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, d - u);
+      maxY = Math.max(maxY, d + u);
+    });
+    for (const d of series.tensor_d_angstrom ?? []) {
+      minY = Math.min(minY, d);
+      maxY = Math.max(maxY, d);
+    }
+  }
+  maxX = maxX > 0 ? maxX * 1.05 : 1;
+  const padding = (maxY - minY) * 0.08 || 1e-4;
+  minY -= padding;
+  maxY += padding;
+  const xAt = (value) => MARGIN.left + (value / maxX) * plotWidth;
+  const yAt = (value) => MARGIN.top + (1 - (value - minY) / (maxY - minY)) * plotHeight;
+
+  for (let step = 0; step <= 4; step += 1) {
+    const value = minY + ((maxY - minY) * step) / 4;
+    const y = yAt(value);
+    root.append(
+      svg('line', {
+        x1: MARGIN.left, y1: y, x2: WIDTH - MARGIN.right, y2: y,
+        stroke: 'currentColor', 'stroke-opacity': step === 0 ? 0.5 : 0.1,
+        'stroke-width': step === 0 ? 1 : 0.6,
+      }),
+      svg('text', {
+        x: MARGIN.left - 12, y: y + 4, 'text-anchor': 'end', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.6, text: formatNumber(value, 5),
+      }),
+    );
+  }
+  const tickStep = niceStep(maxX, 6);
+  for (let value = 0; value <= maxX + 1e-9; value += tickStep) {
+    const x = xAt(value);
+    root.append(
+      svg('line', {
+        x1: x, y1: MARGIN.top, x2: x, y2: HEIGHT - MARGIN.bottom,
+        stroke: 'currentColor', 'stroke-opacity': 0.08, 'stroke-width': 0.6,
+      }),
+      svg('text', {
+        x, y: HEIGHT - MARGIN.bottom + 24, 'text-anchor': 'middle', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.65, text: formatNumber(value, 2),
+      }),
+    );
+  }
+  const psi = symbolText('stress_tilt');
+  root.append(
+    svg('text', {
+      x: MARGIN.left + plotWidth / 2, y: HEIGHT - 16, 'text-anchor': 'middle',
+      'font-size': 14, fill: 'currentColor', text: `sin²${psi}`,
+    }),
+    svg('text', {
+      x: 19, y: MARGIN.top + plotHeight / 2, 'text-anchor': 'middle',
+      'font-size': 14, fill: 'currentColor',
+      transform: `rotate(-90 19 ${MARGIN.top + plotHeight / 2})`,
+      text: 'd (Å)',
+    }),
+  );
+  data.series.forEach((series, index) => {
+    const color = AZIMUTH_COLORS[index % AZIMUTH_COLORS.length];
+    const top = Math.max(...series.sin2psi);
+    root.append(svg('line', {
+      x1: xAt(0), y1: yAt(series.intercept_angstrom),
+      x2: xAt(top), y2: yAt(series.intercept_angstrom + series.slope_angstrom * top),
+      stroke: color, 'stroke-width': 1.6,
+    }));
+    if (series.tensor_d_angstrom) {
+      const points = series.grid_sin2psi
+        .map((x, k) => `${xAt(x).toFixed(2)},${yAt(series.tensor_d_angstrom[k]).toFixed(2)}`);
+      root.append(svg('polyline', {
+        points: points.join(' '), fill: 'none', stroke: color, 'stroke-width': 1.1,
+        'stroke-dasharray': '5 4', 'stroke-opacity': 0.8,
+      }));
+    }
+    series.sin2psi.forEach((x, k) => {
+      const d = series.d_angstrom[k];
+      const u = series.d_uncertainty_angstrom[k];
+      const open = series.psi_deg[k] < 0;
+      root.append(
+        svg('line', {
+          x1: xAt(x), y1: yAt(d - u), x2: xAt(x), y2: yAt(d + u),
+          stroke: color, 'stroke-width': 1,
+        }),
+        svg('circle', {
+          cx: xAt(x), cy: yAt(d), r: 4.5,
+          fill: open ? 'white' : color, stroke: color, 'stroke-width': 1.5,
+        }, [svg('title', {
+          text: `${psi} = ${formatNumber(series.psi_deg[k], 2)}°, d = ${formatNumber(d, 6)} Å`,
+        })]),
+      );
+    });
+  });
   return root;
 }
 

@@ -25,6 +25,7 @@ from pytex.app.services import texture as texture
 from pytex.app.services import texture_analysis as texture_analysis
 from pytex.app.services import variants as variants
 from pytex.app.services import xrd as xrd
+from pytex.app.services import xrd_stress as xrd_stress
 
 __all__ = [
     "calculator",
@@ -42,4 +43,5 @@ __all__ = [
     "texture_analysis",
     "variants",
     "xrd",
+    "xrd_stress",
 ]

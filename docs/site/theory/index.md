@@ -78,6 +78,7 @@ reciprocal_space_and_kinematic_spots
 powder_xrd_and_saed
 phase_identification_from_powder_patterns
 precise_lattice_parameter_determination
+residual_stress_sin2psi
 saed_ratio_angle_indexing
 lattice_fit_and_solution_scoring
 kikuchi_bands_and_gnomonic_projection
@@ -113,4 +114,5 @@ steps, the calibrated tolerances, the worked cubic and hexagonal numbers, and th
 | {doc}`reciprocal_space_and_kinematic_spots` | {doc}`../algorithms/composite_saed_assembly` |
 | {doc}`phase_identification_from_powder_patterns` | {doc}`../algorithms/phase_identification` |
 | {doc}`precise_lattice_parameter_determination` | {doc}`../algorithms/precise_lattice_parameter_determination` |
+| {doc}`residual_stress_sin2psi` | {doc}`../algorithms/residual_stress_sin2psi` |
 | {doc}`ghost_problem_and_odd_harmonics` | {doc}`../algorithms/ghost_correction` |

@@ -155,6 +155,8 @@ index with cross-links to the matching implementation pages.
 - [Identifying A Phase Among Candidate Structures (algorithm)](site/algorithms/phase_identification.md)
 - [Precise Lattice-Parameter Determination](site/theory/precise_lattice_parameter_determination.md)
 - [Determining A Lattice Parameter Precisely (algorithm)](site/algorithms/precise_lattice_parameter_determination.md)
+- [Residual Stress by the sin²ψ Method](site/theory/residual_stress_sin2psi.md)
+- [Residual Stress by the sin²ψ Method (algorithm)](site/algorithms/residual_stress_sin2psi.md)
 - [Multislice HRTEM Simulation (algorithm)](site/algorithms/multislice_hrtem.md)
 - [Correcting The Ghosts In A Pole-Figure ODF (algorithm)](site/algorithms/ghost_correction.md)
 - [Ratio/Angle Indexing Of A Measured SAED Pattern](site/theory/saed_ratio_angle_indexing.md)

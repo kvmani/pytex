@@ -11,6 +11,38 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **Residual stress by the sin²ψ method, `pytex.diffraction.xrd_residual_stress`.** The position
+  of one reflection measured at several specimen tilts ψ and azimuths φ, against a given
+  stress-free spacing d₀, reduced to the stress tensor: biaxial (σ11, σ22, σ12), biaxial with
+  out-of-plane shear (+ σ13, σ23, from ψ-splitting) or triaxial, by one weighted linear
+  least-squares over every measurement, beside the classical d against sin²ψ line at each
+  azimuth (slope, ψ-splitting term, a sin⁴ψ curvature test). d₀ may instead be determined from
+  the data under plane stress.
+- **Diffraction elastic constants** `DiffractionElasticConstants`: isotropic (E, ν), or from
+  single-crystal stiffness under the Reuss, Voigt, Neerfeld–Hill or Kröner (self-consistent
+  Eshelby sphere) grain-interaction model for any crystal system, by averaging the grain response
+  about the plane normal in Mandel form. Tabulated stiffness for ferrite, nickel, aluminium,
+  copper, tungsten and α-titanium.
+- **Peak location with a standard uncertainty** (`locate_stress_peak`): a Kα1/Kα2 pseudo-Voigt
+  fit (default), or a parabola or a continuous centroid after Rachinger Kα2 stripping, with an
+  optional Lorentz-polarization-absorption correction for ω- or χ-tilting.
+- **An uncertainty budget**: statistical (Birge-scaled), d₀ and elastic-constant contributions,
+  combined per the GUM and propagated to the principal stresses, their direction and the von
+  Mises equivalent, with a batched Monte Carlo cross-check. `simulate_sin2psi_measurement`
+  generates scans of a known stress for learning and testing; `parse_stress_scans` and
+  `parse_stress_peak_positions` read measured tables.
+- **Workbench:** a **Residual stress (sin²ψ)** view in the XRD workspace (`xrd.residual_stress`)
+  draws d against sin²ψ per azimuth, loads a measurement file, and reports ten stages — the
+  tensor, the budget, the measurement, every peak fit, the sin²ψ lines, residuals and
+  correlations, linearity and ψ-splitting, the theory, the elastic constants and the algorithm —
+  with thirteen publication figures; **Report + figures** downloads it as Markdown, SVG and JSON.
+- Documentation: the theory note `docs/site/theory/residual_stress_sin2psi.md`, the algorithm
+  page, the generated geometry figure `docs/figures/sin2psi_geometry.svg`, seven computed worked
+  examples, the tutorial notebook `37_residual_stress_sin2psi`, and registry entries for the
+  stress symbols (standard uncertainty is written u(x) there, because σ is the stress).
+
 ## [0.11.0] - 2026-09-20
 
 ### Added

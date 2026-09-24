@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" width="640" height="440" role="img" aria-labelledby="sin2psi-title" font-family="DejaVu Sans, Arial, sans-serif">
+<title id="sin2psi-title">The sin²ψ measurement geometry: the specimen frame, the scattering vector at azimuth φ and tilt ψ, and the planes that diffract</title>
+<defs><marker id="axis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#374151"/></marker><marker id="vector" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker></defs>
+<rect width="640" height="440" fill="#ffffff"/>
+<polygon points="247.28,240.15 69.63,337.05 366.79,375.81 544.43,278.91" fill="#e5e7eb" fill-opacity="0.7" stroke="#374151" stroke-width="0.8"/>
+<line x1="300" y1="300" x2="190.27" y2="359.85" stroke="#374151" stroke-width="1.6" marker-end="url(#axis)"/>
+<line x1="300" y1="300" x2="483.54" y2="323.94" stroke="#374151" stroke-width="1.6" marker-end="url(#axis)"/>
+<line x1="300" y1="300" x2="300" y2="110.48" stroke="#374151" stroke-width="1.6" marker-end="url(#axis)"/>
+<text x="175.92" y="374.41" fill="#111827" font-size="15" text-anchor="middle">S1</text>
+<text x="505.78" y="330.54" fill="#111827" font-size="15" text-anchor="middle">S2</text>
+<text x="308" y="101.45" fill="#111827" font-size="15" text-anchor="start">S3 (surface normal)</text>
+<line x1="300" y1="300" x2="375.94" y2="336.96" stroke="#1d4ed8" stroke-width="1.3" stroke-dasharray="6 4"/>
+<line x1="375.94" y1="336.96" x2="375.94" y2="220.93" stroke="#1d4ed8" stroke-width="0.9" stroke-dasharray="3 3"/>
+<polygon points="361.93,224.04 315.67,233.91 332.24,277.92 378.49,268.05" fill="#0f766e" fill-opacity="0.16" stroke="#0f766e" stroke-width="0.9"/>
+<polygon points="371.04,214.55 324.78,224.42 341.35,268.43 387.61,258.56" fill="#0f766e" fill-opacity="0.16" stroke="#0f766e" stroke-width="0.9"/>
+<polygon points="380.15,205.06 333.9,214.93 350.46,258.95 396.72,249.08" fill="#0f766e" fill-opacity="0.16" stroke="#0f766e" stroke-width="0.9"/>
+<line x1="300" y1="300" x2="375.94" y2="220.93" stroke="#b45309" stroke-width="2.4" marker-end="url(#vector)"/>
+<text x="388.5" y="214.19" fill="#b45309" font-size="15" text-anchor="start">m (scattering vector)</text>
+<polyline points="266.56,318.24 269.14,318.55 271.79,318.83 274.49,319.06 277.24,319.26 280.05,319.42 282.89,319.53 285.77,319.61 288.68,319.64 291.61,319.64 294.56,319.59 297.53,319.5 300.49,319.38 303.46,319.21 306.42,319 309.36,318.75 312.29,318.47 315.19,318.14 318.06,317.78 320.89,317.38 323.67,316.95 326.41,316.48 329.1,315.98 331.72,315.44" fill="none" stroke="#1d4ed8" stroke-width="1.5"/>
+<text x="298.76" y="338.31" fill="#1d4ed8" font-size="18" text-anchor="middle" font-style="italic">φ</text>
+<polyline points="300,224.19 301.58,225.01 303.16,225.94 304.73,226.98 306.29,228.12 307.85,229.37 309.4,230.72 310.93,232.17 312.44,233.71 313.94,235.35 315.42,237.09 316.88,238.91 318.31,240.82 319.71,242.82 321.09,244.9 322.44,247.06 323.75,249.29 325.03,251.6 326.28,253.98 327.48,256.43 328.65,258.93 329.77,261.5 330.86,264.12 331.89,266.79" fill="none" stroke="#b45309" stroke-width="1.5"/>
+<text x="328.95" y="228.4" fill="#b45309" font-size="18" text-anchor="middle" font-style="italic">ψ</text>
+<text x="364.77" y="284.4" fill="#0f766e" font-size="12" text-anchor="start">diffracting (hkl) planes</text>
+<text x="20" y="30" fill="#111827" font-size="15" font-weight="bold">The sin²ψ measurement geometry</text>
+<text x="20" y="52" fill="#374151" font-size="12">m = (cos φ sin ψ, sin φ sin ψ, cos ψ);  ε(φ,ψ) = (d − d₀)/d₀ = m·ε·m</text>
+<text x="20" y="422" fill="#374151" font-size="12">Drawn at φ = 60°, ψ = 50°. φ is measured in the surface from S1 towards S2; ψ from S3.</text>
+</svg>

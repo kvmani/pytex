@@ -192,6 +192,32 @@ one a given control means even though the glyph is the same.
 | $F_{N}$ | Smith-Snyder figure of merit, $N / (\langle|\Delta 2\theta|\rangle N_{\mathrm{poss}})$. |
 | $R_{wp}$ | Weighted profile residual of a whole-pattern fit. |
 
+### Residual stress by the sin²ψ method
+
+Standard uncertainty is written $u(x)$ throughout this section and its module, following the
+GUM, because $\sigma$ is the stress. The $\psi$ and $\varphi$ here are specimen tilt and azimuth of
+a diffractometer measurement; they are scoped to this section and distinct from the pole-figure
+polar angle and the Bunge angles, although $\psi$ is measured from the same specimen $+Z$ axis.
+
+| Symbol | Meaning |
+| --- | --- |
+| $\psi$ | Tilt of the scattering vector from the specimen surface normal $S_3$. Its sign matters when out-of-plane shear is present. |
+| $\varphi$ | Azimuth of the tilt plane in the specimen surface, measured from $S_1$ towards $S_2$. |
+| $\mathbf{m}$ | Specimen-frame unit scattering vector $(\cos\varphi\sin\psi, \sin\varphi\sin\psi, \cos\psi)$. |
+| $\varepsilon_{\varphi\psi}$ | Lattice strain measured along $\mathbf{m}$, $(d_{\varphi\psi} - d_{0})/d_{0} = \mathbf{m}\cdot\boldsymbol{\varepsilon}\cdot\mathbf{m}$. |
+| $d_{0}$ | Stress-free interplanar spacing of the stress reflection. |
+| $a_{0}, c_{0}$ | Stress-free lattice parameters from which $d_{0}$ is computed. |
+| $\sigma_{ij}$ | Components of the macroscopic (type I) stress tensor in the specimen frame $S_1 S_2 S_3$; tensile positive, in MPa. |
+| $\sigma_{\varphi}$ | Normal stress along azimuth $\varphi$ in the surface, $\sigma_{11}\cos^{2}\varphi + \sigma_{12}\sin 2\varphi + \sigma_{22}\sin^{2}\varphi$. |
+| $\tau_{\varphi}$ | Out-of-plane shear along azimuth $\varphi$, $\sigma_{13}\cos\varphi + \sigma_{23}\sin\varphi$. Splits $d$ against $\sin^{2}\psi$ into $\psi>0$ and $\psi<0$ branches. |
+| $\sigma_{\mathrm{I}}, \sigma_{\mathrm{II}}$ | In-plane principal stresses, $\sigma_{\mathrm{I}} \ge \sigma_{\mathrm{II}}$. |
+| $S_{1}, \tfrac{1}{2}S_{2}$ | Diffraction (X-ray) elastic constants of a reflection: $\varepsilon_{\varphi\psi} = \tfrac{1}{2}S_{2}\,\mathbf{m}\cdot\boldsymbol{\sigma}\cdot\mathbf{m} + S_{1}\operatorname{tr}\boldsymbol{\sigma}$. For an isotropic solid $S_{1} = -\nu/E$ and $\tfrac{1}{2}S_{2} = (1+\nu)/E$. Quoted in $\mathrm{TPa}^{-1}$. |
+| $E, \nu$ | Young's modulus and Poisson's ratio of an isotropic solid. |
+| $\Gamma$ | Cubic orientation parameter $(h^{2}k^{2} + k^{2}l^{2} + l^{2}h^{2})/(h^{2}+k^{2}+l^{2})^{2}$ on which the Reuss constants of a cubic reflection depend linearly. Numerically the $J$ of the elastic-properties table evaluated at the plane normal. |
+| $a_{1}, a_{2}$ | Branch mean $(d_{+} + d_{-})/2$ and half-difference $(d_{+} - d_{-})/2$ at one $\lvert\psi\rvert$: the psi-splitting (Dölle–Hauk) evaluation. |
+| $u(x)$ | Standard uncertainty of $x$. |
+| $\chi^{2}_{\nu}$ | Reduced chi-squared of a weighted fit; its square root scales the statistical uncertainty when it exceeds one (the Birge ratio). |
+
 ### Miller indices and crystallographic geometry
 
 | Symbol | Meaning |

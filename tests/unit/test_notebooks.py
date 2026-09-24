@@ -19,6 +19,7 @@ PRIORITY_NOTEBOOKS = (
     "15_structure_diffraction_visualization_pipeline.ipynb",
     "33_quantitative_xrd_background_instrument_and_rietveld.ipynb",
     "34_precise_lattice_parameters.ipynb",
+    "37_residual_stress_sin2psi.ipynb",
 )
 
 

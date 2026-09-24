@@ -69,6 +69,7 @@ documents so the code and the description cannot drift apart.
 | --- | --- |
 | {doc}`phase_identification` | Continuous wavelet peak detection, bipartite Hungarian matching, and multi-criteria figure of merit |
 | {doc}`precise_lattice_parameter_determination` | Doublet-constrained profile fitting, iterative re-indexing, and generalized Cohen least-squares |
+| {doc}`residual_stress_sin2psi` | Diffraction elastic constants (Reuss, Voigt, Kröner), LPA-corrected peak location, and the weighted sin²ψ stress-tensor fit with its uncertainty budget |
 | {doc}`rietveld_refinement` | Whole-pattern profile least squares, Caglioti instrumental broadening, and March–Dollase texture fitting |
 
 ## Conventions and units
@@ -103,6 +104,7 @@ cbed_thickness_and_symmetry
 multislice_hrtem
 phase_identification
 precise_lattice_parameter_determination
+residual_stress_sin2psi
 pole_figure_inversion
 ghost_correction
 ipf_coloring

@@ -503,7 +503,7 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
 
   // Every registered view must be reachable from the strip, so a view added to
   // the panel without a tab -- which is a view no user can open -- fails here.
-  await expect(page.locator('#subtabs .viewtab')).toHaveCount(6);
+  await expect(page.locator('#subtabs .viewtab')).toHaveCount(7);
   await expect(
     page.locator('#subtabs .viewtab[aria-selected="true"]'),
   ).toHaveText('Powder XRD pattern');
@@ -564,6 +564,25 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   ).toBeVisible();
   await expect(stages).toHaveCount(3);
 
+  // The stress view draws d against sin²ψ for every azimuth and reports the
+  // tensor on its status line; its report runs result, evidence, diagnostics,
+  // method, with the figure the method is named for among the evidence.
+  await expectNewCompletedCalculation(page, () =>
+    view('xrd.residual_stress').then(() =>
+      page.getByRole('button', { name: 'Determine the stress', exact: true }).click(),
+    ),
+  );
+  await expect(
+    page.locator('#stage svg[aria-label="Interplanar spacing against sin squared psi for each '
+      + 'azimuth"]'),
+  ).toBeVisible({ timeout: STAGE_TIMEOUT_MS });
+  await expect(status).toContainText('MPa', { timeout: STAGE_TIMEOUT_MS });
+  await expect(status).toContainText('χ²');
+  await expect(stages).toHaveCount(10, { timeout: STAGE_TIMEOUT_MS });
+  await expect(stages.first()).toHaveAttribute('data-stage', 'stress_tensor');
+  await expect(page.locator('#stage .result-figure[data-figure="d_vs_sin2psi"] img'))
+    .toBeVisible({ timeout: STAGE_TIMEOUT_MS });
+
   await expectNewCompletedCalculation(page, () =>
     view('xrd.rietveld').then(() =>
       page.getByRole('button', { name: 'Refine against the scan', exact: true }).click(),
@@ -604,6 +623,39 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
       + 'calculated line positions"]'),
   ).toBeVisible();
 
+  expect(browserErrors).toEqual([]);
+});
+
+test('a stress measurement file is read into the form and analysed', async ({ page }) => {
+  test.setTimeout(180_000);
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'XRD');
+  await page.locator('#subtabs .viewtab[data-view="xrd.residual_stress"]').click();
+  // Located peaks of a compressive stress at three azimuths: the loader must
+  // recognize a peak table (one row per tilt) and say so in the form, and the
+  // analysis must then return a tensor from it.
+  const rows = ['# phi psi two_theta'];
+  for (const phi of [0, 45, 90]) {
+    for (const psi of [-45, -30, 0, 30, 45]) {
+      const s2 = Math.sin((psi * Math.PI) / 180) ** 2;
+      rows.push(`${phi} ${psi} ${(156.1 + (0.35 - 0.1 * phi / 90) * s2).toFixed(5)}`);
+    }
+  }
+  await page.locator('#rail-body input[type="file"][accept*=".tsv"]').setInputFiles({
+    name: 'peaks.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(rows.join('\n')),
+  });
+  const source = page.locator('#rail-body select').filter({ hasText: 'Measured peak positions' });
+  await expect(source).toHaveValue('positions');
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Determine the stress', exact: true }).click(),
+  );
+  await expect(page.locator('#stage .plot__status').first()).toContainText('MPa', {
+    timeout: STAGE_TIMEOUT_MS,
+  });
+  await expect(page.locator('#stage details.stage[data-stage="measurement"]'))
+    .toContainText('supplied peak positions', { timeout: STAGE_TIMEOUT_MS });
   expect(browserErrors).toEqual([]);
 });
 

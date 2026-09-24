@@ -8564,6 +8564,35 @@ publication-quality figures.
     cross-checks, and the profile fit is the default.
   - With d0 known the shear components are identifiable from psi > 0 alone, only worse
     conditioned; they are not refused.
-- Increment 2 - workbench operation, report stages, figures, JS view.
-- Increment 3 - theory note, algorithm page, registry symbols, worked examples, notebook,
-  changelog, atlas.
+- Increment 2 - workbench operation, report stages, figures, JS view (landed).
+  `xrd.residual_stress` in `pytex.app.services.xrd_stress`, figures and warnings in
+  `xrd_stress_report`: ten report stages (tensor, budget, measurement, peak positions, sin²ψ
+  lines, residuals and correlations, linearity and ψ-splitting, theory, elastic constants,
+  algorithm) with thirteen publication figures; the generic **Report + figures** export is the
+  downloadable report (report.md + figures/*.svg + result.json). Data sources: demonstration of
+  a known stress, pasted/opened scan tables (φ ψ 2θ I), pasted/opened peak tables (φ ψ 2θ [u]).
+  XRD panel gains the view, a d-vs-sin²ψ drawing and an **Open a measurement file** loader.
+  Symbols registered in `pytex.core.symbols` and the registry (σij, σφ, ψ, φ, S₁, ½S₂, d₀, a₀,
+  c₀, E, ν, C11/C12/C44). Tests: `tests/unit/test_app_xrd_stress.py` (14), two Playwright tests.
+  Findings: correlation warnings must be judged on the statistical covariance - the combined one
+  carries d0, which correlates everything when u(d0) dominates; a d0 error also leaks into σ12
+  with the 0/45/90 azimuth set, because the joint fit trades slopes against intercepts.
+- Increment 3 - documentation (landed with increment 2). Theory note
+  `docs/site/theory/residual_stress_sin2psi.md`, algorithm page
+  `docs/site/algorithms/residual_stress_sin2psi.md`, generated geometry figure
+  `docs/figures/sin2psi_geometry.svg` (`scripts/generate_residual_stress_figures.py`, pinned
+  byte-for-byte by `tests/unit/test_residual_stress_figures.py`), seven worked examples
+  (`worked_examples/examples/residual_stress.py`), notebook `37_residual_stress_sin2psi`,
+  indexes, README, changelog.
+
+### Verification of record
+
+- Library, app, manifest, stages, export, server, symbols, notebooks, worked examples, atlas,
+  docs-policy, docstring and integrity suites green on Windows (Python 3.13).
+- Playwright against a fresh server on :8777: `every XRD analysis view runs...` and `a stress
+  measurement file is read into the form and analysed` 2/2.
+- Sphinx zero-warning build: run after this commit (see next entry).
+
+### Next actions
+
+- Confirm the Sphinx build; then the goal is met.
