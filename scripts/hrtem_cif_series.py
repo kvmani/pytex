@@ -22,7 +22,7 @@ import numpy as np
 from pymatgen.core import Structure
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 from pytex.diffraction.hrem import AtomicSnapshot, DoubleCorrectionMode, MicroscopeAberrations
 from pytex.diffraction.multislice import TemporalCoherence, multislice
@@ -122,7 +122,7 @@ def save_tableau(
                 axes[i, j].set_title(f"Δf = {defoci[j]:.0f} Å", fontsize=9)
             if j == 0:
                 axes[i, j].set_ylabel(f"t = {thicknesses[i]:.1f} Å", fontsize=9)
-    fig.suptitle("HRTEM defocus–thickness tableau (common intensity scale)")
+    fig.suptitle("HRTEM defocus-thickness tableau (common intensity scale)")
     fig.tight_layout()
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
@@ -272,7 +272,9 @@ def parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--cs-um", type=float, default=0.0, help="Residual third-order Cs in µm")
     p.add_argument("--c5-mm", type=float, default=0.0, help="Residual fifth-order C5 in mm")
-    p.add_argument("--focal-spread", type=float, default=5.0, help="Gaussian focal-spread σ in Å")
+    p.add_argument(
+        "--focal-spread", type=float, default=5.0, help="Gaussian focal-spread sigma in Å"
+    )
     p.add_argument("--convergence", type=float, default=0.2, help="Convergence semi-angle in mrad")
     p.add_argument(
         "--aperture",

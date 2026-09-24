@@ -12,7 +12,7 @@ from scripts.hrtem_cif_series import inclusive_range, load_cif_snapshot
 
 def _write_cif(path: Path, *, gamma: float = 90.0) -> None:
     path.write_text(
-        """data_md_snapshot
+        f"""data_md_snapshot
 _cell_length_a 4.0
 _cell_length_b 6.0
 _cell_length_c 8.0
@@ -28,7 +28,7 @@ _atom_site_fract_y
 _atom_site_fract_z
 Fe1 Fe 0.25 0.50 0.75
 Fe2 Fe 0.75 0.25 0.25
-""".format(gamma=gamma),
+""",
         encoding="utf-8",
     )
 
