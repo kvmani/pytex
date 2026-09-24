@@ -8514,3 +8514,56 @@ tabs`.
   A warm server passed them before as well - the change is for the cold Linux runner, and
   the proof that the diagnosis is right is the CI page snapshot, not this run.
 - Not verified here: the Ubuntu browser job itself, which only CI runs.
+
+## Goal - residual stress by the sin²ψ method (opened 2026-09-24)
+
+### Objective
+
+A new XRD sub-module that determines residual stress by the sin²ψ method: peak positions
+measured at several specimen tilts ψ and azimuths φ, converted to lattice strain against a
+given stress-free spacing d₀, and reduced to the in-plane (optionally full) stress tensor.
+It must plot the raw fitted peaks and d against sin²ψ (the slope is the stress), report every
+intermediate result with its theory, mathematics, algorithm and uncertainty - to the standard
+of the precise-lattice-parameter sub-module - and export a downloadable report with
+publication-quality figures.
+
+### Decisions
+
+- Library module `pytex.diffraction.xrd_residual_stress`; workbench operation
+  `xrd.residual_stress` in its own service module `pytex.app.services.xrd_stress` with the
+  report and figures in `pytex.app.services.xrd_stress_report`. The downloadable report is
+  the existing generic "Report + figures" export (Markdown + SVG + JSON), fed by stages.
+- Standard uncertainty is written u(x) in this module (GUM), never σ, because σ is the stress.
+- Diffraction elastic constants: isotropic (E, ν), and from single-crystal stiffness by the
+  Reuss, Voigt, Neerfeld-Hill and Kröner (self-consistent, Eshelby sphere) grain-interaction
+  models, computed for any crystal system by averaging about the plane normal.
+- Stress states: biaxial (σ11, σ22, σ12), biaxial with shear (+σ13, σ23; needs ±ψ), and
+  triaxial (all six; needs an exact d₀). Optional d₀ refinement under plane stress.
+- Uncertainty budget: profile-fit (propagated), scatter (Birge-scaled), d₀, DEC, combined in
+  quadrature, and a Monte Carlo cross-check of the linear propagation.
+
+### Increments
+
+- Increment 1 - library module with tests (landed).
+  `pytex.diffraction.xrd_residual_stress`: `DiffractionElasticConstants` (isotropic; Reuss,
+  Voigt, Neerfeld-Hill, Kroener from single-crystal stiffness in Mandel form, averaged about
+  the plane normal - any crystal system), `locate_stress_peak` (pseudo-Voigt doublet fit;
+  parabola and continuous windowed centroid after Rachinger stripping via the existing
+  `xrd_corrections.strip_kalpha2`; optional LPA correction), `fit_sin2psi_lines` (slope,
+  psi-splitting, curvature t-test), `determine_residual_stress` (weighted LSQ for biaxial /
+  biaxial+shear / triaxial; optional d0 refinement; budget = statistical (Birge) + d0 + DEC;
+  batched Monte Carlo), `simulate_sin2psi_measurement`, table readers. 41 tests in
+  `tests/unit/test_xrd_residual_stress.py`. Class atlas regenerated (333 / 311).
+  Findings worth keeping:
+  - An unstripped Cr K-alpha doublet at 2theta ~ 156 degrees biases a parabola by >100 MPa,
+    because the blend changes shape with tilt; stripping removes it (pinned by a test).
+  - A centroid whose window is re-centred on itself is a fixed point: its uncertainty needs
+    the 1/(1 - dF/dc) factor (~2.5 at half-maximum edges). Without it chi2_nu was ~7.
+  - Over 40 noise seeds the pseudo-Voigt route is unbiased with z-spread ~1; parabola and
+    centroid carry a 1-2 u bias from Lorentzian tails in the end-point background - they are
+    cross-checks, and the profile fit is the default.
+  - With d0 known the shear components are identifiable from psi > 0 alone, only worse
+    conditioned; they are not refused.
+- Increment 2 - workbench operation, report stages, figures, JS view.
+- Increment 3 - theory note, algorithm page, registry symbols, worked examples, notebook,
+  changelog, atlas.
