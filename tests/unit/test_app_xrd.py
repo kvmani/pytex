@@ -90,6 +90,7 @@ _EXAMPLE_ABSCISSA = {
     "xrd.rietveld": "two_theta_deg",
     "xrd.size_strain": "abscissa",
     "xrd.lattice_parameters": "abscissa",
+    "xrd.residual_stress": "series",
 }
 
 
@@ -107,6 +108,9 @@ def test_every_xrd_example_is_canonical_and_runnable() -> None:
         "xrd.example.lattice_average_fails",
         "xrd.example.lattice_cohen_extrapolation",
         "xrd.example.lattice_hexagonal_le_bail",
+        "xrd.residual_stress.ferrite_shot_peened",
+        "xrd.residual_stress.psi_splitting",
+        "xrd.residual_stress.nickel_cu",
     }
     for example in examples:
         result = REGISTRY.call(example.operation, example.request)
