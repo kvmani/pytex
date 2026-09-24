@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import html
 import io
 import json
 import zipfile
@@ -48,6 +49,7 @@ __all__ = [
     "export_result",
     "result_to_bundle",
     "result_to_csv",
+    "result_to_html",
     "result_to_json",
     "result_to_markdown",
     "result_to_xlsx",
@@ -80,13 +82,22 @@ EXPORT_FORMATS: dict[str, dict[str, str]] = {
         "extension": "md",
         "description": "A readable report: what was computed, from what, with the sources.",
     },
+    "html": {
+        "label": "Printable report",
+        "mime": "text/html; charset=utf-8",
+        "extension": "html",
+        "description": (
+            "The report as one self-contained web page with every figure: open it in any "
+            "browser, or print it to PDF."
+        ),
+    },
     "zip": {
         "label": "Report + figures",
         "mime": "application/zip",
         "extension": "zip",
         "description": (
-            "The report with every figure as a separate SVG file, and the complete result as "
-            "JSON."
+            "The report (Markdown and printable HTML) with every figure as a separate SVG "
+            "file, and the complete result as JSON."
         ),
     },
 }
@@ -317,6 +328,249 @@ def result_to_markdown(
     return "\n".join(lines).encode("utf-8")
 
 
+_HTML_STYLE = """
+:root { color-scheme: light; }
+body { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; color: #111827;
+  background: #ffffff; max-width: 60rem; margin: 2.5rem auto; padding: 0 1.25rem;
+  line-height: 1.5; font-size: 11pt; }
+h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 0.4rem; }
+h2 { font-size: 1.3rem; border-bottom: 2px solid #111827; padding-bottom: 0.2rem;
+  margin-top: 2.2rem; }
+h3 { font-size: 1.1rem; margin-top: 1.6rem; }
+h1, h2, h3, figcaption, table, .meta { font-family: "Inter", "Segoe UI", Arial, sans-serif; }
+.meta { color: #4b5563; font-size: 0.85rem; margin-bottom: 1.2rem; }
+.summary { font-size: 1.05rem; }
+.warning { border-left: 4px solid #dc2626; background: #fef2f2; padding: 0.5rem 0.8rem;
+  margin: 0.5rem 0; }
+.check { color: #b45309; font-size: 0.85rem; font-weight: 600; }
+table { border-collapse: collapse; margin: 0.8rem 0; font-size: 0.8rem; width: 100%; }
+caption { text-align: left; font-style: italic; color: #374151; padding-bottom: 0.3rem; }
+th, td { border-bottom: 1px solid #d1d5db; padding: 0.25rem 0.5rem; text-align: left;
+  vertical-align: top; }
+th { border-bottom: 2px solid #6b7280; }
+td.number { text-align: right; font-variant-numeric: tabular-nums; }
+figure { margin: 1.2rem 0; page-break-inside: avoid; break-inside: avoid; }
+figure img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+figcaption { font-size: 0.85rem; color: #374151; margin-top: 0.4rem; }
+figcaption strong { color: #111827; }
+.explanation { white-space: pre-line; background: #f9fafb; border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.9rem; font-size: 0.92rem; }
+.explanation::before { content: "How to read this. "; font-weight: 600; }
+.sources li { font-size: 0.9rem; }
+@media print {
+  body { margin: 0; max-width: none; font-size: 10pt; }
+  h2 { page-break-after: avoid; break-after: avoid; }
+  h3 { page-break-after: avoid; break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+"""
+
+
+def result_to_html(result: Mapping[str, Any]) -> bytes:
+    """Write the result as one self-contained, printable web page.
+
+    Purpose
+    -------
+    The Markdown report is readable as text and renders in most viewers, but
+    it is not a document a reader can simply open, read with its figures in
+    place, and print. This is the same report, in the same order (see
+    :func:`result_to_markdown`), as a single HTML file: every figure embedded as
+    an SVG data URL, the tables as tables, a stylesheet that paginates sensibly
+    when printed to PDF, and no external resource of any kind, so it reads the
+    same offline, attached to an e-mail, or archived with a data set.
+
+    Nothing is recomputed: every number and every word comes from the result
+    payload, exactly as the other formats write it.
+    """
+
+    def text(value: Any) -> str:
+        return html.escape(str(value if value is not None else ""))
+
+    def figure_block(figure: Mapping[str, Any]) -> list[str]:
+        title = text(figure.get("title") or figure.get("key") or "Figure")
+        parts = [
+            "<figure>",
+            f'<img src="{_embedded_figure(figure)}" alt="{title}">',
+            f"<figcaption><strong>{title}.</strong> {text(figure.get('caption') or '')}",
+        ]
+        interpretation = str(figure.get("interpretation") or "").strip()
+        if interpretation:
+            parts.append(f"<br><em>What it shows.</em> {text(interpretation)}")
+        parts.append("</figcaption></figure>")
+        return parts
+
+    def metric_table(metrics: Sequence[Mapping[str, Any]]) -> list[str]:
+        rows = [
+            "<tr>"
+            f"<td>{text(metric.get('label'))}</td>"
+            f'<td class="number">{text(_format_metric(metric.get("value")))}</td>'
+            f"<td>{text(metric.get('units') or '')}</td>"
+            "</tr>"
+            for metric in metrics
+        ]
+        return [
+            "<table><thead><tr><th>Quantity</th><th>Value</th><th>Units</th></tr></thead>",
+            "<tbody>",
+            *rows,
+            "</tbody></table>",
+        ]
+
+    def rows_table(
+        columns: Sequence[Mapping[str, Any]],
+        rows: Sequence[Mapping[str, Any]],
+        caption: str = "",
+    ) -> list[str]:
+        head = "".join(
+            f"<th>{text(column['label'])}"
+            + (f" ({text(column['units'])})" if column.get("units") else "")
+            + "</th>"
+            for column in columns
+        )
+        body = []
+        for row in rows:
+            cells = []
+            for column in columns:
+                value = row.get(column["key"])
+                numeric = bool(column.get("numeric")) and isinstance(value, int | float)
+                if numeric and isinstance(value, float) and column.get("digits") is not None:
+                    shown = f"{value:.{int(column['digits'])}f}"
+                else:
+                    shown = _markdown_cell(value).replace("\\|", "|")
+                cells.append(
+                    f'<td class="number">{text(shown)}</td>'
+                    if numeric
+                    else f"<td>{text(shown)}</td>"
+                )
+            body.append("<tr>" + "".join(cells) + "</tr>")
+        return [
+            "<table>",
+            f"<caption>{text(caption)}</caption>" if caption else "",
+            f"<thead><tr>{head}</tr></thead>",
+            "<tbody>",
+            *body,
+            "</tbody></table>",
+        ]
+
+    def stage_block(stage: Mapping[str, Any]) -> list[str]:
+        marker = (
+            ' <span class="check">(check this)</span>'
+            if str(stage.get("status") or "ok") == "warning"
+            else ""
+        )
+        parts = [f"<h3>{text(stage.get('title', ''))}{marker}</h3>"]
+        summary = str(stage.get("summary") or "").strip()
+        if summary:
+            parts.append(f"<p>{text(summary)}</p>")
+        metrics = list(stage.get("metrics") or ())
+        if metrics:
+            parts += metric_table(metrics)
+        for figure in stage.get("figures") or ():
+            parts += figure_block(figure)
+        table = stage.get("table") or {}
+        if table.get("columns") and table.get("rows"):
+            parts += rows_table(table["columns"], table["rows"], str(table.get("caption") or ""))
+        explanation = str(stage.get("explanation") or "").strip()
+        if explanation:
+            parts.append(f'<div class="explanation">{text(explanation)}</div>')
+        return parts
+
+    title = text(result.get("title", "PyTex result"))
+    exported = datetime.now(UTC).isoformat(timespec="seconds")
+    body: list[str] = [
+        f"<h1>{title}</h1>",
+        f'<div class="meta">Produced by PyTex · exported {exported}</div>',
+    ]
+    summary = str(result.get("summary") or "").strip()
+    if summary:
+        body.append(f'<p class="summary">{text(summary)}</p>')
+    highlights = list(result.get("highlights") or ())
+    if highlights:
+        body += ["<h2>Result and reliability</h2>", *metric_table(highlights)]
+    warnings = [str(item) for item in (result.get("warnings") or ())]
+    if warnings:
+        body.append("<h2>Warnings</h2>")
+        body += [f'<p class="warning"><strong>Warning.</strong> {text(w)}</p>' for w in warnings]
+    for figure in result.get("figures") or ():
+        body += figure_block(figure)
+
+    stages = list(result.get("stages") or ())
+    table = result.get("table") or {}
+    data_table = (
+        [
+            "<h3>Data</h3>",
+            *rows_table(table["columns"], table["rows"], str(table.get("caption") or "")),
+        ]
+        if table.get("columns") and table.get("rows")
+        else []
+    )
+    if any(stage.get("section") for stage in stages):
+        for section, heading in REPORT_SECTIONS.items():
+            members = [stage for stage in stages if stage.get("section") == section]
+            extra = data_table if section == "audit" else []
+            if section == "audit":
+                data_table = []
+            if not members and not extra:
+                continue
+            if section == "result" and highlights:
+                heading = "Result in detail"
+            body.append(f"<h2>{text(heading)}</h2>")
+            for stage in members:
+                body += stage_block(stage)
+            body += extra
+        loose = [stage for stage in stages if not stage.get("section")]
+        if loose:
+            body.append("<h2>Further stages</h2>")
+            for stage in loose:
+                body += stage_block(stage)
+        body += data_table
+    else:
+        body += data_table
+        if stages:
+            body.append("<h2>How the result was reached</h2>")
+            for stage in stages:
+                body += stage_block(stage)
+
+    notes = [str(note) for note in (result.get("notes") or ())]
+    if notes:
+        body += ["<h2>Notes</h2>", "<ul>", *(f"<li>{text(note)}</li>" for note in notes), "</ul>"]
+    inputs = result.get("inputs") or {}
+    if inputs:
+        rows = []
+        for key, value in sorted(inputs.items()):
+            rendered = value if isinstance(value, str | int | float | bool) else json.dumps(value)
+            rows.append(f"<tr><td>{text(key)}</td><td>{text(rendered)}</td></tr>")
+        body += [
+            "<h2>Inputs</h2>",
+            "<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>",
+            *rows,
+            "</tbody></table>",
+        ]
+    citations = [str(item) for item in (result.get("citations") or ())]
+    if citations:
+        body += [
+            "<h2>Sources</h2>",
+            '<ol class="sources">',
+            *(f"<li>{text(citation)}</li>" for citation in citations),
+            "</ol>",
+        ]
+    document = [
+        "<!DOCTYPE html>",
+        '<html lang="en">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        f"<title>{title}</title>",
+        f"<style>{_HTML_STYLE}</style>",
+        "</head>",
+        "<body>",
+        *(line for line in body if line),
+        "</body>",
+        "</html>",
+        "",
+    ]
+    return "\n".join(document).encode("utf-8")
+
+
 def result_to_bundle(result: Mapping[str, Any]) -> bytes:
     """Write a zip holding the report, every figure as its own file, and the JSON.
 
@@ -342,6 +596,7 @@ def result_to_bundle(result: Mapping[str, Any]) -> bytes:
             archive.writestr(
                 f"figures/{_slug(str(figure['key']))}.svg", str(figure["svg"]).encode("utf-8")
             )
+        archive.writestr("report.html", result_to_html(result))
         archive.writestr("result.json", result_to_json(result))
     return buffer.getvalue()
 
@@ -392,7 +647,9 @@ def _format_metric(value: Any) -> Any:
     return value
 
 
-def _rows_table(columns: Sequence[Mapping[str, Any]], rows: Sequence[Mapping[str, Any]]) -> list[str]:
+def _rows_table(
+    columns: Sequence[Mapping[str, Any]], rows: Sequence[Mapping[str, Any]]
+) -> list[str]:
     headers = [
         f"{column['label']} / {column['units']}" if column.get("units") else column["label"]
         for column in columns
@@ -419,9 +676,7 @@ def _data_table(result: Mapping[str, Any]) -> list[str]:
     return lines + _rows_table(columns, rows)
 
 
-def _stage_block(
-    stage: Mapping[str, Any], link: Callable[[Mapping[str, Any]], str]
-) -> list[str]:
+def _stage_block(stage: Mapping[str, Any], link: Callable[[Mapping[str, Any]], str]) -> list[str]:
     status = str(stage.get("status") or "ok")
     marker = " (check this)" if status == "warning" else ""
     lines = [f"### {stage.get('title', '')}{marker}", ""]
@@ -477,6 +732,7 @@ def export_result(result: Mapping[str, Any], *, fmt: str) -> tuple[bytes, str, s
         "xlsx": result_to_xlsx,
         "json": result_to_json,
         "md": result_to_markdown,
+        "html": result_to_html,
         "zip": result_to_bundle,
     }
     payload = writers[fmt](result)

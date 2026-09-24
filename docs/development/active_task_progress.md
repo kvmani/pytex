@@ -8591,8 +8591,20 @@ publication-quality figures.
   docs-policy, docstring and integrity suites green on Windows (Python 3.13).
 - Playwright against a fresh server on :8777: `every XRD analysis view runs...` and `a stress
   measurement file is read into the form and analysed` 2/2.
-- Sphinx zero-warning build: run after this commit (see next entry).
+- Sphinx zero-warning build (`scripts/check_sphinx_warnings.py --max-warnings 0`): passed, 0
+  warnings, with the new theory note, algorithm page, gallery page and notebook 37 executed.
 
-### Next actions
+- Increment 4 - a printable report (landed). A report a reader can open and print was missing:
+  Markdown renders unevenly and the zip needs unpacking. `pytex.app.export.result_to_html` writes
+  the Markdown report's content, in the same order, as one self-contained HTML page (figures as
+  SVG data URLs, a print stylesheet, no external resource); export format `html` ("Printable
+  report") is offered on every result beside Report and Report + figures, and `report.html` is
+  added to the bundle. Tests in `test_app_export.py` (TestHtmlReport), the bundle pins in
+  `test_app_figures.py` and `test_app_xrd_stress.py`, and the Playwright stress test downloads it.
+  Playwright on :8777: the XRD views test, the stress file test and the figure-download test 3/3.
 
-- Confirm the Sphinx build; then the goal is met.
+### Status
+
+The goal is met: library, workbench view, staged report with publication figures, printable and
+bundled downloads, theory, algorithm page, worked examples, notebook, registry, changelog - all
+landed on `main` and verified as recorded above.

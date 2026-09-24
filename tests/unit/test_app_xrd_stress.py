@@ -315,7 +315,7 @@ def test_the_bundle_holds_the_report_every_figure_and_the_result(default: dict) 
     archive = zipfile.ZipFile(io.BytesIO(result_to_bundle(default)))
     names = set(archive.namelist())
     figures = [f["key"] for s in default["stages"] for f in s.get("figures", [])]
-    assert {"report.md", "result.json"} <= names
+    assert {"report.md", "report.html", "result.json"} <= names
     assert {f"figures/{key.replace('_', '-')}.svg" for key in figures} <= names | {
         f"figures/{key}.svg" for key in figures
     }
@@ -334,3 +334,7 @@ def test_the_bundle_holds_the_report_every_figure_and_the_result(default: dict) 
         assert heading in report
     single = result_to_markdown(default).decode("utf-8")
     assert single.count("data:image/svg+xml;base64,") == len(figures)
+    printable = archive.read("report.html").decode("utf-8")
+    assert printable.count("data:image/svg+xml;base64,") == len(figures)
+    for heading in ("The stress tensor", "Theory: from peak shift to stress", "Sources"):
+        assert heading in printable

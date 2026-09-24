@@ -100,7 +100,7 @@ export function renderResult(container, result, { extra = [], teaches = null } =
  * before this, such a result had no way out of the page at all.
  */
 function reportButtons(result) {
-  const formats = EXPORT_FORMATS.filter((format) => ['md', 'zip', 'json'].includes(format.id));
+  const formats = EXPORT_FORMATS.filter((format) => ['html', 'md', 'zip', 'json'].includes(format.id));
   if (!formats.length) return null;
   return el('div.button-row.result-head__exports', { style: 'margin-left:auto' },
     formats.map((format) => exportButton(result, format.id, format.label, format.description)));

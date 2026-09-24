@@ -108,9 +108,11 @@ $d_{0}$ are inseparable.
 ## 7. Reading the workbench report
 
 The result opens with the stress and how far to trust it, then the evidence, the diagnostics and
-the method — the order of `pytex.app.results.REPORT_SECTIONS`. **Report + figures** downloads
-the whole of it: `report.md`, every figure as `figures/<key>.svg`, and `result.json` with every
-number at full precision, including the library result under `data.library`.
+the method — the order of `pytex.app.results.REPORT_SECTIONS`. **Printable report** downloads it
+as one self-contained web page, with every figure in place, to read or print to PDF; **Report +
+figures** downloads the same report as `report.md` and `report.html`, every figure as
+`figures/<key>.svg` for a manuscript, and `result.json` with every number at full precision,
+including the library result under `data.library`.
 
 ### Warnings
 

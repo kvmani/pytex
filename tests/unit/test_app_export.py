@@ -24,6 +24,7 @@ from pytex.app.export import (
     EXPORT_FORMATS,
     export_result,
     result_to_csv,
+    result_to_html,
     result_to_json,
     result_to_markdown,
     result_to_xlsx,
@@ -250,9 +251,7 @@ class TestMarkdownReport:
     def test_the_table_survives_as_a_markdown_table(self, result: dict[str, Any]) -> None:
         text = result_to_markdown(result).decode("utf-8")
         header = next(
-            line
-            for line in text.splitlines()
-            if line.startswith("| ") and "---" not in line
+            line for line in text.splitlines() if line.startswith("| ") and "---" not in line
         )
         for column in result["table"]["columns"]:
             assert column["label"] in header
@@ -308,6 +307,67 @@ class TestMarkdownReport:
         assert payload.startswith(b"# ")
         assert "markdown" in mime
         assert filename.endswith(".md")
+
+
+class TestHtmlReport:
+    """The printable report: the Markdown report's content as one self-contained page."""
+
+    def test_it_is_a_complete_document_with_the_result_first(self, result: dict[str, Any]) -> None:
+        text = result_to_html(result).decode("utf-8")
+        assert text.startswith("<!DOCTYPE html>")
+        assert text.rstrip().endswith("</html>")
+        assert f"<h1>{result['title']}</h1>" in text.replace("&#x27;", "'")
+        assert "@media print" in text
+        # Self-contained: nothing is fetched when it is opened or printed.
+        assert "http://" not in text.split("<h2>Sources</h2>")[0].replace("http://www.w3.org", "")
+        assert "<script" not in text
+
+    def test_every_row_and_every_figure_is_carried(self) -> None:
+        payload = {
+            "title": "T",
+            "summary": "S",
+            "highlights": [{"label": "a", "value": 1.5, "units": "Å"}],
+            "warnings": ["careful <here>"],
+            "table": {
+                "columns": [{"key": "k", "label": "K", "numeric": True, "digits": 2}],
+                "rows": [{"k": 1.23456}, {"k": 2.0}],
+            },
+            "stages": [
+                {
+                    "key": "one",
+                    "title": "Stage one",
+                    "summary": "found a|b",
+                    "status": "warning",
+                    "section": "evidence",
+                    "explanation": "1. first\n2. second",
+                    "figures": [
+                        {
+                            "key": "f",
+                            "title": "Fig",
+                            "svg": "<svg xmlns='http://www.w3.org/2000/svg'></svg>",
+                            "caption": "cap",
+                            "interpretation": "reads so",
+                        }
+                    ],
+                }
+            ],
+            "citations": ["A & B (2001)."],
+        }
+        text = result_to_html(payload).decode("utf-8")
+        assert "careful &lt;here&gt;" in text
+        assert "found a|b" in text
+        assert "(check this)" in text
+        assert text.count('src="data:image/svg+xml;base64,') == 1
+        assert '<td class="number">1.23</td>' in text
+        assert '<td class="number">2.00</td>' in text
+        assert "1. first\n2. second" in text
+        assert "A &amp; B (2001)." in text
+        assert text.index("Result and reliability") < text.index("Stage one")
+
+    def test_it_is_offered_and_bundled(self, result: dict[str, Any]) -> None:
+        payload, mime, filename = export_result(result, fmt="html")
+        assert "text/html" in mime and filename.endswith(".html")
+        assert payload.startswith(b"<!DOCTYPE html>")
 
 
 class TestManifestPublishesTheFormats:

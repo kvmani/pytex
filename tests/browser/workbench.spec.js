@@ -656,6 +656,13 @@ test('a stress measurement file is read into the form and analysed', async ({ pa
   });
   await expect(page.locator('#stage details.stage[data-stage="measurement"]'))
     .toContainText('supplied peak positions', { timeout: STAGE_TIMEOUT_MS });
+  // The report is the deliverable: it downloads as one printable page.
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('#stage .result-head__exports')
+      .getByRole('button', { name: 'Printable report', exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^residual-stress-in-ferrite.*\.html$/);
   expect(browserErrors).toEqual([]);
 });
 

@@ -37,7 +37,11 @@ downstream analyses depend on them.
   draws d against sin²ψ per azimuth, loads a measurement file, and reports ten stages — the
   tensor, the budget, the measurement, every peak fit, the sin²ψ lines, residuals and
   correlations, linearity and ψ-splitting, the theory, the elastic constants and the algorithm —
-  with thirteen publication figures; **Report + figures** downloads it as Markdown, SVG and JSON.
+  with thirteen publication figures, downloadable as a **Printable report** or as **Report +
+  figures** (Markdown, HTML, SVG and JSON).
+- **A printable HTML report for every result** (`result_to_html`, export format `html`): the
+  Markdown report's content as one self-contained web page with every figure embedded and a
+  print stylesheet, offered beside Report and Report + figures and added to the bundle.
 - Documentation: the theory note `docs/site/theory/residual_stress_sin2psi.md`, the algorithm
   page, the generated geometry figure `docs/figures/sin2psi_geometry.svg`, seven computed worked
   examples, the tutorial notebook `37_residual_stress_sin2psi`, and registry entries for the

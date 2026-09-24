@@ -7,7 +7,8 @@ elastic constants, calls
 :func:`pytex.diffraction.xrd_residual_stress.residual_stress_pipeline`, and
 turns the result into the common ``AppResult`` contract: headline numbers,
 warnings, a staged report with figures, and a per-measurement table. The
-"Report + figures" export of that result is the downloadable report.
+"Printable report" and "Report + figures" exports of that result are the downloadable
+report.
 """
 
 from __future__ import annotations
@@ -1174,8 +1175,9 @@ def _build_result(
         "does not model."
     )
     notes.append(
-        "Download the result as Report + figures for the full report: every stage below, "
-        "with each figure as a separate SVG and the complete result as JSON."
+        "Download the full report as Printable report (one web page with every figure, to "
+        "read or print to PDF) or as Report + figures (the same report in Markdown and HTML, "
+        "each figure as a separate SVG, and the complete result as JSON)."
     )
 
     data = _plot_data(result)

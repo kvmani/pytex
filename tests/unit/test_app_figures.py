@@ -176,7 +176,7 @@ def test_bundle_holds_report_figures_and_json() -> None:
     payload = _sectioned_result()
     archive = zipfile.ZipFile(io.BytesIO(result_to_bundle(payload)))
     names = set(archive.namelist())
-    assert names == {"report.md", "figures/scan.svg", "result.json"}
+    assert names == {"report.md", "report.html", "figures/scan.svg", "result.json"}
     report = archive.read("report.md").decode("utf-8")
     assert "![The scan](figures/scan.svg)" in report
     ElementTree.fromstring(archive.read("figures/scan.svg"))
