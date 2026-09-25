@@ -8709,6 +8709,15 @@ together with every other component updated in the last week, and tag it for the
   the exact closed form; prose must avoid underscore choice keys (`closed_form`), so no solver
   choice is exposed in the GUI.
 
+- Increment 4 - release PyTex 0.12.0: version, CITATION.cff and CHANGELOG (the unreleased
+  stress/synchrotron work plus FIB and the CIF HRTEM series script). Gates: full unit suite green
+  on Windows (Python 3.13; one transient failure of the single-version-literal test, caused by
+  bumping `_version.py` mid-run, passes on rerun), Sphinx zero-warning build passed after moving
+  module-level "Purpose" headings out of the FIB docstrings, Playwright FIB + EBSD sub-tab tests
+  2/2, CI green on the first FIB commits. Tag v0.12.0 and a GitHub release follow on this
+  commit; then ml_server_deploy suite 1.17.0 (PyTex v0.10.0 -> v0.12.0; no other component moved
+  in the last week - HydrideSegmentation 1.2.0 was already taken by 1.16.0).
+
 ### Next actions
 
 1. (done) Figures.

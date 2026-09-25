@@ -11,8 +11,46 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-09-25
+
 ### Added
 
+- **FIB lamella planning for a target TEM zone axis, `pytex.fib`.** Given an EBSD scan and a zone
+  axis `<uvw>`: which grain to cut, where in it, at what azimuth in every frame the azimuth is
+  typed into, and what residual tilt the TEM holder must then supply. A vertically milled
+  lamella's normal lies in the surface, so the residual is eps* = min arcsin|d_S . Z_s| over the
+  symmetry orbit (both senses); the lamella normal, long axis and azimuth follow, vectorized over
+  every point of a map. PyTex orientations map crystal to specimen, so d_S = M g u (pinned by a
+  case that fails under the transpose).
+  - Frames declared, never assumed: `SurfaceGeometry` (outward normal and scan-row sense of the
+    vendor frame), `ImageRegistration` (identity by default, a similarity, or an affine fit to
+    control points with its residual), `ChamberGeometry` (52 or 54 degree column, and a FIB
+    pattern rotation `theta_ion = s_R (theta_S + R_stage) + R0` whose sign and offset come from
+    `calibrate_chamber_from_fiducials`; uncalibrated chambers carry a critical warning).
+  - The unknown mounting rotation is first-class: every plan sweeps the lamella's in-plane
+    rotation on the grid and its front/back flip through `pytex.tem.navigation`, and reports
+    three answers kept apart - guaranteed for every rotation at the upper uncertainty bound with a
+    margin, the fraction of rotations that work, or unreachable - never a single (alpha, beta).
+  - A four-term uncertainty budget (EBSD accuracy, grain spread, registration misfit, mount
+    repeatability), the footprint placed at maximum clearance inside the grain by a summed-area
+    table, a transparent weighted ranking with its weights stated, a preparability raster, risk
+    flags, `describe()` prose, JSON (`schemas/fib_lamella_plan.schema.json`) and a printable
+    one-page work order (`work_order_html`).
+  - Figures (`pytex.plotting.fib_figures`, light and dark): plan view, section, the stereogram
+    whose primitive circle is the surface plane, polar mounting-rotation feasibility with the
+    holder's exact reach, preparability map and predicted SAED; canonical
+    `docs/figures/fib_lamella_frames.svg`.
+  - **Workbench:** EBSD -> **FIB lamella** (`fib.lamella_plan`) on the open scan, with four
+    examples and Print / Download work order.
+  - Documentation: the specification `docs/architecture/fib_lamella_planning_foundation.md`, the
+    theory note `fib_lamella_zone_axis_geometry`, the workflow page, a fiducial calibration
+    protocol, ten computed worked examples, registry symbols, and the recorded prior-art status.
+    There is no MTEX equivalent; the validation lanes that replace parity are listed in
+    `docs/testing/strategy.md`. The chain is not yet validated against a lamella cut on a real
+    instrument, and every plan says so.
+- **CIF-driven HRTEM focal and thickness series** (`scripts/hrtem_cif_series.py`): one multislice
+  calculation of an ordered orthogonal CIF supercell imaged across a defocus range at several
+  thicknesses, written as lossless NPZ, CSV, PNG tableaux and an explainable text report.
 - **Any X-ray wavelength, including synchrotron beams.** `RadiationSpec.monochromatic`,
   `RadiationSpec.synchrotron` and `RadiationSpec.from_energy_kev` (λ = hc/E, hc = 12.398419843 keV Å)
   describe a single-wavelength beam with no Kα2 line, and `RadiationSpec.energy_kev` /
