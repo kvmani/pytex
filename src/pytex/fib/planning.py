@@ -907,6 +907,9 @@ class LamellaPlan:
         Ranking score in ``[0, 1]`` when produced by map-wide ranking.
     score_terms : mapping or None
         The weighted terms behind ``score``.
+    member_directions_sample : (m, 3) array or None
+        Every orbit member's unit direction in the sample frame, row for row
+        with :attr:`TargetOrbit.indices`; what the stereogram draws.
     provenance : ProvenanceRecord or None
     """
 
@@ -934,11 +937,16 @@ class LamellaPlan:
     secondary: SecondaryScore | None = None
     score: float | None = None
     score_terms: dict[str, float] | None = None
+    member_directions_sample: np.ndarray | None = None
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "options", tuple(self.options))
         object.__setattr__(self, "risk_flags", tuple(self.risk_flags))
+        if self.member_directions_sample is not None:
+            directions = np.ascontiguousarray(self.member_directions_sample, dtype=np.float64)
+            directions.setflags(write=False)
+            object.__setattr__(self, "member_directions_sample", directions)
 
     # -- derived quantities --------------------------------------------------
 
@@ -1524,5 +1532,6 @@ def plan_lamella(
         location_um=location_um,
         grain_spread_deg=grain_spread_deg,
         secondary=None if secondary is None else _secondary_score(secondary, orbit, geometry),
+        member_directions_sample=orbit.cartesian @ (surface.specimen_to_sample_matrix() @ matrix).T,
         provenance=provenance,
     )

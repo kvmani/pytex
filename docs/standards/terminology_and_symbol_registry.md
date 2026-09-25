@@ -222,6 +222,29 @@ polar angle and the Bunge angles, although $\psi$ is measured from the same spec
 | $u(x)$ | Standard uncertainty of $x$. |
 | $\chi^{2}_{\nu}$ | Reduced chi-squared of a weighted fit; its square root scales the statistical uncertainty when it exceeds one (the Birge ratio). |
 
+### FIB lamella planning
+
+Scoped to `pytex.fib` and its theory note. The sample frame here is the FIB sample frame
+$X_s, Y_s, Z_s$ with $Z_s$ the **outward** surface normal, built from the EBSD specimen frame by
+`SurfaceGeometry`. Standard uncertainty is written $u(x)$, as in the residual-stress section.
+
+| Symbol | Meaning |
+| --- | --- |
+| $\mathbf{u}_{C}$ | Unit target zone axis in the crystal frame; $U$ is its symmetry orbit, both senses. |
+| $\mathbf{d}_{S}$ | Sample-frame image of an orbit member, $\mathbf{d}_{S} = \mathbf{M}\,\mathbf{g}\,\mathbf{u}_{C}$ with $\mathbf{g}$ crystal-to-specimen and $\mathbf{M}$ specimen-to-sample. |
+| $\varepsilon(\mathbf{u})$ | Out-of-plane angle of a member, $\arcsin\lvert\mathbf{d}_{S}\cdot Z_s\rvert$. Distinct from strain $\varepsilon$ and from the EBSD camera elevation $\epsilon$. |
+| $\varepsilon^{*}$ | $\min_{U}\varepsilon$: the residual tilt the TEM holder must supply for a vertically milled lamella. |
+| $\mathbf{n}_{L}, \mathbf{t}_{L}$ | Lamella-plane normal (in the surface, the TEM beam direction) and long axis $\mathbf{t}_{L} = Z_s \times \mathbf{n}_{L}$. |
+| $\theta_{S}$ | Azimuth of $\mathbf{n}_{L}$ in the sample frame, from $X_s$ towards $Y_s$, in $[0^{\circ}, 180^{\circ})$. |
+| $\theta_{I}$ | The same azimuth in the SEM image frame, through the registration. |
+| $\theta_{\mathrm{ion}}$ | FIB pattern rotation, $s_{R}(\theta_{S} + R_{\mathrm{st}}) + R_{0}$. |
+| $T$ | Ion-column angle from the electron column (52 or 54 degrees); the milling stage tilt. |
+| $s_{R}, R_{0}$ | Calibrated sense and offset of the FIB pattern rotation, measured with fiducials. |
+| $R_{\mathrm{st}}$ | Stage rotation reading at milling. |
+| $\phi$ | Unknown in-plane mounting rotation of the lamella about $\mathbf{n}_{L}$ on the TEM grid. Distinct from the Bunge angles and from the stress azimuth $\varphi$. |
+| $L, W, D, t$ | Lamella length along $\mathbf{t}_{L}$, trench-to-trench width along $\mathbf{n}_{L}$, milling depth, and final thickness. |
+| $k$ | Coverage factor of the expanded uncertainty $U = k\,u(\varepsilon^{*})$. |
+
 ### Miller indices and crystallographic geometry
 
 | Symbol | Meaning |

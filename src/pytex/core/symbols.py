@@ -286,6 +286,76 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry("stiffness_c11", "C₁₁", "C_{11}", "Single-crystal stiffness C11 in Voigt form."),
             _entry("stiffness_c12", "C₁₂", "C_{12}", "Single-crystal stiffness C12 in Voigt form."),
             _entry("stiffness_c44", "C₄₄", "C_{44}", "Single-crystal stiffness C44 in Voigt form."),
+            # -- FIB lamella planning -------------------------------------------
+            _entry(
+                "lamella_residual",
+                "ε*",
+                r"\varepsilon^{*}",
+                "Angle of the best target zone-axis member out of the surface plane, the residual "
+                "TEM tilt of a vertically milled lamella.",
+            ),
+            _entry(
+                "lamella_azimuth",
+                "θS",
+                r"\theta_{S}",
+                "Azimuth of the lamella normal in the FIB sample frame, from X_s towards Y_s.",
+            ),
+            _entry(
+                "lamella_image_azimuth",
+                "θI",
+                r"\theta_{I}",
+                "Azimuth of the lamella normal in the SEM image frame.",
+            ),
+            _entry(
+                "ion_azimuth",
+                "θion",
+                r"\theta_{\mathrm{ion}}",
+                "Pattern rotation entered into the FIB for the lamella normal.",
+            ),
+            _entry(
+                "column_angle",
+                "T",
+                "T",
+                "Angle between the electron and ion columns of a FIB-SEM, the milling stage tilt.",
+            ),
+            _entry(
+                "rotation_sense",
+                "sR",
+                "s_{R}",
+                "Calibrated sense (+1 or -1) of the FIB pattern rotation against the azimuth.",
+            ),
+            _entry(
+                "rotation_offset",
+                "R₀",
+                "R_{0}",
+                "Calibrated offset of the FIB pattern rotation at sample azimuth zero.",
+            ),
+            _entry(
+                "stage_rotation",
+                "Rst",
+                r"R_{\mathrm{st}}",
+                "Stage rotation reading at which a lamella is milled.",
+            ),
+            _entry(
+                "mount_rotation",
+                "φ",
+                r"\phi",
+                "Unknown in-plane rotation of a lamella about its normal on the TEM grid.",
+            ),
+            _entry("lamella_length", "L", "L", "Length of a lamella along its long axis t_L."),
+            _entry(
+                "lamella_width",
+                "W",
+                "W",
+                "Trench-to-trench width of a lamella along its normal n_L.",
+            ),
+            _entry("mill_depth", "D", "D", "Milling depth of a lamella below the surface."),
+            _entry(
+                "coverage_factor",
+                "k",
+                "k",
+                "Coverage factor of an expanded uncertainty U = k u.",
+            ),
             # -- texture -------------------------------------------------------
             _entry("halfwidth", "ψ", r"\psi", "Halfwidth of an ODF kernel."),
             # -- misc ----------------------------------------------------------

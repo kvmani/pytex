@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 690" width="1000" height="690" role="img" aria-labelledby="fib-frames-title fib-frames-desc" font-family="Arial">
+<title id="fib-frames-title">FIB lamella planning: sample, lamella, SEM image, FIB ion view and TEM holder frames</title>
+<desc id="fib-frames-desc">The sample frame X, Y in the surface and Z the outward normal; a vertically milled lamella whose normal n lies in the surface at azimuth theta, with long axis t = Z x n; the ion beam milling along -Z; the target zone axis d* at eps* out of the surface, which is the residual TEM tilt; and the SEM image, calibrated FIB ion-view and TEM holder frames the azimuth is carried into, the last with the unknown mounting rotation phi.</desc>
+<defs><marker id="axis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#40506f"/></marker><marker id="axis2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#07122f"/></marker><marker id="normal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#e11d48"/></marker><marker id="long" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0f9f9f"/></marker><marker id="target" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker><marker id="ion" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/></marker><marker id="phi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker></defs>
+<rect width="1000" height="690" fill="#fbfdff"/>
+<polygon points="216.73,258.18 28.63,360.78 343.27,401.82 531.37,299.22" fill="#e2e8f0" fill-opacity="0.75" stroke="#40506f" stroke-width="1"/>
+<polygon points="231.95,291.04 328.05,368.96 328.05,495.31 231.95,417.39" fill="#93c5fd" fill-opacity="0.45" stroke="#2563eb" stroke-width="1"/>
+<polygon points="316.5,370.7 220.41,292.79 243.5,289.3 339.59,367.21" fill="#2563eb" fill-opacity="0.35" stroke="#2563eb" stroke-width="1"/>
+<line x1="280" y1="330" x2="175.5" y2="387" stroke="#40506f" stroke-width="1.8" marker-end="url(#axis)"/>
+<line x1="280" y1="330" x2="454.8" y2="352.8" stroke="#40506f" stroke-width="1.8" marker-end="url(#axis)"/>
+<line x1="280" y1="330" x2="280" y2="163.94" stroke="#40506f" stroke-width="1.8" marker-end="url(#axis)"/>
+<text x="163.14" y="405.56" fill="#07122f" font-size="15" font-family="Arial" text-anchor="middle" font-style="italic">X</text>
+<text x="477.29" y="360.17" fill="#07122f" font-size="15" font-family="Arial" text-anchor="middle" font-style="italic">Y</text>
+<text x="270" y="158.53" fill="#07122f" font-size="15" font-family="Arial" text-anchor="end" font-style="italic">Z (outward normal)</text>
+<line x1="280" y1="330" x2="462.79" y2="302.44" stroke="#e11d48" stroke-width="2.6" marker-end="url(#normal)"/>
+<text x="472.79" y="318.44" fill="#e11d48" font-size="15" font-family="Arial" text-anchor="start">n (TEM beam)</text>
+<line x1="280" y1="330" x2="227.95" y2="287.8" stroke="#0f9f9f" stroke-width="2" marker-end="url(#long)"/>
+<text x="218.61" y="280.72" fill="#0f9f9f" font-size="15" font-family="Arial" text-anchor="end">t = Z × n</text>
+<line x1="280" y1="330" x2="442.73" y2="249.91" stroke="#7c3aed" stroke-width="2.2" stroke-dasharray="7 4" marker-end="url(#target)"/>
+<text x="454.34" y="240.13" fill="#7c3aed" font-size="15" font-family="Arial" text-anchor="start">d* (target zone axis)</text>
+<polyline points="248.65,347.1 254.39,347.73 260.41,348.16 266.66,348.38 273.06,348.4 279.53,348.21 286.01,347.81 292.43,347.22 298.7,346.43 304.76,345.45 310.55,344.3 315.98,342.99 321.02,341.53 325.59,339.94 329.64,338.24 333.14,336.45 336.04,334.58 338.3,332.67 339.91,330.72 340.84,328.76 341.09,326.82 340.65,324.92 339.52,323.07 337.72,321.3" fill="none" stroke="#e11d48" stroke-width="1.5"/>
+<text x="328.84" y="365.55" fill="#e11d48" font-size="18" font-family="Arial" text-anchor="middle" font-style="italic">θ</text>
+<polyline points="399.29,312.01 399.26,309.42 399.17,306.83 399,304.25 398.78,301.69 398.49,299.14 398.13,296.61 397.72,294.1 397.23,291.61 396.69,289.14 396.08,286.69 395.41,284.27 394.67,281.86 393.88,279.49 393.02,277.14 392.1,274.82" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="419.06" y="296.46" fill="#7c3aed" font-size="18" font-family="Arial" text-anchor="middle" font-style="italic">ε*</text>
+<line x1="337.72" y1="95.67" x2="337.72" y2="306.86" stroke="#f59e0b" stroke-width="3" marker-end="url(#ion)"/>
+<text x="347.72" y="99.67" fill="#07122f" font-size="15" font-family="Arial" text-anchor="start">ion beam mills along −Z</text>
+<text x="322.05" y="432.13" fill="#2563eb" font-size="14" font-family="Arial" text-anchor="end">lamella plane</text>
+<text x="322.05" y="499.31" fill="#40506f" font-size="14" font-family="Arial" text-anchor="end">depth D</text>
+<text x="24" y="36" fill="#07122f" font-size="20" font-family="Arial" text-anchor="start" font-weight="bold">FIB lamella planning: the frames and the in-plane constraint</text>
+<text x="24" y="60" fill="#40506f" font-size="15" font-family="Arial" text-anchor="start">A strictly vertical mill leaves n in the surface plane, so the TEM beam can only lie along in-plane directions.</text>
+<text x="24" y="638" fill="#40506f" font-size="15" font-family="Arial" text-anchor="start">Drawn for a target rising ε* = 20° out of the surface with the lamella normal at θ = 140°, as pytex.fib.lamella_geometry solves it.</text>
+<text x="24" y="662" fill="#40506f" font-size="15" font-family="Arial" text-anchor="start">ε* = arcsin |d*·Z| is the residual tilt the TEM holder must supply; (n, t, Z) is the right-handed lamella frame.</text>
+<rect x="650" y="90" width="330" height="140" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+<text x="664" y="116" fill="#07122f" font-size="17" font-family="Arial" text-anchor="start" font-weight="bold">SEM image frame I</text>
+<line x1="680" y1="138" x2="746" y2="138" stroke="#07122f" stroke-width="1.8" marker-end="url(#axis2)"/>
+<line x1="680" y1="138" x2="680" y2="196" stroke="#07122f" stroke-width="1.8" marker-end="url(#axis2)"/>
+<text x="752" y="143" fill="#07122f" font-size="15" font-family="Arial" text-anchor="start" font-style="italic">x</text>
+<text x="686" y="214" fill="#07122f" font-size="15" font-family="Arial" text-anchor="start" font-style="italic">y (rows)</text>
+<text x="780" y="146" fill="#07122f" font-size="15" font-family="Arial" text-anchor="start">q = A p + t</text>
+<text x="780" y="168" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">identity by default;</text>
+<text x="780" y="188" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">an affine fit reports</text>
+<text x="780" y="208" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">its residual</text>
+<rect x="650" y="246" width="330" height="170" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+<text x="664" y="272" fill="#07122f" font-size="17" font-family="Arial" text-anchor="start" font-weight="bold">FIB ion view P (stage at T)</text>
+<text x="666" y="288" fill="#07122f" font-size="15" font-family="Arial" text-anchor="start">θion = sR (θ + Rstage) + R0</text>
+<text x="666" y="314" fill="#e11d48" font-size="14" font-family="Arial" text-anchor="start">sR and R0 are calibrated once with</text>
+<text x="666" y="334" fill="#e11d48" font-size="14" font-family="Arial" text-anchor="start">fiducial trenches, never assumed.</text>
+<text x="666" y="358" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">T = 52° or 54°: at that tilt the ion view</text>
+<text x="666" y="378" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">is the plan view, and the SEM view is</text>
+<text x="666" y="398" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">foreshortened by cos T.</text>
+<rect x="650" y="432" width="330" height="150" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+<text x="664" y="458" fill="#07122f" font-size="17" font-family="Arial" text-anchor="start" font-weight="bold">TEM holder frame H</text>
+<circle cx="712" cy="512" r="7" fill="#e11d48"/>
+<polyline points="742.57,521.46 740.14,527.23 736.64,532.42 732.19,536.82 726.97,540.28 721.18,542.66 715.03,543.86 708.77,543.84 702.64,542.6 696.86,540.19 691.66,536.7 687.24,532.27 683.76,527.06 681.37,521.27 680.15,515.13 680.15,508.87 681.37,502.73 683.76,496.94 687.24,491.73 691.66,487.3 696.86,483.81 702.64,481.4 708.77,480.16 715.03,480.14 721.18,481.34 726.97,483.72 732.19,487.18 736.64,491.58 740.14,496.77 742.57,502.54" fill="none" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#phi)"/>
+<text x="712" y="568" fill="#7c3aed" font-size="14" font-family="Arial" text-anchor="middle">φ unknown</text>
+<text x="770" y="478" fill="#07122f" font-size="15" font-family="Arial" text-anchor="start">n lands on the beam; the</text>
+<text x="770" y="500" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">in-plane rotation φ and the</text>
+<text x="770" y="520" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">front/back flip are unknown</text>
+<text x="770" y="540" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">until it is mounted, so</text>
+<text x="770" y="560" fill="#40506f" font-size="14" font-family="Arial" text-anchor="start">feasibility is over all φ.</text>
+</svg>

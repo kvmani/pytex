@@ -8687,9 +8687,18 @@ together with every other component updated in the last week, and tag it for the
   `test_fib_selection.py` (21). Class atlas regenerated (356 / 333). Foundation document moved to
   `docs/architecture/` and indexed.
 
+- Increment 2 - figures (landed): `pytex.plotting.fib_figures` draws the plan view, section
+  schematic, stereogram (the signature figure: the primitive circle is the surface plane), polar
+  phi-feasibility plot with the exact holder reach, preparability map and predicted SAED, each
+  in a light and a dark theme, into bare `Figure`s. Canonical `docs/figures/fib_lamella_frames.svg`
+  from `scripts/generate_fib_lamella_figures.py`, its lamella solved by `lamella_geometry` and its
+  bytes pinned. FIB symbols registered in `pytex.core.symbols` and the prose registry.
+  `LamellaPlan.member_directions_sample` carries every orbit member for the stereogram.
+  `tests/unit/test_fib_lamella_figures.py` (19).
+
 ### Next actions
 
-1. Figures (`pytex.plotting.fib_figures`, the seven of section 9) and the canonical frame SVG.
+1. (done) Figures.
 2. Workbench operation `fib.lamella_plan`, panel in the EBSD workspace, examples, Playwright.
 3. Symbols and registry, theory note, workflow page, calibration protocol, worked examples,
    testing-strategy statement, reference-index novelty note, README, changelog.
