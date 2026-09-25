@@ -1,7 +1,5 @@
 """The ranked answer, and the page an operator takes to the FIB.
 
-Purpose
--------
 :class:`LamellaPlanReport` is what map-wide ranking returns and what the
 workbench shows: the candidates in order, the preparability raster behind them,
 the weights that ordered them, and --- per the explainable-results doctrine ---

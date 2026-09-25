@@ -1,7 +1,5 @@
 """The figures of FIB lamella planning: seven views of one plan.
 
-Purpose
--------
 Decision D9 of the FIB lamella foundation document: a numeric answer without its
 figure is an incomplete deliverable. Each function here draws one of the figures
 of section 9 into a caller-supplied :class:`matplotlib.figure.Figure`, so the

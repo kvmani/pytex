@@ -1,7 +1,5 @@
 """The normative geometry of a vertically milled lamella: section 6 of the foundation.
 
-Purpose
--------
 Answer, for every orientation at once, the one crystallographic question FIB
 planning asks: *how far is the nearest symmetry-equivalent of the target zone
 axis from the surface plane, and which way must the lamella face to put it on
@@ -14,9 +12,9 @@ surface, so the lamella normal ``n_L`` is forced into the surface plane. In the
 TEM the beam enters along ``n_L``. The achievable beam directions are therefore
 the great circle of in-plane directions, and a grain is usable for a zone axis
 exactly when some equivalent of it lies close to that circle. The angular
-distance from the circle,
+distance from the circle::
 
-    eps(u) = arcsin |d_S(u) . Z_s|,
+    eps(u) = arcsin |d_S(u) . Z_s|
 
 **is** the residual tilt the TEM holder must supply.
 

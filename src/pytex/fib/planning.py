@@ -1,7 +1,5 @@
 """One lamella, planned end to end: geometry, mounting, uncertainty, verdict.
 
-Purpose
--------
 Turn a measured orientation and a target zone axis into a :class:`LamellaPlan`:
 the azimuth to cut at in every frame an operator will type it into, the
 rectangle to mill, the residual tilt the TEM holder will have to supply, how

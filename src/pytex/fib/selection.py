@@ -1,7 +1,5 @@
 """Which grain to cut: map-wide ranking and the preparability raster (section 7.2).
 
-Purpose
--------
 The primary workflow. Given a segmented EBSD map and a target zone axis, rank
 every grain by how good a lamella it would make, and draw, for every point of
 the map, how far the target lies from the surface plane there --- the

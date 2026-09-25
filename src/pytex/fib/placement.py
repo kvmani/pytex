@@ -1,7 +1,5 @@
 """Where inside the grain the lamella goes: the footprint fit of section 7.3.
 
-Purpose
--------
 Once the orientation is fixed the azimuth ``theta_S`` is fixed too, so the only
 freedom left in placing the ``L x W`` rectangle is translation. This module finds
 the translation that keeps the rectangle furthest from the grain boundary, and
