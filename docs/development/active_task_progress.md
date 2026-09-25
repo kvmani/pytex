@@ -8718,7 +8718,17 @@ together with every other component updated in the last week, and tag it for the
   commit; then ml_server_deploy suite 1.17.0 (PyTex v0.10.0 -> v0.12.0; no other component moved
   in the last week - HydrideSegmentation 1.2.0 was already taken by 1.16.0).
 
-### Next actions
+### Status
+
+COMPLETE (2026-09-25). PyTex v0.12.0 tagged on `cee12bf` with CI green on all five jobs; the
+GitHub release https://github.com/kvmani/pytex/releases/tag/v0.12.0 was published by the release
+workflow. ml_server_deploy suite 1.17.0 (`a29fedc`, tag v1.17.0) takes it; its release workflow
+built `ml-server-suite-v1.17.0.tar.gz` (https://github.com/kvmani/ml_server_deploy/releases/tag/v1.17.0).
+Open item needing maintainer data: the real-instrument validation of section 12 (one lamella cut
+from a known EBSD scan with its achieved TEM tilt recorded), and a systematic prior-art search
+before any novelty claim.
+
+### Next actions (historical)
 
 1. (done) Figures.
 2. (done) Workbench operation `fib.lamella_plan`, panel in the EBSD workspace, examples, Playwright.
