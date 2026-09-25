@@ -13,5 +13,6 @@ Current stable schemas:
 - `composite_saed_manifest.schema.json`
 - `measured_saed_pattern.schema.json`
 - `or_dossier.schema.json`
+- `fib_lamella_plan.schema.json` (FIB lamella plan report, `pytex.fib.report.LamellaPlanReport`)
 
 Stable schemas must remain versioned here so adapters and workflows do not invent incompatible ad hoc locations.

@@ -8647,3 +8647,51 @@ points and select or deselect measurements to exclude outliers from the fit.
   export, server, Kearns), worked examples, notebooks, atlas: green on Windows.
 - Playwright on a fresh :8777 server: XRD views, stress file, click-to-exclude-and-refit,
   synchrotron lattice parameters - 4/4.
+
+## Goal - FIB lamella planning for a target TEM zone axis (opened 2026-09-25)
+
+### Objective
+
+Implement `docs/architecture/fib_lamella_planning_foundation.md` (the maintainer's specification,
+decisions D1-D9) as a documented, well-structured, user-friendly module that tells an operator which
+grain to cut, where, at what azimuth in every frame, and what residual TEM tilt remains; then release
+PyTex (0.12.0, tag and GitHub release) and cut an ml_server_deploy suite release that takes it,
+together with every other component updated in the last week, and tag it for the office roll-out.
+
+### Decisions
+
+- Package `pytex.fib` (frames, geometry, placement, planning, selection, report), exactly the
+  layout of section 8.
+- Orientation convention resolved (section 6): PyTex's `g` maps crystal to specimen, so
+  `d_S = M g u`, not `g^-1 u`; pinned by a triclinic case that fails under the transpose.
+- Sample frame from the EBSD specimen frame by `SurfaceGeometry(normal_sign, scan_y_sign)`: the two
+  vendor conventions no header states are declared, never assumed.
+- phi sweep: `MountModel.solver="navigation"` runs `plan_tilt_to_zone_axis` at every sampled phi
+  (~10 ms per call, 72 samples x 2 branches ~ 1.3 s per plan); `"closed_form"` evaluates the same
+  exact four branches of `solve_tilts_for_direction` vectorized, used for the ranking shortlist,
+  and the best ranked plan is always re-solved with the navigation solver. A test pins agreement.
+- With both senses accepted the back (flipped) branch is the reverse of the front form at the same
+  phi, so the two fractions coincide; they differ only for one-sense (polar/CBED) work.
+- Guaranteed class is judged on the exact tilt curve at `eps* + U + margin` for every phi (for a
+  symmetric rectangle this is the spec's `eps <= min(alpha_max, beta_max) - margin`); a 20 deg
+  circular envelope guarantees slightly less than 20 deg, which the small-angle picture misses.
+- Uncertainty: four terms in quadrature with unit sensitivity (an upper bound), `U = k u`, k = 2.
+- Ranking: vectorized raster, per-grain residuals and extent check for all grains; full plan and
+  summed-area-table footprint fit for a shortlist (default 8); order = feasibility class, then score.
+
+### Increments
+
+- Increment 1 - library, schema, tests (landed with this entry): `src/pytex/fib/*`,
+  `schemas/fib_lamella_plan.schema.json`, `tests/unit/test_fib_geometry.py` (43),
+  `test_fib_planning.py` (31, with golden prose `tests/unit/golden/fib_lamella_plan_describe.txt`),
+  `test_fib_selection.py` (21). Class atlas regenerated (356 / 333). Foundation document moved to
+  `docs/architecture/` and indexed.
+
+### Next actions
+
+1. Figures (`pytex.plotting.fib_figures`, the seven of section 9) and the canonical frame SVG.
+2. Workbench operation `fib.lamella_plan`, panel in the EBSD workspace, examples, Playwright.
+3. Symbols and registry, theory note, workflow page, calibration protocol, worked examples,
+   testing-strategy statement, reference-index novelty note, README, changelog.
+4. Release PyTex 0.12.0; ml_server_deploy suite release with PyTex 0.12.0 and the last week's
+   component updates.

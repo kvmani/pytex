@@ -1,0 +1,1011 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.fib_lamella_plan",
+  "title": "PyTex FIB Lamella Plan Report",
+  "description": "Ranked lamella plans for one EBSD map and one target TEM zone axis, written by pytex.fib.report.LamellaPlanReport.to_json_dict. A single plan (pytex.fib.planning.LamellaPlan.to_json_dict) validates against $defs/plan. Every number in the describe() prose of either object is present here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "pytex_version",
+    "phase",
+    "target",
+    "target_text",
+    "orbit_size",
+    "grain_count",
+    "candidate_count",
+    "guaranteed_radius_deg",
+    "counts",
+    "raster",
+    "weights",
+    "plans",
+    "undetermined",
+    "validation_status",
+    "notes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "pytex.fib_lamella_plan_report/1"
+    },
+    "pytex_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "type": "string"
+    },
+    "target": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "target_text": {
+      "type": "string"
+    },
+    "orbit_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "grain_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "guaranteed_radius_deg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "guaranteed",
+        "probabilistic",
+        "unreachable"
+      ],
+      "properties": {
+        "guaranteed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "probabilistic": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unreachable": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "raster": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "shape",
+            "step_um",
+            "origin_um",
+            "target_text",
+            "eps_min_deg",
+            "eps_median_deg",
+            "eps_max_deg",
+            "fraction_below_10_deg",
+            "fraction_below_20_deg"
+          ],
+          "properties": {
+            "shape": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "step_um": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "origin_um": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "target_text": {
+              "type": "string"
+            },
+            "eps_min_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "eps_median_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "eps_max_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "fraction_below_10_deg": {
+              "type": "number"
+            },
+            "fraction_below_20_deg": {
+              "type": "number"
+            }
+          }
+        }
+      ]
+    },
+    "weights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eps",
+        "fit",
+        "reliability",
+        "edge",
+        "neighbour",
+        "secondary",
+        "margin_target_um",
+        "gos_scale_deg",
+        "edge_target_um"
+      ],
+      "properties": {
+        "eps": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fit": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reliability": {
+          "type": "number",
+          "minimum": 0
+        },
+        "edge": {
+          "type": "number",
+          "minimum": 0
+        },
+        "neighbour": {
+          "type": "number",
+          "minimum": 0
+        },
+        "secondary": {
+          "type": "number",
+          "minimum": 0
+        },
+        "margin_target_um": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gos_scale_deg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "edge_target_um": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "plans": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/plan"
+      }
+    },
+    "undetermined": {
+      "type": "string"
+    },
+    "validation_status": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "phase",
+        "target",
+        "target_text",
+        "orbit_size",
+        "both_senses",
+        "grain_id",
+        "grain_spread_deg",
+        "location_um",
+        "member_text",
+        "geometry",
+        "theta_image_deg",
+        "theta_ion_deg",
+        "long_axis_ion_deg",
+        "feasibility",
+        "crosscheck_residual_deg",
+        "stage",
+        "sweep",
+        "uncertainty",
+        "options",
+        "placement",
+        "secondary",
+        "score",
+        "score_terms",
+        "risk_flags",
+        "spec",
+        "surface",
+        "registration",
+        "chamber",
+        "mount",
+        "validation_status"
+      ],
+      "properties": {
+        "schema": {
+          "const": "pytex.fib_lamella_plan/1"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "target": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "target_text": {
+          "type": "string"
+        },
+        "orbit_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "both_senses": {
+          "type": "boolean"
+        },
+        "grain_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "grain_spread_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "location_um": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "member_text": {
+          "type": "string"
+        },
+        "geometry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "eps_deg",
+            "member_indices",
+            "direction_sample",
+            "normal_sample",
+            "long_axis_sample",
+            "theta_sample_deg",
+            "long_axis_azimuth_deg",
+            "tied_members",
+            "degenerate"
+          ],
+          "properties": {
+            "eps_deg": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 90
+            },
+            "member_indices": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "direction_sample": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "normal_sample": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "long_axis_sample": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "theta_sample_deg": {
+              "type": "number",
+              "minimum": 0,
+              "exclusiveMaximum": 180
+            },
+            "long_axis_azimuth_deg": {
+              "type": "number",
+              "minimum": 0,
+              "exclusiveMaximum": 180
+            },
+            "tied_members": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "degenerate": {
+              "type": "boolean"
+            }
+          }
+        },
+        "theta_image_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "theta_ion_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "long_axis_ion_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 180
+        },
+        "feasibility": {
+          "enum": [
+            "guaranteed",
+            "probabilistic",
+            "unreachable"
+          ]
+        },
+        "crosscheck_residual_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "stage": {
+          "type": "string"
+        },
+        "sweep": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "solver",
+            "phi_deg",
+            "reachable_front",
+            "reachable_back",
+            "alpha_front_deg",
+            "beta_front_deg",
+            "alpha_back_deg",
+            "beta_back_deg",
+            "fraction_front",
+            "fraction_back",
+            "fraction",
+            "conservative_fraction",
+            "guaranteed_at_point",
+            "guaranteed_at_upper"
+          ],
+          "properties": {
+            "solver": {
+              "enum": [
+                "navigation",
+                "closed_form"
+              ]
+            },
+            "phi_deg": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "reachable_front": {
+              "type": "array",
+              "items": {
+                "type": "boolean"
+              }
+            },
+            "reachable_back": {
+              "type": "array",
+              "items": {
+                "type": "boolean"
+              }
+            },
+            "alpha_front_deg": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "beta_front_deg": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "alpha_back_deg": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "beta_back_deg": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "fraction_front": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "fraction_back": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "fraction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "conservative_fraction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "guaranteed_at_point": {
+              "type": "boolean"
+            },
+            "guaranteed_at_upper": {
+              "type": "boolean"
+            }
+          }
+        },
+        "uncertainty": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "components",
+            "combined_deg",
+            "coverage_factor",
+            "expanded_deg",
+            "eps_deg",
+            "eps_upper_deg",
+            "eps_lower_deg"
+          ],
+          "properties": {
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "value_deg",
+                  "source"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value_deg": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "source": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "combined_deg": {
+              "type": "number",
+              "minimum": 0
+            },
+            "coverage_factor": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "expanded_deg": {
+              "type": "number",
+              "minimum": 0
+            },
+            "eps_deg": {
+              "type": "number"
+            },
+            "eps_upper_deg": {
+              "type": "number"
+            },
+            "eps_lower_deg": {
+              "type": "number"
+            }
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "member_indices",
+              "eps_deg",
+              "theta_sample_deg"
+            ],
+            "properties": {
+              "member_indices": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "eps_deg": {
+                "type": "number"
+              },
+              "theta_sample_deg": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "placement": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "fits",
+                "margin_um",
+                "center_scan_um",
+                "center_image",
+                "corners_scan_um",
+                "corners_image",
+                "length_um",
+                "width_um",
+                "largest_length_um",
+                "resolution_um",
+                "edge_distance_um",
+                "theta_sample_deg"
+              ],
+              "properties": {
+                "fits": {
+                  "type": "boolean"
+                },
+                "margin_um": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "center_scan_um": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "center_image": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "corners_scan_um": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "corners_image": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "length_um": {
+                  "type": "number"
+                },
+                "width_um": {
+                  "type": "number"
+                },
+                "largest_length_um": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "resolution_um": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "edge_distance_um": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "theta_sample_deg": {
+                  "type": "number"
+                }
+              }
+            }
+          ]
+        },
+        "secondary": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "label",
+                "angle_deg",
+                "plane"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "angle_deg": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 90
+                },
+                "plane": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
+        },
+        "score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "score_terms": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "risk_flags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "severity",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "info",
+                  "warning",
+                  "critical"
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "length_um",
+            "width_um",
+            "depth_um",
+            "final_thickness_nm"
+          ],
+          "properties": {
+            "length_um": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "width_um": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "depth_um": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "final_thickness_nm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "surface": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "normal_sign",
+            "scan_y_sign",
+            "scan_to_sample_y",
+            "specimen_to_sample_matrix"
+          ],
+          "properties": {
+            "normal_sign": {
+              "enum": [
+                1,
+                -1
+              ]
+            },
+            "scan_y_sign": {
+              "enum": [
+                1,
+                -1
+              ]
+            },
+            "scan_to_sample_y": {
+              "enum": [
+                1.0,
+                -1.0
+              ]
+            },
+            "specimen_to_sample_matrix": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          }
+        },
+        "registration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "matrix",
+            "translation",
+            "is_mirror",
+            "residual_um",
+            "residual_deg",
+            "control_points",
+            "image_units"
+          ],
+          "properties": {
+            "method": {
+              "enum": [
+                "identity",
+                "similarity",
+                "affine"
+              ]
+            },
+            "matrix": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "translation": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "is_mirror": {
+              "type": "boolean"
+            },
+            "residual_um": {
+              "type": "number",
+              "minimum": 0
+            },
+            "residual_deg": {
+              "type": "number",
+              "minimum": 0
+            },
+            "control_points": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "image_units": {
+              "type": "string"
+            }
+          }
+        },
+        "chamber": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "column_angle_deg",
+            "rotation_sense",
+            "rotation_offset_deg",
+            "stage_rotation_deg",
+            "tilt_axis_azimuth_deg",
+            "compucentric",
+            "calibrated",
+            "calibration_residual_deg",
+            "sem_foreshortening",
+            "calibration_caveat"
+          ],
+          "properties": {
+            "column_angle_deg": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 90
+            },
+            "rotation_sense": {
+              "enum": [
+                1,
+                -1
+              ]
+            },
+            "rotation_offset_deg": {
+              "type": "number"
+            },
+            "stage_rotation_deg": {
+              "type": "number"
+            },
+            "tilt_axis_azimuth_deg": {
+              "type": "number"
+            },
+            "compucentric": {
+              "type": "boolean"
+            },
+            "calibrated": {
+              "type": "boolean"
+            },
+            "calibration_residual_deg": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sem_foreshortening": {
+              "type": "number"
+            },
+            "calibration_caveat": {
+              "type": "string"
+            }
+          }
+        },
+        "mount": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phi_samples",
+            "margin_deg",
+            "solver"
+          ],
+          "properties": {
+            "phi_samples": {
+              "type": "integer",
+              "minimum": 4
+            },
+            "margin_deg": {
+              "type": "number"
+            },
+            "solver": {
+              "enum": [
+                "navigation",
+                "closed_form"
+              ]
+            }
+          }
+        },
+        "validation_status": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
