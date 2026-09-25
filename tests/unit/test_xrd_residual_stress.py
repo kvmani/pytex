@@ -710,3 +710,172 @@ def test_containers_validate_their_invariants() -> None:
             d0_angstrom=D0_FE_211,
             dec=_fe_decs(),
         )
+
+
+# ---------------------------------------------------------------------------
+# Excluding measurements, and finding the ones to exclude
+# ---------------------------------------------------------------------------
+
+
+def _with_one_bad_point(shift_deg: float = 0.3) -> tuple[tuple[StressPeak, ...], int]:
+    dec = _fe_decs()
+    peaks = list(_exact_peaks(_tensor(BIAXIAL), dec))
+    bad = next(
+        index for index, peak in enumerate(peaks) if (peak.phi_deg, peak.psi_deg) == (45.0, 25.0)
+    )
+    original = peaks[bad]
+    peaks[bad] = StressPeak(
+        phi_deg=original.phi_deg,
+        psi_deg=original.psi_deg,
+        two_theta_deg=original.two_theta_deg + shift_deg,
+        two_theta_uncertainty_deg=original.two_theta_uncertainty_deg,
+        method="given",
+    )
+    return tuple(peaks), bad
+
+
+def test_excluding_a_bad_point_restores_the_exact_stress() -> None:
+    dec = _fe_decs()
+    peaks, bad = _with_one_bad_point()
+    kwargs = {"wavelength_angstrom": WAVELENGTH, "d0_angstrom": D0_FE_211, "dec": dec}
+    spoiled = determine_residual_stress(peaks, **kwargs)
+    assert spoiled.tensor is not None
+    assert abs(spoiled.tensor.values_mpa[2] - 60.0) > 5.0
+    cleaned = determine_residual_stress(peaks, excluded=(bad,), **kwargs)
+    assert cleaned.tensor is not None
+    assert np.allclose(cleaned.tensor.values_mpa, [-350.0, -150.0, 60.0], atol=1e-4)
+    assert cleaned.excluded_indices == (bad,)
+    assert not cleaned.included_mask[bad] and cleaned.included_mask.sum() == len(peaks) - 1
+    # The excluded point stays in the result, with the prediction of the clean
+    # fit and a residual that shows how far off it was.
+    assert cleaned.d_angstrom.size == len(peaks)
+    assert abs(cleaned.tensor.residual_strain[bad]) > 1e-4
+    assert all(bad not in np.flatnonzero(line.psi_deg == 25.0) for line in cleaned.regressions)
+    payload = cleaned.to_json()
+    assert payload["excluded_indices"] == [bad] and payload["included"][bad] is False
+    assert "excluded from every fit by the analyst" in cleaned.describe()
+
+
+def test_deleted_residuals_point_at_the_bad_measurement_only() -> None:
+    dec = _fe_decs()
+    peaks, bad = _with_one_bad_point()
+    noisy = [
+        StressPeak(
+            phi_deg=peak.phi_deg,
+            psi_deg=peak.psi_deg,
+            two_theta_deg=peak.two_theta_deg + noise,
+            two_theta_uncertainty_deg=2e-3,
+            method="given",
+        )
+        for peak, noise in zip(
+            peaks, np.random.default_rng(4).normal(0.0, 2e-3, len(peaks)), strict=True
+        )
+    ]
+    result = determine_residual_stress(
+        noisy, wavelength_angstrom=WAVELENGTH, d0_angstrom=D0_FE_211, dec=dec
+    )
+    assert result.suggested_outliers() == (bad,)
+    assert result.deleted_residuals is not None
+    good = np.delete(result.deleted_residuals, bad)
+    assert np.max(np.abs(good)) < 3.5 < abs(result.deleted_residuals[bad])
+    # Once excluded it is no longer suggested, and its deleted residual, now
+    # against the fit of every other point, still shows why it was excluded.
+    cleaned = determine_residual_stress(
+        noisy, wavelength_angstrom=WAVELENGTH, d0_angstrom=D0_FE_211, dec=dec, excluded=[bad]
+    )
+    assert cleaned.suggested_outliers() == ()
+    assert cleaned.deleted_residuals is not None and abs(cleaned.deleted_residuals[bad]) > 10.0
+
+
+def test_orientations_name_measurements_and_bad_names_are_refused() -> None:
+    from pytex.diffraction.xrd_residual_stress import indices_of_orientations
+
+    peaks = _exact_peaks(_tensor(BIAXIAL), _fe_decs())
+    index = indices_of_orientations(peaks, [(405.0, -15.0)])
+    assert len(index) == 1
+    assert (peaks[index[0]].phi_deg, peaks[index[0]].psi_deg) == (45.0, -15.0)
+    with pytest.raises(ValueError, match="No measurement"):
+        indices_of_orientations(peaks, [(44.0, -15.0)])
+    with pytest.raises(ValueError, match="outside"):
+        determine_residual_stress(
+            peaks,
+            wavelength_angstrom=WAVELENGTH,
+            d0_angstrom=D0_FE_211,
+            dec=_fe_decs(),
+            excluded=[len(peaks)],
+        )
+    with pytest.raises(ValueError, match="remain after the exclusions"):
+        determine_residual_stress(
+            peaks[:4],
+            wavelength_angstrom=WAVELENGTH,
+            d0_angstrom=D0_FE_211,
+            dec=_fe_decs(),
+            excluded=[0, 1],
+        )
+
+
+def test_the_simulator_plants_a_bad_measurement_where_asked() -> None:
+    dec = _fe_decs()
+    clean = simulate_sin2psi_measurement(d0_angstrom=D0_FE_211, stress_mpa=BIAXIAL, dec=dec, seed=3)
+    planted = simulate_sin2psi_measurement(
+        d0_angstrom=D0_FE_211,
+        stress_mpa=BIAXIAL,
+        dec=dec,
+        seed=3,
+        corrupted=[(45.0, 35.3)],
+        corruption_shift_deg=0.3,
+    )
+    shifted = [
+        (a.phi_deg, a.psi_deg)
+        for a, b in zip(clean.scans, planted.scans, strict=True)
+        if not np.allclose(a.pattern.two_theta_deg, b.pattern.two_theta_deg)
+    ]
+    assert shifted == [(45.0, 35.3)]
+
+
+# ---------------------------------------------------------------------------
+# A polarized (synchrotron) beam
+# ---------------------------------------------------------------------------
+
+
+def test_lpa_factor_follows_the_beam_polarization() -> None:
+    theta = math.radians(40.0)
+    unpolarized = lpa_factor([80.0], psi_deg=0.0, geometry="chi")[0]
+    assert unpolarized == pytest.approx((1 + math.cos(2 * theta) ** 2) / math.sin(theta) ** 2)
+    assert lpa_factor([80.0], psi_deg=0.0, geometry="chi", perpendicular_fraction=0.5)[0] == (
+        pytest.approx(unpolarized)
+    )
+    vertical = lpa_factor([80.0], psi_deg=0.0, geometry="chi", perpendicular_fraction=1.0)[0]
+    assert vertical == pytest.approx(2.0 / math.sin(theta) ** 2)
+    horizontal = lpa_factor([80.0], psi_deg=0.0, geometry="chi", perpendicular_fraction=0.0)[0]
+    assert horizontal == pytest.approx(2.0 * math.cos(2 * theta) ** 2 / math.sin(theta) ** 2)
+    with pytest.raises(ValueError, match="perpendicular_fraction"):
+        lpa_factor([80.0], psi_deg=0.0, perpendicular_fraction=1.5)
+
+
+def test_a_synchrotron_measurement_recovers_the_stress_with_chi_tilting() -> None:
+    dec = _fe_decs()
+    beam = RadiationSpec.synchrotron(0.5)
+    measurement = simulate_sin2psi_measurement(
+        d0_angstrom=D0_FE_211,
+        stress_mpa=BIAXIAL,
+        dec=dec,
+        radiation=beam,
+        geometry="chi",
+        fwhm_deg=0.3,
+        window_half_width_deg=1.5,
+        step_deg=0.01,
+        seed=6,
+    )
+    result = residual_stress_pipeline(
+        measurement, d0_angstrom=D0_FE_211, dec=dec, window_deg=3.0, expected_fwhm_deg=0.3
+    )
+    assert result.tensor is not None
+    assert all(
+        peak.peak_fit is not None and not peak.peak_fit.doublet_modelled for peak in result.peaks
+    )
+    assert np.allclose(result.tensor.values_mpa, [-350.0, -150.0, 60.0], atol=25.0)
+    with pytest.raises(ValueError, match="below the"):
+        simulate_sin2psi_measurement(
+            d0_angstrom=D0_FE_211, stress_mpa=BIAXIAL, dec=dec, radiation=beam, geometry="omega"
+        )

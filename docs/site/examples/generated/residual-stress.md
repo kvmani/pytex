@@ -4,7 +4,7 @@
 
 # Residual stress by the sin^2(psi) method
 
-The diffraction elastic constants checked against the isotropic formula, the cubic Reuss formula worked by hand and the root of Kroener's cubic; the sin^2(psi) law's slope, strain-free tilt and principal stresses checked against closed-form algebra on exact data; and an end-to-end evaluation of noisy simulated scans checked against the stress they were generated with.
+The diffraction elastic constants checked against the isotropic formula, the cubic Reuss formula worked by hand and the root of Kroener's cubic; the sin^2(psi) law's slope, strain-free tilt and principal stresses checked against closed-form algebra on exact data; an end-to-end evaluation of noisy simulated scans checked against the stress they were generated with; the exclusion of a bad measurement; and the wavelength and polarization factor of a synchrotron beam.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -345,3 +345,131 @@ result = fit.tensor.component('sigma_11')[0]
 **Citation**: Macherauch & Mueller, Z. angew. Phys. 13 (1961) 305.
 
 **See also**: {doc}`Residual stress by the sin^2(psi) method <../../theory/residual_stress_sin2psi>`, {doc}`Residual stress: the algorithm and the report <../../algorithms/residual_stress_sin2psi>`
+
+## Excluding one bad measurement restores the exact stress
+
+Exact peak positions of sigma_11 = -350, sigma_22 = -150, sigma_12 = 60 MPa at three azimuths and seven tilts, with one position - phi = 45, psi = 30 degrees - moved by 0.3 degrees, as a specimen-height error at one tilt would. That single point drags sigma_12 away from 60 MPa. Excluding it by its (phi, psi) leaves twenty exact points, and the fit must return sigma_12 = 60 MPa exactly.
+
+**Symbols**
+
+- $\psi$ &mdash; Tilt of the scattering vector from the surface normal.
+- $\varphi$ &mdash; Azimuth of the tilt plane, from S1 towards S2.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import math
+import numpy as np
+from pytex.diffraction.xrd_residual_stress import (
+    DiffractionElasticConstants, StressPeak, determine_residual_stress,
+    measurement_direction,
+)
+WAVELENGTH = 2.2897
+def exact_peaks(stress, dec, d0, phis, psis):
+    peaks = []
+    for phi in phis:
+        for psi in psis:
+            m = measurement_direction(phi, psi)
+            strain = 1e-6 * (dec.half_s2_per_tpa * float(m @ stress @ m)
+                             + dec.s1_per_tpa * float(np.trace(stress)))
+            two_theta = math.degrees(2 * math.asin(WAVELENGTH / (2 * d0 * (1 + strain))))
+            peaks.append(StressPeak(phi_deg=phi, psi_deg=psi, two_theta_deg=two_theta,
+                                    two_theta_uncertainty_deg=1e-3, method='given'))
+    return peaks
+from pytex.diffraction.xrd_residual_stress import indices_of_orientations
+```
+
+:::
+
+**Compute**
+
+```python
+dec = DiffractionElasticConstants(s1_per_tpa=-1.23, half_s2_per_tpa=5.69)
+stress = np.array([[-350.0, 60.0, 0.0], [60.0, -150.0, 0.0], [0.0, 0.0, 0.0]])
+peaks = exact_peaks(stress, dec, 1.1702, (0.0, 45.0, 90.0),
+                    (-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0))
+bad = indices_of_orientations(peaks, [(45.0, 30.0)])[0]
+peaks[bad] = StressPeak(phi_deg=45.0, psi_deg=30.0,
+                        two_theta_deg=peaks[bad].two_theta_deg + 0.3,
+                        two_theta_uncertainty_deg=1e-3, method='given')
+fit = determine_residual_stress(peaks, wavelength_angstrom=WAVELENGTH,
+                                d0_angstrom=1.1702, dec=dec, excluded=[bad])
+result = fit.tensor.component('sigma_12')[0]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `stress-excluding-a-bad-point` | 60.000000 | 60.000000 | MPa | < 1e-08 | 1e-06 | ✅ pass |
+
+**Why this value**: The generating stress: with the corrupted point excluded, the remaining twenty positions are exact.
+
+**Citation**: Noyan & Cohen, Residual Stress, Springer (1987), doi:10.1007/978-1-4613-9570-6.
+
+**See also**: {doc}`Residual stress by the sin^2(psi) method <../../theory/residual_stress_sin2psi>`, {doc}`Residual stress: the algorithm and the report <../../algorithms/residual_stress_sin2psi>`
+
+## The wavelength of a 30 keV synchrotron beam
+
+A synchrotron beamline is set by photon energy, a diffraction analysis needs the wavelength: lambda = hc / E with hc = 12.398419843 keV angstrom (CODATA 2018). At 30 keV that is 12.398419843 / 30 = 0.4132807 angstrom, which puts ferrite (211) at 2 theta = 2 asin(0.4133 / (2 x 1.1702)) = 20.3 degrees instead of 156 degrees with Cr K-alpha.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+from pytex.diffraction.xrd import RadiationSpec
+```
+
+:::
+
+**Compute**
+
+```python
+result = RadiationSpec.from_energy_kev(30.0).wavelength_angstrom
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `xray-wavelength-from-photon-energy` | 0.4132807 | 0.4132807 | angstrom | 3.86e-08 | 1e-07 | ✅ pass |
+
+**Why this value**: 12.398419843 / 30 = 0.41328066, by hand.
+
+**Citation**: CODATA 2018 recommended values of the fundamental physical constants (hc).
+
+**See also**: {doc}`Residual stress by the sin^2(psi) method <../../theory/residual_stress_sin2psi>`
+
+## The polarization factor of a synchrotron beam at 2 theta = 60 degrees
+
+With a fraction f of the beam polarized perpendicular to the scattering plane the polarization factor is P = f + (1 - f) cos^2(2 theta). At 2 theta = 60 degrees, cos^2(60) = 1/4: an unpolarized tube (f = 1/2) gives P = 0.625; a synchrotron with a vertical scattering plane (f = 0.95) gives 0.9625, almost no correction; with a horizontal plane (f = 0.05) it gives 0.2875. The Lorentz-polarization factor carries 2P / (sin^2(theta) cos(theta)); its ratio to the unpolarized value is P / 0.625, so for the horizontal plane 0.2875 / 0.625 = 0.46.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import math
+from pytex.diffraction.physics import lorentz_polarization_factor
+```
+
+:::
+
+**Compute**
+
+```python
+angle = math.radians(60.0)
+result = lorentz_polarization_factor(angle, perpendicular_fraction=0.05) / (
+    lorentz_polarization_factor(angle)
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `xray-polarization-factor-synchrotron` | 0.4600 | 0.4600 | &mdash; | < 1e-11 | 1e-09 | ✅ pass |
+
+**Why this value**: (0.05 + 0.95 x 0.25) / (0.5 + 0.5 x 0.25) = 0.2875 / 0.625 = 0.46, by hand.
+
+**Citation**: Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed. (2001), the polarization factor.
+
+**See also**: {doc}`Residual stress by the sin^2(psi) method <../../theory/residual_stress_sin2psi>`

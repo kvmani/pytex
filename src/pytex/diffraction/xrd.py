@@ -66,12 +66,27 @@ def _caglioti_fwhm_deg(
     return float(np.sqrt(fwhm_squared))
 
 
-def _lorentz_polarization(two_theta_rad: float) -> float:
+#: hc in keV angstrom (CODATA 2018): lambda [angstrom] = HC_KEV_ANGSTROM / E [keV].
+HC_KEV_ANGSTROM = 12.398419843320026
+
+
+def _lorentz_polarization(two_theta_rad: float, perpendicular_fraction: float = 0.5) -> float:
+    """Powder Lorentz-polarization factor, up to a constant.
+
+    ``2 [f + (1 - f) cos^2(2 theta)] / (sin^2(theta) cos(theta))`` with ``f`` the
+    fraction of the incident intensity polarized perpendicular to the scattering
+    plane. ``f = 1/2`` (an unpolarized tube) gives the textbook
+    ``(1 + cos^2(2 theta)) / (sin^2(theta) cos(theta))`` exactly.
+    """
+
     theta = 0.5 * two_theta_rad
     sin_theta = max(float(np.sin(theta)), 1e-8)
     cos_theta = max(float(np.cos(theta)), 1e-8)
     cos_two_theta = float(np.cos(two_theta_rad))
-    return float((1.0 + cos_two_theta * cos_two_theta) / (sin_theta * sin_theta * cos_theta))
+    polarization = 2.0 * (
+        perpendicular_fraction + (1.0 - perpendicular_fraction) * cos_two_theta * cos_two_theta
+    )
+    return float(polarization / (sin_theta * sin_theta * cos_theta))
 
 
 def _structure_factors_xray(
@@ -185,6 +200,17 @@ class RadiationSpec:
     K-alpha2 contribution weighted by ``kalpha2_relative_intensity`` (the
     conventional 0.5). ``anode`` records the X-ray tube target;
     ``kind`` distinguishes X-ray from neutron radiation.
+
+    ``polarization_perpendicular_fraction`` is the fraction ``f`` of the incident
+    intensity polarized perpendicular to the scattering plane, which sets the
+    polarization factor ``P = f + (1 - f) cos^2(2 theta)``. An X-ray tube is
+    unpolarized, ``f = 1/2`` and ``P = (1 + cos^2(2 theta))/2``. A synchrotron
+    beam is almost fully linearly polarized in the orbit plane: with the usual
+    vertical scattering plane ``f`` is close to one and the polarization factor
+    all but disappears; with a horizontal scattering plane ``f`` is close to zero
+    and ``P`` falls to ``cos^2(2 theta)``, which vanishes at ``2 theta = 90``
+    degrees. Use :meth:`monochromatic` or :meth:`synchrotron` for an arbitrary
+    wavelength.
     """
 
     name: str
@@ -193,6 +219,7 @@ class RadiationSpec:
     kalpha2_relative_intensity: float = 0.5
     anode: str | None = None
     kind: str = "xray"
+    polarization_perpendicular_fraction: float = 0.5
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -210,6 +237,101 @@ class RadiationSpec:
                 )
         if self.kind not in {"xray", "neutron"}:
             raise ValueError("RadiationSpec.kind must be 'xray' or 'neutron'.")
+        if not 0.0 <= self.polarization_perpendicular_fraction <= 1.0:
+            raise ValueError(
+                "RadiationSpec.polarization_perpendicular_fraction must lie in [0, 1]."
+            )
+
+    @classmethod
+    def monochromatic(
+        cls,
+        wavelength_angstrom: float,
+        *,
+        name: str | None = None,
+        polarization_perpendicular_fraction: float = 0.5,
+    ) -> RadiationSpec:
+        """A single monochromatic X-ray wavelength, e.g. from a crystal monochromator.
+
+        Purpose
+        -------
+        Analyse data taken at any wavelength -- a synchrotron beamline, a
+        Ge(111)-monochromated laboratory source, a liquid-metal jet -- rather
+        than only at the characteristic lines of the tube constructors. There is
+        no K-alpha2 line, so profile fits model one peak per reflection.
+
+        Parameters
+        ----------
+        wavelength_angstrom
+            The wavelength in angstrom. ``lambda = 12.3984 / E[keV]``; see
+            :meth:`from_energy_kev`.
+        name
+            A label for reports; defaults to the wavelength and photon energy.
+        polarization_perpendicular_fraction
+            ``f`` of the class docstring: 1/2 unpolarized (default), near 1 for a
+            synchrotron with a vertical scattering plane, near 0 for a
+            horizontal one.
+        """
+
+        if not np.isfinite(wavelength_angstrom) or wavelength_angstrom <= 0.0:
+            raise ValueError("The wavelength must be a positive, finite number of angstrom.")
+        energy = HC_KEV_ANGSTROM / wavelength_angstrom
+        return cls(
+            name=name or f"monochromatic {wavelength_angstrom:.5g} Å ({energy:.4g} keV)",
+            wavelength_angstrom=float(wavelength_angstrom),
+            polarization_perpendicular_fraction=float(polarization_perpendicular_fraction),
+        )
+
+    @classmethod
+    def synchrotron(
+        cls,
+        wavelength_angstrom: float,
+        *,
+        polarization_perpendicular_fraction: float = 0.95,
+        name: str | None = None,
+    ) -> RadiationSpec:
+        """A synchrotron beam: monochromatic and linearly polarized.
+
+        The default ``f = 0.95`` describes the usual vertical scattering plane
+        with a beam 95 % polarized in the orbit plane; pass ``0.05`` for a
+        horizontal scattering plane.
+        """
+
+        energy = HC_KEV_ANGSTROM / wavelength_angstrom if wavelength_angstrom > 0 else 0.0
+        return cls.monochromatic(
+            wavelength_angstrom,
+            name=name or f"synchrotron {wavelength_angstrom:.5g} Å ({energy:.4g} keV)",
+            polarization_perpendicular_fraction=polarization_perpendicular_fraction,
+        )
+
+    @classmethod
+    def from_energy_kev(
+        cls,
+        energy_kev: float,
+        *,
+        name: str | None = None,
+        polarization_perpendicular_fraction: float = 0.5,
+    ) -> RadiationSpec:
+        """A monochromatic beam given by its photon energy, ``lambda = hc / E``."""
+
+        if not np.isfinite(energy_kev) or energy_kev <= 0.0:
+            raise ValueError("The photon energy must be a positive, finite number of keV.")
+        return cls.monochromatic(
+            HC_KEV_ANGSTROM / energy_kev,
+            name=name,
+            polarization_perpendicular_fraction=polarization_perpendicular_fraction,
+        )
+
+    @property
+    def energy_kev(self) -> float:
+        """Photon energy of the (K-alpha1) wavelength, ``hc / lambda`` in keV."""
+
+        return float(HC_KEV_ANGSTROM / self.wavelength_angstrom)
+
+    @property
+    def is_monochromatic(self) -> bool:
+        """Whether the beam carries a single wavelength (no K-alpha2 line)."""
+
+        return self.kalpha2_wavelength_angstrom is None
 
     @classmethod
     def cu_ka(cls) -> RadiationSpec:
@@ -537,7 +659,9 @@ def generate_powder_reflections(
         amplitude = float(abs(structure_factor))
         multiplicity = _reflection_multiplicity(phase, hkl)
         two_theta_deg = float(surviving_two_theta[index])
-        lorentz_polarization = _lorentz_polarization(np.deg2rad(two_theta_deg))
+        lorentz_polarization = _lorentz_polarization(
+            np.deg2rad(two_theta_deg), radiation_spec.polarization_perpendicular_fraction
+        )
         intensity = multiplicity * amplitude * amplitude * lorentz_polarization
         if intensity <= 1e-14:
             continue

@@ -69,12 +69,13 @@ class TestRietveld:
         """Σ[(y_obs − y_calc)√w]² / (N − P) is the square of the reported goodness of fit."""
 
         from pytex.app.phases import phase_from_request
-        from pytex.app.services.xrd import _RADIATION, _measured_from_request
+        from pytex.app.radiation import radiation_from_request
+        from pytex.app.services.xrd import _measured_from_request
         from pytex.app.services.xrd_figures import rietveld_weighted_residuals
         from pytex.diffraction.rietveld import refine_rietveld
 
         request = REGISTRY.get("xrd.rietveld").bind(_NICKEL)
-        radiation = _RADIATION[str(request["radiation"])]()
+        radiation = radiation_from_request(request)
         _, phase = phase_from_request(request["phase"])
         measured, _ = _measured_from_request(request, phase, radiation)
         result = refine_rietveld(measured, phase, radiation=radiation)

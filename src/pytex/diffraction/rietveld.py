@@ -561,7 +561,11 @@ class _ForwardModel:
             amplitude_squared = amplitude_squared * np.exp(-0.5 * b_iso * g_magnitude**2)
         lorentz = np.array(
             [
-                _lorentz_polarization(np.deg2rad(angle)) if np.isfinite(angle) else 0.0
+                _lorentz_polarization(
+                    np.deg2rad(angle), self.radiation.polarization_perpendicular_fraction
+                )
+                if np.isfinite(angle)
+                else 0.0
                 for angle in two_theta
             ],
             dtype=np.float64,
@@ -1150,7 +1154,9 @@ def _result_reflections(
                 multiplicity=int(model.multiplicities[index]),
                 structure_factor_real=float(structure_factor.real),
                 structure_factor_imag=float(structure_factor.imag),
-                lorentz_polarization_factor=_lorentz_polarization(np.deg2rad(centre)),
+                lorentz_polarization_factor=_lorentz_polarization(
+                    np.deg2rad(centre), model.radiation.polarization_perpendicular_fraction
+                ),
                 intensity_model=intensity_model,
             )
         )

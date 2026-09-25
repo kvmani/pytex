@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -110,6 +111,8 @@ def test_every_xrd_example_is_canonical_and_runnable() -> None:
         "xrd.example.lattice_hexagonal_le_bail",
         "xrd.residual_stress.ferrite_shot_peened",
         "xrd.residual_stress.psi_splitting",
+        "xrd.residual_stress.outlier",
+        "xrd.residual_stress.synchrotron",
         "xrd.residual_stress.nickel_cu",
     }
     for example in examples:
@@ -479,9 +482,7 @@ def test_the_panel_opens_on_the_view_it_lists_first() -> None:
     pinned here rather than remembered.
     """
 
-    panel_source = (
-        Path("src/pytex/app/static/js/panels/xrd.js").read_text(encoding="utf-8")
-    )
+    panel_source = Path("src/pytex/app/static/js/panels/xrd.js").read_text(encoding="utf-8")
     assert "loadExample(examples[0])" in panel_source, (
         "the panel no longer opens on the first example; update this guard to match"
     )
@@ -502,13 +503,9 @@ def test_uncertainties_stay_with_their_reflections_under_an_angular_floor() -> N
     """
 
     everything = determine(method="cohen", extrapolation="cot_theta")
-    restricted = determine(
-        method="cohen", extrapolation="cot_theta", minimum_two_theta_deg=90.0
-    )
+    restricted = determine(method="cohen", extrapolation="cot_theta", minimum_two_theta_deg=90.0)
     assert len(restricted["table"]["rows"]) < len(everything["table"]["rows"])
-    assert all(
-        row["two_theta_observed_deg"] >= 90.0 for row in restricted["table"]["rows"]
-    )
+    assert all(row["two_theta_observed_deg"] >= 90.0 for row in restricted["table"]["rows"])
 
     # Every surviving row must keep the uncertainty it had in the full table.
     full = {
@@ -533,9 +530,7 @@ def test_operations_accept_experimental_pattern_file_xy() -> None:
     scan_file = {"name": "experimental_ni_fcc_pattern.xy", "text": text}
 
     # 1. Background estimation
-    bg = REGISTRY.call(
-        "xrd.background", {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file}
-    )
+    bg = REGISTRY.call("xrd.background", {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file})
     assert bg["data"]["synthetic"] is False
     assert len(bg["data"]["two_theta_deg"]) == 4001
 
@@ -561,18 +556,14 @@ def test_operations_accept_experimental_pattern_file_xrdml() -> None:
     text = NI_FCC_XRDML.read_text(encoding="utf-8")
     scan_file = {"name": "experimental_ni_fcc_pattern.xrdml", "text": text}
 
-    bg = REGISTRY.call(
-        "xrd.background", {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file}
-    )
+    bg = REGISTRY.call("xrd.background", {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file})
     assert bg["data"]["synthetic"] is False
     assert len(bg["data"]["two_theta_deg"]) == 4001
 
 
 def test_operation_rejects_missing_scan_file_when_source_is_file() -> None:
     with pytest.raises(InvalidInputError) as caught:
-        REGISTRY.call(
-            "xrd.background", {"phase": {"builtin": "ni_fcc"}, "data_source": "file"}
-        )
+        REGISTRY.call("xrd.background", {"phase": {"builtin": "ni_fcc"}, "data_source": "file"})
     assert caught.value.details["field"] == "scan_file"
 
 
@@ -587,7 +578,6 @@ def test_pattern_controls_are_wired_in_panel_js() -> None:
     assert "PATTERN_OPERATIONS" in panel
     assert "Experimental pattern" in xrdscan
     assert ".xy,.xrdml,.csv,.dat,.txt" in xrdscan
-
 
 
 # ---------------------------------------------------------------------------
@@ -767,3 +757,61 @@ def test_the_operation_declares_its_search_match_citations() -> None:
     joined = " ".join(spec.citations)
     assert "10.1021/ac50125a001" in joined  # Hanawalt, Rinn & Frevel
     assert "10.1107/S0021889886089458" in joined  # Dollase, on why intensities are weak evidence
+
+
+_SYNCHROTRON = {
+    "radiation": "monochromatic",
+    "wavelength_angstrom": 0.5,
+    "polarization_fraction": 0.95,
+}
+
+
+@pytest.mark.parametrize(
+    ("operation", "request_"),
+    [
+        ("xrd.powder_pattern", {"phase": {"builtin": "ni_fcc"}, "two_theta_max_deg": 60.0}),
+        ("xrd.background", {"phase": {"builtin": "ni_fcc"}}),
+        ("xrd.lattice_parameters", {"phase": {"builtin": "ni_fcc"}}),
+        ("xrd.rietveld", {"phase": {"builtin": "ni_fcc"}}),
+        ("xrd.phase_identification", {}),
+        ("kearns.from_three_sections", {}),
+    ],
+)
+def test_every_diffractometer_analysis_accepts_a_monochromatic_wavelength(
+    operation: str, request_: dict
+) -> None:
+    result = REGISTRY.call(operation, {**request_, **_SYNCHROTRON})
+    assert result["summary"]
+    assert result["inputs"].get("wavelength_angstrom", 0.5) == pytest.approx(0.5)
+
+
+def test_a_synchrotron_demonstration_scans_the_same_spacings_at_low_angle() -> None:
+    tube = REGISTRY.call("xrd.background", {"phase": {"builtin": "ni_fcc"}})
+    beam = REGISTRY.call("xrd.background", {"phase": {"builtin": "ni_fcc"}, **_SYNCHROTRON})
+    assert tube["data"]["two_theta_deg"][0] == pytest.approx(30.0, abs=0.1)
+    # sin(theta) scales with the wavelength: 30-130 degrees of Cu K-alpha1 at 0.5 Å.
+    ratio = 0.5 / 1.5406
+    low = 2 * math.degrees(math.asin(math.sin(math.radians(15.0)) * ratio))
+    high = 2 * math.degrees(math.asin(math.sin(math.radians(65.0)) * ratio))
+    assert beam["data"]["two_theta_deg"][0] == pytest.approx(low, abs=0.1)
+    assert beam["data"]["two_theta_deg"][-1] == pytest.approx(high, abs=0.1)
+    determination = REGISTRY.call(
+        "xrd.lattice_parameters", {"phase": {"builtin": "ni_fcc"}, **_SYNCHROTRON}
+    )
+    # The demonstration cell is the tabulated nickel cell dilated by 1.003.
+    assert determination["data"]["a"] == pytest.approx(3.52387 * 1.003, abs=5e-4)
+
+
+def test_a_monochromatic_beam_needs_its_wavelength_and_rejects_an_unknown_line() -> None:
+    from pytex.app.radiation import radiation_from_request
+
+    with pytest.raises(InvalidInputError) as caught:
+        REGISTRY.call("xrd.powder_pattern", {"radiation": "monochromatic"})
+    assert caught.value.details["field"] == "wavelength_angstrom"
+    beam = radiation_from_request(
+        {"radiation": "monochromatic", "wavelength_angstrom": 0.2, "polarization_fraction": 0.0}
+    )
+    assert beam.polarization_perpendicular_fraction == 0.0 and beam.is_monochromatic
+    assert radiation_from_request({"radiation": "cr_ka_doublet"}).anode == "Cr"
+    with pytest.raises(InvalidInputError):
+        radiation_from_request({"radiation": "ag_ka"})

@@ -296,7 +296,12 @@ def test_refusals_name_the_field_to_fix() -> None:
         _run(data_source="scans", measurement="0 0 abc 1")
     assert caught.value.details["field"] == "measurement"
     with pytest.raises(InvalidInputError) as caught:
-        _run(reflection=[1, 1, 0], radiation="cr_ka", phase={"builtin": "al_fcc"}, a0_angstrom=1.5)
+        _run(
+            reflection=[1, 1, 0],
+            radiation="cr_ka_doublet",
+            phase={"builtin": "al_fcc"},
+            a0_angstrom=1.5,
+        )
     assert caught.value.details["field"] == "reflection"
     with pytest.raises(InvalidInputError) as caught:
         _run(phase={"builtin": "zr_hcp"}, reflection=[1, 0, 3])
@@ -338,3 +343,72 @@ def test_the_bundle_holds_the_report_every_figure_and_the_result(default: dict) 
     assert printable.count("data:image/svg+xml;base64,") == len(figures)
     for heading in ("The stress tensor", "Theory: from peak shift to stress", "Sources"):
         assert heading in printable
+
+
+# ---------------------------------------------------------------------------
+# Excluding measurements from the workbench
+# ---------------------------------------------------------------------------
+
+
+def test_a_planted_bad_point_is_suggested_and_its_exclusion_restores_the_fit() -> None:
+    spoiled = _run(demo_bad_points="45 30")
+    assert spoiled["data"]["suggested_outliers"] == [{"phi_deg": 45.0, "psi_deg": 30.0}]
+    assert spoiled["data"]["reduced_chi_squared"] > 50.0
+    assert _stage(spoiled, "excluded_measurements")["status"] == "warning"
+
+    cleaned = _run(demo_bad_points="45 30", excluded_points="45 30")
+    data = cleaned["data"]
+    assert data["excluded"] == [{"phi_deg": 45.0, "psi_deg": 30.0}]
+    assert data["suggested_outliers"] == []
+    assert data["reduced_chi_squared"] < 3.0
+    for name, value in _TRUE.items():
+        assert abs(data["tensor"][name]["value_mpa"] - value) < 10.0
+    rows = [row for row in cleaned["table"]["rows"] if row["used"] == "excluded"]
+    assert [(row["phi_deg"], row["psi_deg"]) for row in rows] == [(45.0, 30.0)]
+    series = next(entry for entry in data["series"] if entry["phi_deg"] == 45.0)
+    position = series["psi_deg"].index(30.0)
+    assert series["included"][position] is False
+    assert abs(series["deleted_residual"][position]) > 10.0
+    stage = _stage(cleaned, "excluded_measurements")
+    assert stage["table"]["rows"][0]["state"] == "excluded"
+    assert "26 of 27" in str(cleaned["highlights"])
+    assert "excluded by the analyst" in cleaned["summary"]
+
+
+def test_exclusions_are_named_by_orientation_and_checked() -> None:
+    with pytest.raises(InvalidInputError) as caught:
+        _run(excluded_points="44 30")
+    assert caught.value.details["field"] == "excluded_points"
+    with pytest.raises(InvalidInputError) as caught:
+        _run(excluded_points="45")
+    assert caught.value.details["field"] == "excluded_points"
+    # Azimuths are compared modulo 360 degrees, and commas are accepted.
+    result = _run(excluded_points="405, 30; 0 -45")
+    assert len(result["data"]["excluded"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# A monochromatic (synchrotron) beam
+# ---------------------------------------------------------------------------
+
+
+def test_a_synchrotron_measurement_needs_chi_tilting_and_recovers_the_stress() -> None:
+    synchrotron = {
+        "radiation": "monochromatic",
+        "wavelength_angstrom": 0.5,
+        "polarization_fraction": 0.95,
+        "demo_fwhm_deg": 0.3,
+        "expected_fwhm_deg": 0.3,
+        "window_deg": 3.0,
+    }
+    with pytest.raises(InvalidInputError) as caught:
+        _run(**synchrotron)
+    assert caught.value.details["field"] == "geometry"
+    result = _run(geometry="chi", **synchrotron)
+    for name, value in _TRUE.items():
+        assert abs(result["data"]["tensor"][name]["value_mpa"] - value) < 25.0
+    assert "0.5 Å" in result["summary"] and "keV" in result["summary"]
+    assert result["data"]["bragg_two_theta_deg"] == pytest.approx(24.7, abs=0.1)
+    with pytest.raises(InvalidInputError) as caught:
+        _run(radiation="monochromatic")
+    assert caught.value.details["field"] == "wavelength_angstrom"

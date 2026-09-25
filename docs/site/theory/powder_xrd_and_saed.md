@@ -40,6 +40,43 @@ family-uniqueness invariant.
 This is suitable for phase-identification workflows, controlled comparison, and teaching. It is
 not a calibrated instrument model or a Rietveld refinement.
 
+### Any wavelength, and a polarized beam
+
+Nothing in Bragg's law or in the structure factor is specific to a tube line, so the wavelength is
+a free input: `RadiationSpec.monochromatic` takes any $\lambda$, and `RadiationSpec.from_energy_kev`
+converts a photon energy through
+
+$$
+\lambda\,[\text{Å}] = \frac{hc}{E_{\mathrm{ph}}} = \frac{12.398\,419\,843}{E_{\mathrm{ph}}\,[\mathrm{keV}]}
+$$
+
+(CODATA 2018), so 30 keV is 0.4133 Å. A monochromatic beam has no K$\alpha_2$ partner, and every
+profile fit then models one peak per reflection.
+
+The polarization part of $L_p$ depends on the source. With $f_{\perp}$ the fraction of the incident
+intensity polarized perpendicular to the scattering plane, the scattered intensity carries
+
+$$
+P(2\theta) = f_{\perp} + (1 - f_{\perp})\cos^{2}2\theta ,
+\qquad
+L_p(2\theta) = \frac{2P(2\theta)}{\sin^{2}\theta\cos\theta}.
+$$
+
+An X-ray tube is unpolarized, $f_{\perp} = \tfrac{1}{2}$, and $2P = 1 + \cos^{2}2\theta$: the textbook
+factor, which PyTex reproduces exactly. A synchrotron beam is almost fully linearly polarized in the
+orbit plane. With the usual vertical scattering plane $f_{\perp} \approx 0.95$ and $P \approx 1$: the
+polarization correction nearly disappears. With a horizontal scattering plane
+$f_{\perp} \approx 0.05$ and $P \approx \cos^{2}2\theta$, which extinguishes a reflection at
+$2\theta = 90^{\circ}$; `test_a_horizontal_scattering_plane_extinguishes_the_ninety_degree_reflection`
+pins that limit. `RadiationSpec.synchrotron` defaults to $f_{\perp} = 0.95$. A laboratory crystal
+monochromator polarizes the beam partially; see
+`pytex.diffraction.xrd_corrections.monochromator_polarization_factor`.
+
+In the workbench every diffractometer view offers the tube lines and **Monochromatic /
+synchrotron**, with the wavelength beside it and $f_{\perp}$ as an advanced control. A demonstration
+scan at such a wavelength covers the same spacings as 30–130° of Cu K$\alpha_1$, since
+$\sin\theta \propto \lambda$ at fixed $d$.
+
 ## Spectrum Construction
 
 The broadened powder spectrum is constructed by depositing each reflection onto a sampled

@@ -16,8 +16,10 @@ ScatteringModelName = Literal["unit", "atomic_number", "xray_gaussian_proxy"]
 IntensityCorrectionName = Literal["none", "lorentz_polarization"]
 
 
-def lorentz_polarization_factor(two_theta_rad: float) -> float:
-    """The combined Lorentz-polarization factor for an unpolarized beam.
+def lorentz_polarization_factor(
+    two_theta_rad: float, *, perpendicular_fraction: float = 0.5
+) -> float:
+    """The combined Lorentz-polarization factor of a powder reflection.
 
     Purpose
     -------
@@ -33,11 +35,17 @@ def lorentz_polarization_factor(two_theta_rad: float) -> float:
     two_theta_rad : float
         Scattering angle in radians, strictly between 0 and ``pi``. Values at
         the ends raise, since the factor diverges there.
+    perpendicular_fraction : float
+        Fraction ``f`` of the incident intensity polarized perpendicular to the
+        scattering plane; the polarization term becomes
+        ``2 [f + (1 - f) cos^2(2 theta)]``. The default 1/2 is an unpolarized
+        tube and gives the textbook factor exactly; a synchrotron beam with a
+        vertical scattering plane has ``f`` near 1, a horizontal one near 0.
 
     Notes
     -----
-    A monochromated instrument needs a different polarization term; this
-    function does not model one.
+    A crystal monochromator partially polarizes a laboratory beam; see
+    :func:`pytex.diffraction.xrd_corrections.monochromator_polarization_factor`.
     """
 
     theta = 0.5 * float(two_theta_rad)
@@ -45,8 +53,13 @@ def lorentz_polarization_factor(two_theta_rad: float) -> float:
         raise ValueError("two_theta_rad must be finite and satisfy 0 < two_theta_rad < pi.")
     sin_theta = max(float(np.sin(theta)), 1e-8)
     cos_theta = max(float(np.cos(theta)), 1e-8)
+    if not 0.0 <= perpendicular_fraction <= 1.0:
+        raise ValueError("perpendicular_fraction must lie in [0, 1].")
     cos_two_theta = float(np.cos(two_theta_rad))
-    return float((1.0 + cos_two_theta * cos_two_theta) / (sin_theta * sin_theta * cos_theta))
+    polarization = 2.0 * (
+        perpendicular_fraction + (1.0 - perpendicular_fraction) * cos_two_theta * cos_two_theta
+    )
+    return float(polarization / (sin_theta * sin_theta * cos_theta))
 
 
 @dataclass(frozen=True, slots=True)

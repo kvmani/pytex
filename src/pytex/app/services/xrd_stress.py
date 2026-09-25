@@ -21,6 +21,7 @@ import numpy as np
 
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import phase_from_request
+from pytex.app.radiation import radiation_from_request, radiation_parameters
 from pytex.app.registry import (
     REGISTRY,
     BooleanParameter,
@@ -68,6 +69,7 @@ from pytex.diffraction.xrd_residual_stress import (
     ResidualStressResult,
     Sin2PsiMeasurement,
     determine_residual_stress,
+    indices_of_orientations,
     parse_stress_peak_positions,
     parse_stress_scans,
     residual_stress_pipeline,
@@ -107,13 +109,6 @@ _CITATION_SIMMONS = (
     "MIT Press (1971)."
 )
 
-_RADIATION = {
-    "cr_ka": RadiationSpec.cr_ka,
-    "co_ka": RadiationSpec.co_ka,
-    "fe_ka": RadiationSpec.fe_ka,
-    "cu_ka_doublet": RadiationSpec.cu_ka_doublet,
-    "mo_ka_doublet": RadiationSpec.mo_ka_doublet,
-}
 
 #: The built-in phases whose single-crystal stiffness is tabulated.
 _STIFFNESS_OF_PHASE = {key: key for key in SINGLE_CRYSTAL_STIFFNESS_GPA}
@@ -212,21 +207,12 @@ def _phi() -> str:
             ),
             default=[2, 1, 1],
         ),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text=(
                 "Cr Kα is conventional for ferritic steel, Co or Mn Kα for austenite, Cu Kα for "
                 "nickel alloys at (420). The wavelength converts every angle to a spacing."
             ),
-            options=(
-                ("cr_ka", "Cr Kα1/Kα2", "The conventional choice for ferrite (211)."),
-                ("co_ka", "Co Kα1/Kα2", "Iron-bearing specimens at intermediate angle."),
-                ("fe_ka", "Fe Kα1/Kα2", "Avoids Cr fluorescence."),
-                ("cu_ka_doublet", "Cu Kα1/Kα2", "Nickel (420), aluminium (511)/(333)."),
-                ("mo_ka_doublet", "Mo Kα1/Kα2", "Short wavelength, deeper penetration."),
-            ),
-            default="cr_ka",
+            default="cr_ka_doublet",
         ),
         NumberParameter(
             name="a0_angstrom",
@@ -582,6 +568,21 @@ def _phi() -> str:
             advanced=True,
             group="Demonstration",
         ),
+        TextParameter(
+            name="demo_bad_points",
+            label="Demonstration bad measurements",
+            help_text=(
+                "φ ψ pairs (degrees, separated by semicolons) at which the demonstration's peak is "
+                "displaced by 0.25° 2θ, as a specimen-height error at that one tilt would do: a "
+                "known bad point to find in the plot and exclude."
+            ),
+            required=False,
+            default="",
+            max_length=400,
+            placeholder="45 30",
+            advanced=True,
+            group="Demonstration",
+        ),
         IntegerParameter(
             name="demo_seed",
             label="Demonstration noise seed",
@@ -625,6 +626,23 @@ def _phi() -> str:
                 ("centroid", _METHOD_LABELS["centroid"], "Continuous window at half maximum."),
             ),
             default="pseudo_voigt",
+            group="Evaluation",
+        ),
+        TextParameter(
+            name="excluded_points",
+            label="Excluded measurements",
+            help_text=(
+                "Measurements left out of every fit, as φ ψ pairs in degrees separated by "
+                "semicolons, e.g. `0 -45; 90 30`. Click a point in the d against sin²ψ plot to "
+                "add or remove it, then press Refit. An excluded point stays in the plot and the "
+                "report, with the strain the tensor fitted without it predicts, so the decision "
+                "can be checked and reversed. Exclude a bad peak location; do not exclude a "
+                "point only because it disagrees with a straight line — curvature is information."
+            ),
+            required=False,
+            default="",
+            max_length=4000,
+            placeholder="0 -45; 90 30",
             group="Evaluation",
         ),
         BooleanParameter(
@@ -708,7 +726,7 @@ def _phi() -> str:
 )
 def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
     spec, phase = phase_from_request(request["phase"])
-    radiation = _RADIATION[str(request["radiation"])]()
+    radiation = radiation_from_request(request)
     hkl = tuple(int(value) for value in request["reflection"])
     if len(hkl) != 3:
         raise InvalidInputError(
@@ -765,6 +783,7 @@ def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
         "reflection_label": label,
         "phase_name": spec.name,
     }
+    pairs = _orientation_pairs(request.get("excluded_points"))
     try:
         if source == "positions":
             peaks = parse_stress_peak_positions(str(request.get("measurement") or ""))
@@ -772,6 +791,7 @@ def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
                 peaks,
                 wavelength_angstrom=radiation.wavelength_angstrom,
                 d0_angstrom=d0,
+                excluded=_excluded_indices(peaks, pairs),
                 **common,
             )
         else:
@@ -789,6 +809,9 @@ def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
                     apply_lpa=True,
                     seed=int(request["demo_seed"]),
                     name=f"demonstration: {spec.name} {label}",
+                    corrupted=_orientation_pairs(
+                        request.get("demo_bad_points"), field="demo_bad_points"
+                    ),
                 )
             else:
                 measurement = parse_stress_scans(
@@ -800,6 +823,7 @@ def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
             result = residual_stress_pipeline(
                 measurement,
                 d0_angstrom=d0,
+                excluded=_excluded_indices(measurement.scans, pairs),
                 expected_two_theta_deg=bragg,
                 window_deg=float(request["window_deg"]),
                 peak_method=cast(Any, request["peak_method"]),
@@ -818,6 +842,8 @@ def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
             field, hint = "geometry", "Use χ-tilting or smaller tilts for this reflection."
         elif "triaxial" in message:
             field, hint = "refine_d0", "Switch off the d₀ refinement for a triaxial evaluation."
+        elif "remain after the exclusions" in message:
+            field, hint = "excluded_points", "Include some of the excluded measurements again."
         elif "cover the reflection" in message:
             field, hint = (
                 "window_deg",
@@ -844,6 +870,40 @@ def _residual_stress(request: dict[str, Any]) -> dict[str, Any]:
         cubic=cubic,
         phase=phase,
     ).to_json()
+
+
+def _orientation_pairs(text: Any, *, field: str = "excluded_points") -> list[tuple[float, float]]:
+    """Read ``φ ψ; φ ψ`` pairs; commas may separate the two angles of a pair."""
+
+    pairs: list[tuple[float, float]] = []
+    for chunk in str(text or "").replace("\n", ";").split(";"):
+        fields = chunk.replace(",", " ").split()
+        if not fields:
+            continue
+        if len(fields) != 2:
+            raise InvalidInputError(
+                f"{chunk.strip()!r} is not a φ ψ pair.",
+                field=field,
+                hint="Two angles in degrees per measurement, pairs separated by semicolons.",
+            )
+        try:
+            pairs.append((float(fields[0]), float(fields[1])))
+        except ValueError as error:
+            raise InvalidInputError(f"{chunk.strip()!r} is not a φ ψ pair.", field=field) from error
+    return pairs
+
+
+def _excluded_indices(items: Any, pairs: list[tuple[float, float]]) -> tuple[int, ...]:
+    if not pairs:
+        return ()
+    try:
+        return indices_of_orientations(items, pairs, tolerance_deg=0.01)
+    except ValueError as error:
+        raise InvalidInputError(
+            str(error),
+            field="excluded_points",
+            hint="Each pair must name a measured azimuth and tilt; remove the pair or fix it.",
+        ) from error
 
 
 def _angles(text: Any, *, field: str) -> list[float]:
@@ -973,6 +1033,7 @@ _POINT_COLUMNS = (
     ),
     Column("strain_uncertainty_micro", "u(ε)", units="10⁻⁶", numeric=True, digits=1),
     Column("fitted_strain_micro", "ε from the tensor", units="10⁻⁶", numeric=True, digits=1),
+    Column("used", "Used", help_text="Whether the measurement entered the fits."),
     Column(
         "normalized_residual",
         "Residual / u",
@@ -1038,6 +1099,14 @@ _LINE_COLUMNS = (
     Column("r_squared", "R²", numeric=True, digits=5),
 )
 
+_EXCLUDED_COLUMNS = (
+    Column("phi_deg", "φ", units="°", numeric=True, digits=1),
+    Column("psi_deg", "ψ", units="°", numeric=True, digits=2),
+    Column("two_theta_deg", "2θ", units="°", numeric=True, digits=4),
+    Column("normalized_residual", "Deleted residual / u", numeric=True, digits=2),
+    Column("state", "State"),
+)
+
 _TENSOR_COLUMNS = (
     Column("component", "Component"),
     Column("value_mpa", "Value", units="MPa", numeric=True, digits=1),
@@ -1097,6 +1166,7 @@ def _build_result(
                     None if fit is None else 1e6 * float(fit.fitted_strain[index])
                 ),
                 "normalized_residual": (None if fit is None else _number(float(normalized[index]))),
+                "used": "yes" if bool(result.included_mask[index]) else "excluded",
             }
         )
 
@@ -1129,6 +1199,12 @@ def _build_result(
         f"2θ ≈ {bragg:.1f}°: {len(result.peaks)} peak positions at "
         f"{len(result.regressions)} azimuth(s), d₀ = {result.d0_angstrom:.6f} Å"
         + (" (refined under plane stress)" if result.d0_refined else "")
+        + (
+            f"; {len(result.excluded_indices)} of {len(result.peaks)} measurements excluded "
+            "by the analyst"
+            if result.excluded_indices
+            else ""
+        )
         + f", elastic constants from {_MODEL_LABELS[result.dec.model].split(' (')[0]} "
         f"(½S₂ = {result.dec.half_s2_per_tpa:.3f} TPa⁻¹). The ± values are combined standard "
         "uncertainties; tensile stress is positive."
@@ -1226,27 +1302,56 @@ def _build_result(
 
 
 def _plot_data(result: ResidualStressResult) -> dict[str, Any]:
-    """What the workbench view draws: the d against sin²ψ points and lines per azimuth."""
+    """What the workbench view draws: every measurement and the lines, per azimuth.
 
+    Every point is sent, the excluded ones too, each with its ``included`` flag
+    and its strain residual in units of u, so the view can draw what was left
+    out, flag what looks like an outlier, and let the analyst change the
+    selection by clicking.
+    """
+
+    normalized = normalized_strain_residuals(result)
+    lines = {round(line.phi_deg % 360.0, 6): line for line in result.regressions}
+    azimuths = np.round(result.phi_deg % 360.0, 6)
     series = []
-    for line in result.regressions:
-        top = float(np.max(line.sin2psi))
-        psi_grid = np.rad2deg(np.arcsin(np.sqrt(np.linspace(0.0, top, 40))))
+    for azimuth in sorted(set(azimuths.tolist())):
+        members = np.flatnonzero(azimuths == azimuth)
+        order = members[np.argsort(result.psi_deg[members])]
         entry: dict[str, Any] = {
-            "phi_deg": line.phi_deg,
-            "psi_deg": line.psi_deg.tolist(),
-            "sin2psi": line.sin2psi.tolist(),
-            "d_angstrom": line.d_angstrom.tolist(),
-            "d_uncertainty_angstrom": line.d_uncertainty_angstrom.tolist(),
-            "intercept_angstrom": line.intercept_angstrom,
-            "slope_angstrom": line.slope_angstrom,
-            "sigma_phi_mpa": line.sigma_phi_mpa,
-            "sigma_phi_uncertainty_mpa": line.sigma_phi_uncertainty_mpa,
-            "grid_sin2psi": (np.sin(np.deg2rad(psi_grid)) ** 2).tolist(),
+            "phi_deg": float(azimuth),
+            "psi_deg": result.psi_deg[order].tolist(),
+            "measured_phi_deg": result.phi_deg[order].tolist(),
+            "sin2psi": result.sin2psi[order].tolist(),
+            "d_angstrom": result.d_angstrom[order].tolist(),
+            "d_uncertainty_angstrom": result.d_uncertainty_angstrom[order].tolist(),
+            "included": result.included_mask[order].tolist(),
+            "deleted_residual": (
+                [None] * int(order.size)
+                if result.deleted_residuals is None
+                else [_number(float(value)) for value in result.deleted_residuals[order]]
+            ),
+            "normalized_residual": (
+                [_number(float(value)) for value in normalized[order]]
+                if normalized.size
+                else [None] * int(order.size)
+            ),
         }
+        line = lines.get(float(azimuth))
+        top = float(np.max(result.sin2psi[order]))
+        psi_grid = np.rad2deg(np.arcsin(np.sqrt(np.linspace(0.0, top, 40))))
+        entry["grid_sin2psi"] = (np.sin(np.deg2rad(psi_grid)) ** 2).tolist()
+        if line is not None:
+            entry.update(
+                {
+                    "intercept_angstrom": line.intercept_angstrom,
+                    "slope_angstrom": line.slope_angstrom,
+                    "sigma_phi_mpa": line.sigma_phi_mpa,
+                    "sigma_phi_uncertainty_mpa": line.sigma_phi_uncertainty_mpa,
+                }
+            )
         if result.tensor is not None:
             design = strain_design_matrix(
-                np.full_like(psi_grid, line.phi_deg),
+                np.full_like(psi_grid, azimuth),
                 psi_grid,
                 s1_per_tpa=result.dec.s1_per_tpa,
                 half_s2_per_tpa=result.dec.half_s2_per_tpa,
@@ -1272,6 +1377,14 @@ def _plot_data(result: ResidualStressResult) -> dict[str, Any]:
             )
         }
         payload["reduced_chi_squared"] = result.tensor.reduced_chi_squared
+    payload["excluded"] = [
+        {"phi_deg": result.peaks[index].phi_deg, "psi_deg": result.peaks[index].psi_deg}
+        for index in result.excluded_indices
+    ]
+    payload["suggested_outliers"] = [
+        {"phi_deg": result.peaks[index].phi_deg, "psi_deg": result.peaks[index].psi_deg}
+        for index in result.suggested_outliers()
+    ]
     return payload
 
 
@@ -1612,6 +1725,67 @@ def _stages(
                 figures=tuple(diagnostic_figures),
             )
         )
+    suggested = result.suggested_outliers()
+    if result.excluded_indices or suggested:
+        excluded_rows = tuple(
+            {
+                "phi_deg": result.peaks[index].phi_deg,
+                "psi_deg": result.peaks[index].psi_deg,
+                "two_theta_deg": result.peaks[index].two_theta_deg,
+                "normalized_residual": (
+                    None
+                    if result.deleted_residuals is None
+                    else _number(float(result.deleted_residuals[index]))
+                ),
+                "state": "excluded" if not result.included_mask[index] else "suggested",
+            }
+            for index in (*result.excluded_indices, *suggested)
+        )
+        stages.append(
+            ResultStage(
+                key="excluded_measurements",
+                title="Excluded and suspect measurements",
+                section="diagnostics",
+                status="warning" if suggested else "info",
+                summary=(
+                    (
+                        f"{len(result.excluded_indices)} measurement(s) were excluded by the "
+                        "analyst and entered no fit. "
+                        if result.excluded_indices
+                        else ""
+                    )
+                    + (
+                        f"{len(suggested)} included measurement(s) lie more than 3.5 of their own "
+                        "standard uncertainties from the tensor fitted without them: candidates "
+                        "to inspect in the peak-fit figure, and to exclude "
+                        "by clicking them in the d against sin²ψ plot if the peak location is "
+                        "bad."
+                        if suggested
+                        else "No included measurement lies more than 3.5u from the tensor "
+                        "fitted without it."
+                    )
+                ),
+                table=ResultTable(
+                    columns=_EXCLUDED_COLUMNS,
+                    rows=excluded_rows,
+                    caption=(
+                        "Deleted residual: each point's strain residual against the tensor "
+                        "fitted without it, in units of its standard uncertainty (Birge-scaled). "
+                        "A large value confirms an exclusion and a small one questions it."
+                    ),
+                ),
+                explanation=(
+                    "Exclude a measurement when its peak was located badly — a fit that missed "
+                    "the peak, a spurious reflection, a detector artefact — and say why in the "
+                    "record. Do not exclude points only because they spoil a straight line: "
+                    "systematic curvature or oscillation of d against sin²ψ is a stress "
+                    "gradient or texture, and removing it hides the physics. The deleted "
+                    "residual judges each point against a fit that never saw it, so one bad "
+                    "point cannot hide itself by pulling the fit, nor make its neighbours look "
+                    "bad; a good point exceeds 3.5 about once in 2000."
+                ),
+            )
+        )
     split = splitting_figure(result)
     curved = [
         line
@@ -1865,6 +2039,54 @@ REGISTRY.add_examples(
                 "reflection": [2, 1, 1],
                 "true_sigma_13_mpa": 60.0,
                 "stress_state": "biaxial_shear",
+            },
+        ),
+        ExampleScenario(
+            id="xrd.residual_stress.outlier",
+            title="Residual stress: find and exclude a bad measurement",
+            panel="xrd",
+            summary=(
+                "The ferrite measurement with one bad point — its peak displaced by 0.25° at "
+                "φ = 45°, ψ = 30° — to find in the d against sin²ψ plot and exclude by clicking."
+            ),
+            teaches=(
+                "The bad point sits far off its line, is ringed as a suggested outlier, and "
+                "drags σ12 and the strain-fit χ²ν up. Click it in the plot and press Refit: it "
+                "turns into a red cross, χ²ν falls back towards one and the tensor returns to the "
+                "generating stress, while the point stays on the page for review."
+            ),
+            operation="xrd.residual_stress",
+            request={
+                "phase": {"builtin": "fe_bcc"},
+                "reflection": [2, 1, 1],
+                "demo_bad_points": "45 30",
+            },
+        ),
+        ExampleScenario(
+            id="xrd.residual_stress.synchrotron",
+            title="Residual stress: synchrotron, 0.5 Å, χ-tilting",
+            panel="xrd",
+            summary=(
+                "The ferrite (211) measurement at a synchrotron: a monochromatic 0.5 Å (24.8 keV) "
+                "beam, polarized in the orbit plane, with χ-tilting and sharp peaks."
+            ),
+            teaches=(
+                "At 0.5 Å the reflection sits near 2θ = 25°, so the peak shifts are small, and "
+                "ω-tilting to 45° would take the beam below the surface — which is why "
+                "synchrotron stress work uses χ-tilting. No Kα2 line is fitted, and the stress "
+                "matches the laboratory measurement of the same specimen."
+            ),
+            operation="xrd.residual_stress",
+            request={
+                "phase": {"builtin": "fe_bcc"},
+                "reflection": [2, 1, 1],
+                "radiation": "monochromatic",
+                "wavelength_angstrom": 0.5,
+                "polarization_fraction": 0.95,
+                "geometry": "chi",
+                "demo_fwhm_deg": 0.3,
+                "expected_fwhm_deg": 0.3,
+                "window_deg": 3.0,
             },
         ),
         ExampleScenario(

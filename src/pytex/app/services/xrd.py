@@ -18,6 +18,7 @@ import numpy as np
 from pytex.app.errors import InvalidInputError
 from pytex.app.logbook import APP_LOG
 from pytex.app.phases import phase_from_request
+from pytex.app.radiation import MONOCHROMATIC, radiation_from_request, radiation_parameters
 from pytex.app.registry import (
     REGISTRY,
     BooleanParameter,
@@ -93,12 +94,6 @@ __all__: tuple[str, ...] = ()
 _CITATION_CULLITY = "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed., Chs. 3–4."
 _CITATION_BEARDEN = "Bearden, Rev. Mod. Phys. 39 (1967) 78, doi:10.1103/RevModPhys.39.78."
 
-_RADIATION = {
-    "cu_ka_doublet": RadiationSpec.cu_ka_doublet,
-    "cu_ka": RadiationSpec.cu_ka,
-    "mo_ka_doublet": RadiationSpec.mo_ka_doublet,
-    "co_ka_doublet": RadiationSpec.co_ka,
-}
 
 _COLUMNS = (
     Column("hkl_label", "Reflection"),
@@ -159,18 +154,10 @@ def _powder_label(indices: tuple[int, int, int], *, spec: Any, style: str = "pla
             ),
             builtin="ni_fcc",
         ),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text=(
                 "Laboratory characteristic radiation. Doublet choices include the weaker Kα2 line; "
                 "Mo radiation has a shorter wavelength and moves peaks to lower angles."
-            ),
-            options=(
-                ("cu_ka_doublet", "Cu Kα1/Kα2", "Common laboratory copper doublet."),
-                ("cu_ka", "Cu Kα (single averaged line)", "One copper line without splitting."),
-                ("mo_ka_doublet", "Mo Kα1/Kα2", "Short-wavelength molybdenum doublet."),
-                ("co_ka_doublet", "Co Kα1/Kα2", "Useful for reducing Fe fluorescence."),
             ),
             default="cu_ka_doublet",
         ),
@@ -295,7 +282,7 @@ def _powder_pattern(request: dict[str, Any]) -> dict[str, Any]:
         )
 
     radiation_key = str(request["radiation"])
-    radiation = _RADIATION[radiation_key]()
+    radiation = radiation_from_request(request)
     try:
         pattern = generate_xrd_pattern(
             phase,
@@ -640,11 +627,12 @@ def _measured_from_request(
             ) from error
 
     dilated = _scaled_phase(phase, _DEMO_LATTICE_SCALE)
+    low, high = _demonstration_range_deg(request, radiation)
     try:
         ideal = generate_xrd_pattern(
             dilated,
             radiation=radiation,
-            two_theta_range_deg=(30.0, 130.0),
+            two_theta_range_deg=(low, high),
             resolution_deg=0.02,
             broadening_fwhm_deg=_DEMO_FWHM_DEG,
             intensity_model="xray_tabulated",
@@ -656,10 +644,14 @@ def _measured_from_request(
             hint="Choose a phase with an atomic basis, or open an experimental pattern instead.",
         ) from error
     angles = ideal.two_theta_grid_deg + _DEMO_ZERO_SHIFT_DEG
+    # The curved background hump sits where it does on the Cu scan (34 degrees, 6 wide),
+    # scaled with the window; for a tube line that is exactly the old hump.
+    hump_centre = low + 0.04 * (high - low)
+    hump_width = 0.06 * (high - low)
     noiseless = (
         _DEMO_PEAK_COUNTS * ideal.intensity_grid
         + _DEMO_BACKGROUND_COUNTS
-        + 400.0 * np.exp(-0.5 * ((angles - 34.0) / 6.0) ** 2)
+        + 400.0 * np.exp(-0.5 * ((angles - hump_centre) / hump_width) ** 2)
     )
     generator = np.random.default_rng(int(request["demonstration_seed"]))
     return (
@@ -672,6 +664,34 @@ def _measured_from_request(
         ),
         True,
     )
+
+
+#: The copper K-alpha1 wavelength the laboratory demonstration range is stated for.
+_DEMO_REFERENCE_WAVELENGTH = 1.5406
+
+
+def _demonstration_range_deg(
+    request: Mapping[str, Any], radiation: RadiationSpec
+) -> tuple[float, float]:
+    """The 2theta window of a demonstration scan: fixed for a tube, scaled otherwise.
+
+    A monochromatic (synchrotron) beam at a short wavelength puts every
+    reflection at low angle; scanning 30-130 degrees there would record only
+    high-index lines. The window is therefore the one covering the same
+    spacings as 30-130 degrees of Cu K-alpha1, ``sin(theta) ~ lambda``, capped
+    at 160 degrees. The tube lines keep the fixed window, so their demonstration
+    scans are unchanged.
+    """
+
+    if str(request.get("radiation")) != MONOCHROMATIC:
+        return 30.0, 130.0
+    ratio = radiation.wavelength_angstrom / _DEMO_REFERENCE_WAVELENGTH
+    ceiling = float(np.sin(np.deg2rad(80.0)))
+    low = 2.0 * np.rad2deg(np.arcsin(min(np.sin(np.deg2rad(15.0)) * ratio, ceiling)))
+    high = 2.0 * np.rad2deg(np.arcsin(min(np.sin(np.deg2rad(65.0)) * ratio, ceiling)))
+    if high - low < 10.0:
+        low = max(5.0, high - 60.0)
+    return float(low), float(high)
 
 
 def _demonstration_notes(phase_a: float) -> tuple[str, ...]:
@@ -792,16 +812,8 @@ _BACKGROUND_COLUMNS = (
             maximum=20,
             group="Estimator",
         ),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text="Recorded with the profile, and used to generate a demonstration scan.",
-            options=(
-                ("cu_ka", "Cu K\u03b1 (single averaged line)", "One copper line."),
-                ("cu_ka_doublet", "Cu K\u03b11/K\u03b12", "Common laboratory copper doublet."),
-                ("co_ka_doublet", "Co K\u03b11/K\u03b12", "Reduces Fe fluorescence."),
-                ("mo_ka_doublet", "Mo K\u03b11/K\u03b12", "Short-wavelength molybdenum."),
-            ),
             default="cu_ka",
             advanced=True,
         ),
@@ -813,7 +825,7 @@ _BACKGROUND_COLUMNS = (
 )
 def _background(request: dict[str, Any]) -> dict[str, Any]:
     spec, phase = phase_from_request(request["phase"])
-    radiation = _RADIATION[str(request["radiation"])]()
+    radiation = radiation_from_request(request)
     measured, generated = _measured_from_request(request, phase, radiation)
     method = cast(Literal["snip", "chebyshev"], request["method"])
     try:
@@ -886,6 +898,7 @@ def _background(request: dict[str, Any]) -> dict[str, Any]:
             "half_window_deg": float(request["half_window_deg"]),
             "degree": int(request["degree"]),
             "radiation": request["radiation"],
+            "wavelength_angstrom": float(radiation.wavelength_angstrom),
             "demonstration_seed": int(request["demonstration_seed"]),
         },
         notes=tuple(notes),
@@ -950,17 +963,9 @@ _REFINEMENT_COLUMNS = (
             builtin="ni_fcc",
         ),
         *_scan_parameters(),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text="The radiation the scan was collected with. A wrong choice moves every "
             "calculated peak and the refinement will try to absorb it into the cell.",
-            options=(
-                ("cu_ka", "Cu K\u03b1 (single averaged line)", "One copper line."),
-                ("cu_ka_doublet", "Cu K\u03b11/K\u03b12", "Common laboratory copper doublet."),
-                ("co_ka_doublet", "Co K\u03b11/K\u03b12", "Reduces Fe fluorescence."),
-                ("mo_ka_doublet", "Mo K\u03b11/K\u03b12", "Short-wavelength molybdenum."),
-            ),
             default="cu_ka",
         ),
         BooleanParameter(
@@ -1074,7 +1079,7 @@ _REFINEMENT_COLUMNS = (
 )
 def _rietveld(request: dict[str, Any]) -> dict[str, Any]:
     spec, phase = phase_from_request(request["phase"])
-    radiation = _RADIATION[str(request["radiation"])]()
+    radiation = radiation_from_request(request)
     measured, generated = _measured_from_request(request, phase, radiation)
 
     refine: list[str] = ["scale"]
@@ -1195,6 +1200,7 @@ def _rietveld(request: dict[str, Any]) -> dict[str, Any]:
             "phase": spec.to_json(),
             "data_source": request["data_source"],
             "radiation": request["radiation"],
+            "wavelength_angstrom": float(radiation.wavelength_angstrom),
             "refine": list(refine),
             "background_degree": int(request["background_degree"]),
             "starting_fwhm_deg": float(request["starting_fwhm_deg"]),
@@ -1935,18 +1941,10 @@ _LATTICE_COLUMNS = (
             maximum=1.0,
             group="Measurement",
         ),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text=(
                 "The wavelength every spacing is referred to. A wrong choice scales every "
                 "lattice parameter by the wavelength ratio."
-            ),
-            options=(
-                ("cu_ka", "Cu K\u03b1 (single averaged line)", "One copper line."),
-                ("cu_ka_doublet", "Cu K\u03b11/K\u03b12", "Common laboratory copper doublet."),
-                ("co_ka_doublet", "Co K\u03b11/K\u03b12", "Reduces Fe fluorescence."),
-                ("mo_ka_doublet", "Mo K\u03b11/K\u03b12", "Short-wavelength molybdenum."),
             ),
             default="cu_ka_doublet",
         ),
@@ -2128,7 +2126,7 @@ _LATTICE_COLUMNS = (
 )
 def _lattice_parameters(request: dict[str, Any]) -> dict[str, Any]:
     spec, phase = phase_from_request(request["phase"])
-    radiation = _RADIATION[str(request["radiation"])]()
+    radiation = radiation_from_request(request)
     measured, generated = _measured_from_request(request, phase, radiation)
 
     displacement = float(request["specimen_displacement_mm"])
@@ -2501,6 +2499,7 @@ def _lattice_parameters(request: dict[str, Any]) -> dict[str, Any]:
             "data_source": request["data_source"],
             "specimen_displacement_mm": displacement,
             "radiation": request["radiation"],
+            "wavelength_angstrom": float(radiation.wavelength_angstrom),
             "method": method,
             "extrapolation": request["extrapolation"],
             "systematic": request["systematic"],
@@ -3929,19 +3928,11 @@ def _candidate_phases(request: dict[str, Any]) -> tuple[list[tuple[str, Any]], d
             group="Verdict",
             field_width="short",
         ),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text=(
                 "The wavelength the scan was measured with. It converts every angle into a "
                 "spacing, so a wrong choice moves every candidate's calculated lines together "
                 "and can make the true phase look wrong."
-            ),
-            options=(
-                ("cu_ka", "Cu Kα (single averaged line)", "One copper line."),
-                ("cu_ka_doublet", "Cu Kα1/Kα2", "Common laboratory copper doublet."),
-                ("co_ka_doublet", "Co Kα1/Kα2", "Reduces Fe fluorescence."),
-                ("mo_ka_doublet", "Mo Kα1/Kα2", "Short-wavelength molybdenum."),
             ),
             default="cu_ka",
             advanced=True,
@@ -3969,7 +3960,7 @@ def _candidate_phases(request: dict[str, Any]) -> tuple[list[tuple[str, Any]], d
 )
 def _phase_identification(request: dict[str, Any]) -> dict[str, Any]:
     spec, demonstration_phase = phase_from_request(request["phase"])
-    radiation = _RADIATION[str(request["radiation"])]()
+    radiation = radiation_from_request(request)
     measured, generated = _measured_from_request(request, demonstration_phase, radiation)
     named, sources = _candidate_phases(request)
 
@@ -4156,6 +4147,7 @@ def _phase_identification(request: dict[str, Any]) -> dict[str, Any]:
             "phase": spec.to_json(),
             "data_source": request["data_source"],
             "radiation": request["radiation"],
+            "wavelength_angstrom": float(radiation.wavelength_angstrom),
             "weighting": request["weighting"],
             "tolerance_deg": float(request["tolerance_deg"]),
             "prominence_sigma": float(request["prominence_sigma"]),

@@ -433,27 +433,69 @@ export function mount(context) {
    */
   function drawStress() {
     const data = state.result.data;
+    const selection = parseMeasurementKeys(state.form.values().excluded_points ?? '');
+    const applied = parseMeasurementKeys(
+      (data.excluded ?? []).map((point) => measurementKey(point.phi_deg, point.psi_deg)).join('; '),
+    );
+    const toggle = (key) => {
+      if (selection.has(key)) selection.delete(key);
+      else selection.add(key);
+      state.form.setValues({ excluded_points: [...selection].join('; ') });
+      drawStress();
+    };
     frame.configure({ toData: () => null, formatCursor: () => '' });
-    frame.setContent(renderStress(data));
+    frame.setContent(renderStress(data, { selection, onToggle: toggle }));
     const phi = symbolText('stress_azimuth');
-    legend.replaceChildren(...data.series.map((series, index) =>
+    const pending = !sameKeys(selection, applied);
+    const items = data.series.map((series, index) =>
       el('span.legend__item', {}, [
         el('span.legend__swatch', {
           style: `background:${AZIMUTH_COLORS[index % AZIMUTH_COLORS.length]}`,
         }),
         el('span', {
-          text: `${phi} = ${formatNumber(series.phi_deg, 1)}°: ${symbolText('sigma_phi')} = `
-            + `${formatNumber(series.sigma_phi_mpa, 0)} ± `
-            + `${formatNumber(series.sigma_phi_uncertainty_mpa, 0)} MPa`,
+          text: series.sigma_phi_mpa === undefined
+            ? `${phi} = ${formatNumber(series.phi_deg, 1)}°: every point excluded`
+            : `${phi} = ${formatNumber(series.phi_deg, 1)}°: ${symbolText('sigma_phi')} = `
+              + `${formatNumber(series.sigma_phi_mpa, 0)} ± `
+              + `${formatNumber(series.sigma_phi_uncertainty_mpa, 0)} MPa`,
         }),
-      ])));
+      ]));
+    const toolbar = el('div.legend__toolbar', {}, [
+      el('button.button', {
+        type: 'button',
+        text: pending ? `Refit (${selection.size} excluded)` : 'Refit',
+        disabled: !pending,
+        title: 'Run the evaluation again without the excluded measurements',
+        'data-action': 'stress-refit',
+        onclick: () => run(),
+      }),
+      el('button.button', {
+        type: 'button',
+        text: 'Include all',
+        disabled: selection.size === 0,
+        title: 'Clear every exclusion',
+        'data-action': 'stress-include-all',
+        onclick: () => {
+          state.form.setValues({ excluded_points: '' });
+          drawStress();
+        },
+      }),
+      el('span.legend__guide', {
+        text: `Click a point to exclude or include it · ✕ excluded (${selection.size}) · `
+          + '◯ suggested outlier',
+      }),
+    ]);
+    legend.replaceChildren(toolbar, el('div.legend__items', {}, items));
     const tensor = data.tensor;
-    frame.setStatus(tensor
+    const fitted = tensor
       ? Object.entries(tensor)
         .map(([name, entry]) => `${symbolText(name)} = ${formatNumber(entry.value_mpa, 0)} ± `
           + `${formatNumber(entry.uncertainty_mpa, 0)} MPa`)
         .join(' · ') + ` · χ²ᵥ = ${formatNumber(data.reduced_chi_squared, 2)}`
-      : 'No stress tensor from these azimuths; each line still gives the stress along it.');
+      : 'No stress tensor from these azimuths; each line still gives the stress along it.';
+    frame.setStatus(pending
+      ? `${fitted} · the selection has changed: press Refit to fit without the ✕ points`
+      : fitted);
   }
 
   /** The legend names what the red mark means, which differs by plot kind. */
@@ -1325,8 +1367,41 @@ function stressTableKind(text) {
     : 'positions';
 }
 
-/** d against sin²ψ for every azimuth of a stress result, on one axis. */
-function renderStress(data) {
+/** The key a measurement is named by in the exclusion list: "φ ψ" in degrees. */
+function measurementKey(phi, psi) {
+  const tidy = (value) => String(Number(Number(value).toFixed(4)));
+  return `${tidy(phi)} ${tidy(psi)}`;
+}
+
+/** Parse "φ ψ; φ ψ" into a set of measurement keys. */
+function parseMeasurementKeys(text) {
+  const keys = new Set();
+  for (const chunk of String(text).split(/[;\n]/)) {
+    const fields = chunk.replace(/,/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (fields.length === 2 && fields.every((field) => Number.isFinite(Number(field)))) {
+      keys.add(measurementKey(fields[0], fields[1]));
+    }
+  }
+  return keys;
+}
+
+function sameKeys(left, right) {
+  return left.size === right.size && [...left].every((key) => right.has(key));
+}
+
+/** How far a point's deleted residual must be, in u, to be ringed as a suggested outlier. */
+const OUTLIER_THRESHOLD = 3.5;
+
+/**
+ * d against sin²ψ for every azimuth of a stress result, on one axis.
+ *
+ * Every measurement is drawn, the excluded ones too, and each is a control:
+ * clicking it (or pressing Enter on it) adds it to or removes it from the
+ * exclusion list, which the analyst then refits with. The drawing never
+ * refits by itself: an exclusion is a decision, and the plot shows the
+ * pending selection until it is applied.
+ */
+function renderStress(data, { selection = new Set(), onToggle = () => {} } = {}) {
   const root = svg('svg', {
     viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
     preserveAspectRatio: 'xMidYMid meet',
@@ -1387,6 +1462,7 @@ function renderStress(data) {
     );
   }
   const psi = symbolText('stress_tilt');
+  const phiSymbol = symbolText('stress_azimuth');
   root.append(
     svg('text', {
       x: MARGIN.left + plotWidth / 2, y: HEIGHT - 16, 'text-anchor': 'middle',
@@ -1401,12 +1477,14 @@ function renderStress(data) {
   );
   data.series.forEach((series, index) => {
     const color = AZIMUTH_COLORS[index % AZIMUTH_COLORS.length];
-    const top = Math.max(...series.sin2psi);
-    root.append(svg('line', {
-      x1: xAt(0), y1: yAt(series.intercept_angstrom),
-      x2: xAt(top), y2: yAt(series.intercept_angstrom + series.slope_angstrom * top),
-      stroke: color, 'stroke-width': 1.6,
-    }));
+    if (series.slope_angstrom !== undefined) {
+      const top = Math.max(...series.sin2psi);
+      root.append(svg('line', {
+        x1: xAt(0), y1: yAt(series.intercept_angstrom),
+        x2: xAt(top), y2: yAt(series.intercept_angstrom + series.slope_angstrom * top),
+        stroke: color, 'stroke-width': 1.6,
+      }));
+    }
     if (series.tensor_d_angstrom) {
       const points = series.grid_sin2psi
         .map((x, k) => `${xAt(x).toFixed(2)},${yAt(series.tensor_d_angstrom[k]).toFixed(2)}`);
@@ -1418,19 +1496,64 @@ function renderStress(data) {
     series.sin2psi.forEach((x, k) => {
       const d = series.d_angstrom[k];
       const u = series.d_uncertainty_angstrom[k];
+      const phiValue = series.measured_phi_deg?.[k] ?? series.phi_deg;
+      const key = measurementKey(phiValue, series.psi_deg[k]);
+      const marked = selection.has(key);
+      const deleted = series.deleted_residual?.[k];
+      const suspect = !marked && series.included?.[k] !== false
+        && Number.isFinite(deleted) && Math.abs(deleted) > OUTLIER_THRESHOLD;
       const open = series.psi_deg[k] < 0;
-      root.append(
-        svg('line', {
-          x1: xAt(x), y1: yAt(d - u), x2: xAt(x), y2: yAt(d + u),
-          stroke: color, 'stroke-width': 1,
-        }),
-        svg('circle', {
-          cx: xAt(x), cy: yAt(d), r: 4.5,
+      const cx = xAt(x);
+      const cy = yAt(d);
+      const describePoint = `${phiSymbol} = ${formatNumber(phiValue, 1)}°, ${psi} = `
+        + `${formatNumber(series.psi_deg[k], 2)}°, d = ${formatNumber(d, 6)} Å`
+        + (Number.isFinite(deleted) ? `, deleted residual ${formatNumber(deleted, 1)}u` : '')
+        + (marked ? ' — excluded; click to include' : ' — click to exclude');
+      const toggle = () => onToggle(key);
+      const point = svg('g', {
+        class: 'stress-point',
+        'data-key': key,
+        'data-excluded': marked ? 'true' : 'false',
+        'data-suspect': suspect ? 'true' : 'false',
+        role: 'button',
+        tabindex: 0,
+        'aria-pressed': marked ? 'true' : 'false',
+        'aria-label': describePoint,
+        style: 'cursor:pointer',
+        onclick: toggle,
+        onkeydown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggle();
+          }
+        },
+      }, [svg('title', { text: describePoint })]);
+      point.append(svg('line', {
+        x1: cx, y1: yAt(d - u), x2: cx, y2: yAt(d + u),
+        stroke: marked ? '#dc2626' : color, 'stroke-width': 1,
+        'stroke-opacity': marked ? 0.5 : 1,
+      }));
+      if (marked) {
+        point.append(
+          svg('line', { x1: cx - 5.5, y1: cy - 5.5, x2: cx + 5.5, y2: cy + 5.5,
+            stroke: '#dc2626', 'stroke-width': 2.2 }),
+          svg('line', { x1: cx - 5.5, y1: cy + 5.5, x2: cx + 5.5, y2: cy - 5.5,
+            stroke: '#dc2626', 'stroke-width': 2.2 }),
+        );
+      } else {
+        point.append(svg('circle', {
+          cx, cy, r: 4.5,
           fill: open ? 'white' : color, stroke: color, 'stroke-width': 1.5,
-        }, [svg('title', {
-          text: `${psi} = ${formatNumber(series.psi_deg[k], 2)}°, d = ${formatNumber(d, 6)} Å`,
-        })]),
-      );
+        }));
+      }
+      if (suspect) {
+        point.append(svg('circle', {
+          cx, cy, r: 9, fill: 'none', stroke: '#dc2626', 'stroke-width': 1.6,
+        }));
+      }
+      // A generous transparent target: a 4.5-pixel dot is hard to hit.
+      point.append(svg('circle', { cx, cy, r: 11, fill: 'transparent' }));
+      root.append(point);
     });
   });
   return root;

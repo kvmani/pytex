@@ -666,6 +666,58 @@ test('a stress measurement file is read into the form and analysed', async ({ pa
   expect(browserErrors).toEqual([]);
 });
 
+test('a bad stress measurement is excluded by clicking it, then refitted', async ({ page }) => {
+  test.setTimeout(180_000);
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'XRD');
+  await page.locator('#subtabs .viewtab[data-view="xrd.residual_stress"]').click();
+  // The outlier example plants one bad point; the evaluation must ring it, and
+  // only it, as a suggested outlier.
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: /find and exclude a bad measurement/ }).click(),
+  );
+  const bad = page.locator('#stage .stress-point[data-key="45 30"]');
+  await expect(bad).toHaveAttribute('data-suspect', 'true', { timeout: STAGE_TIMEOUT_MS });
+  await expect(page.locator('#stage .stress-point[data-suspect="true"]')).toHaveCount(1);
+  const status = page.locator('#stage .plot__status').first();
+  await expect(status).toContainText('χ²ᵥ = 3');
+  // Clicking marks it and arms Refit; nothing is refitted until asked.
+  await bad.click();
+  await expect(bad).toHaveAttribute('data-excluded', 'true');
+  const refit = page.locator('[data-action="stress-refit"]');
+  await expect(refit).toHaveText('Refit (1 excluded)');
+  await expect(status).toContainText('press Refit');
+  await expectNewCompletedCalculation(page, () => refit.click());
+  await expect(status).not.toContainText('press Refit', { timeout: STAGE_TIMEOUT_MS });
+  await expect(status).toContainText('σ₁₂ = 59');
+  await expect(page.locator('#stage .stress-point[data-key="45 30"]'))
+    .toHaveAttribute('data-excluded', 'true');
+  await expect(page.locator('#stage details.stage[data-stage="excluded_measurements"]'))
+    .toContainText('excluded by the analyst');
+  // And back again.
+  await page.locator('[data-action="stress-include-all"]').click();
+  await expect(page.locator('[data-action="stress-refit"]')).toHaveText('Refit (0 excluded)');
+  expect(browserErrors).toEqual([]);
+});
+
+test('a lattice parameter is determined at a synchrotron wavelength', async ({ page }) => {
+  test.setTimeout(180_000);
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'XRD');
+  await page.locator('#subtabs .viewtab[data-view="xrd.lattice_parameters"]').click();
+  const radiation = page.locator('#rail-body select').filter({ hasText: 'Monochromatic / synchrotron' });
+  await radiation.selectOption('monochromatic');
+  await page.getByRole('spinbutton', { name: /Monochromatic wavelength/ }).fill('0.5');
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Determine lattice parameters', exact: true }).click(),
+  );
+  await expect(page.locator('#stage .plot__status').first()).toContainText('a = 3.53', {
+    timeout: STAGE_TIMEOUT_MS,
+  });
+  await expect(page.locator('#stage')).toContainText('0.5 Å');
+  expect(browserErrors).toEqual([]);
+});
+
 test('completes the critical default calculations across panels', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   const journeys = [

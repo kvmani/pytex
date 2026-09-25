@@ -374,7 +374,75 @@ intercepts $d_{0}[1 + S_{1}(\sigma_{11}+\sigma_{22})]$ to agree with the slopes:
 strain-free-direction method of section 4, made exact and weighted. It fails, correctly, in a
 triaxial evaluation (section 6).
 
-## 11. What is deliberately not modelled
+## 11. Excluding measurements, and finding the ones to exclude
+
+A single badly located peak — a fit that caught a spurious reflection, a specimen-height error at
+one tilt, a detector artefact — pulls a least-squares fit towards itself. It does two kinds of
+damage: it biases the tensor, and it inflates $\chi^{2}_{\nu}$ and with it, through the Birge
+scaling, every uncertainty. The remedy is to leave the point out, and the method must make that
+both easy and reviewable.
+
+**Exclusion.** `determine_residual_stress(..., excluded=...)` takes indices of measurements to leave
+out of *every* fit — the tensor, the per-azimuth lines, the budget and the Monte Carlo draws. The
+excluded measurements stay in the result, flagged by `ResidualStressResult.included`, with the strain
+the tensor fitted without them predicts; nothing is deleted, so the decision can be read in the
+report and reversed. `indices_of_orientations` names measurements by $(\varphi, \psi)$, azimuth modulo
+$360^{\circ}$, so an exclusion survives a change of peak-location method. In the workbench a point is
+excluded by clicking it in the $d$ against $\sin^{2}\psi$ plot and pressing **Refit**; the plot draws
+it as a red cross, and the report lists it with its residual.
+
+**Which points?** The ordinary residual $\varepsilon_{i} - \mathbf{a}_{i}\hat{\mathbf{x}}$ is a poor guide: the fit
+has already moved towards a bad point, shrinking its residual and enlarging those of its good
+neighbours. On a ferrite measurement with one peak displaced by $0.25^{\circ}$, fourteen of 27 points
+lie beyond $3u$ of the spoiled fit. The *deleted* (externally studentized) residual judges each point
+against the fit made without it:
+
+$$
+t_{i} = \frac{\varepsilon_{i} - \mathbf{a}_{i}\hat{\mathbf{x}}_{(i)}}
+{\sqrt{s^{2}_{(i)}\left[u^{2}(\varepsilon_{i}) + \mathbf{a}_{i}\mathbf{V}_{(i)}\mathbf{a}_{i}^{\mathsf T}\right]}},
+\qquad s^{2}_{(i)} = \max\left(1, \chi^{2}_{\nu,(i)}\right),
+$$
+
+where $\hat{\mathbf{x}}_{(i)}$, $\mathbf{V}_{(i)}$ and $\chi^{2}_{\nu,(i)}$ come from the fit without
+measurement $i$. The denominator is the standard uncertainty of the difference between an
+independent measurement and a prediction, so under a correct model $t_{i}$ is close to a unit normal.
+A bad point, compared with a fit that never saw it, stands out by a large factor. On the example
+above it is the only point beyond 3.5, at $|t| \approx 90$, while no good point exceeds 2.7 over
+three noise realizations. `ResidualStressResult.suggested_outliers` lists included points beyond 3.5
+(about one good point in 2000 by chance); an excluded point keeps its $t_{i}$, now against the fit of
+every included point, so a large value confirms the exclusion and a small one questions it.
+
+**When not to exclude.** A point that is off because the *model* is wrong is information, not noise.
+Systematic curvature of $d$ against $\sin^{2}\psi$ is a stress gradient; oscillation is texture;
+branches that separate are shear. Removing such points makes the straight line fit and the answer
+wrong. Exclusion is for measurements known or shown to be bad, with the reason recorded; the
+suggestion is a prompt to inspect the peak fit, not a verdict.
+
+## 12. Synchrotron measurements
+
+At a synchrotron the wavelength is chosen, not given by an anode, and is usually short:
+0.5 Å (24.8 keV) puts ferrite (211) at $2\theta \approx 25^{\circ}$ instead of $156^{\circ}$ with Cr K$\alpha$.
+Three things change.
+
+- **Strain sensitivity.** $\Delta(2\theta) = -2\tan\theta\,\varepsilon$, so the same stress moves the peak
+  about eight times less at $25^{\circ}$ than at $156^{\circ}$. The far higher count rates, narrow
+  instrumental profiles and freedom to choose high-index reflections compensate; the evaluation is
+  unchanged.
+- **Tilt geometry.** Under $\omega$-tilting the absorption factor $1 - \tan\psi\cot\theta$ is positive
+  only while $\psi < \theta$: at larger tilts the incident or the diffracted beam runs below the
+  surface. At $\theta = 12.4^{\circ}$ that leaves $\psi < 12.4^{\circ}$ — no usable $\sin^{2}\psi$ range — and
+  `lpa_factor` refuses the geometry rather than returning a meaningless factor. Synchrotron stress
+  work therefore uses $\chi$-tilting (or transmission), where the tilt axis lies in the diffraction
+  plane and the absorption factor does not vary across the profile.
+- **Polarization and no K$\alpha_2$.** The beam is one wavelength, so each peak is fitted as a single
+  pseudo-Voigt, and the LPA factor uses the beam's polarization,
+  $\mathrm{LP} = 2[f_{\perp} + (1 - f_{\perp})\cos^{2}2\theta]/\sin^{2}\theta$, with $f_{\perp} \approx 0.95$ for a
+  vertical scattering plane (see {doc}`powder_xrd_and_saed`).
+
+`test_a_synchrotron_measurement_recovers_the_stress_with_chi_tilting` generates a 0.5 Å,
+$\chi$-tilted ferrite measurement and recovers the generating stress.
+
+## 13. What is deliberately not modelled
 
 - **Stress gradients.** The measured stress is the average over the X-ray penetration depth, which
   under $\omega$-tilting is
@@ -392,7 +460,7 @@ triaxial evaluation (section 6).
   alignment on a stress-free powder, whose apparent stress must be zero within its uncertainty
   (Fitzpatrick et al. 2005).
 
-## 12. Verification
+## 14. Verification
 
 - `tests/unit/test_xrd_residual_stress.py`: the design matrix against the tensor contraction;
   isotropic, Reuss (cubic closed form), Voigt, Neerfeld–Hill and Kröner constants (Kröner's

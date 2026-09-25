@@ -135,7 +135,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Literal
 
@@ -175,6 +175,7 @@ __all__ = [
     "TiltGeometry",
     "determine_residual_stress",
     "fit_sin2psi_lines",
+    "indices_of_orientations",
     "kroener_shear_modulus_cubic",
     "locate_stress_peak",
     "lpa_factor",
@@ -950,7 +951,11 @@ class Sin2PsiMeasurement:
 
 
 def lpa_factor(
-    two_theta_deg: Any, *, psi_deg: float, geometry: TiltGeometry = "omega"
+    two_theta_deg: Any,
+    *,
+    psi_deg: float,
+    geometry: TiltGeometry = "omega",
+    perpendicular_fraction: float = 0.5,
 ) -> np.ndarray:
     """Return the Lorentz-polarization-absorption factor across a profile.
 
@@ -964,8 +969,12 @@ def lpa_factor(
 
     Method
     ------
-    ``LP = (1 + cos^2(2 theta)) / sin^2(theta)``, the form used for broad
-    stress profiles (SAE HS-784). Under omega tilting the absorption factor of
+    ``LP = 2 [f + (1 - f) cos^2(2 theta)] / sin^2(theta)``, the form used for
+    broad stress profiles (SAE HS-784), with ``f`` the fraction of the beam
+    polarized perpendicular to the scattering plane: ``f = 1/2`` for a tube,
+    which gives the familiar ``(1 + cos^2(2 theta)) / sin^2(theta)``, and ``f``
+    near 1 for a synchrotron with a vertical scattering plane, where the
+    polarization term is constant across the profile. Under omega tilting the absorption factor of
     an infinitely thick specimen is ``A = 1 - tan(psi) cot(theta)``; under chi
     tilting it does not vary across the profile and is omitted.
 
@@ -977,6 +986,8 @@ def lpa_factor(
         The tilt of the scan.
     geometry
         ``"omega"`` or ``"chi"``.
+    perpendicular_fraction
+        ``f`` above: the radiation's ``polarization_perpendicular_fraction``.
 
     Returns
     -------
@@ -985,7 +996,13 @@ def lpa_factor(
     """
 
     theta = np.deg2rad(0.5 * np.asarray(two_theta_deg, dtype=float))
-    factor = (1.0 + np.cos(2.0 * theta) ** 2) / np.sin(theta) ** 2
+    if not 0.0 <= perpendicular_fraction <= 1.0:
+        raise ValueError("perpendicular_fraction must lie in [0, 1].")
+    factor = (
+        2.0
+        * (perpendicular_fraction + (1.0 - perpendicular_fraction) * np.cos(2.0 * theta) ** 2)
+        / np.sin(theta) ** 2
+    )
     if geometry == "omega":
         absorption = 1.0 - np.tan(np.deg2rad(psi_deg)) / np.tan(theta)
         if np.any(absorption <= 0.0):
@@ -1254,7 +1271,14 @@ def locate_stress_peak(
         uncertainty = np.sqrt(np.maximum(counts, 1.0))
     reference = float(axis[axis.size // 2])
     if lpa_correction:
-        factor = lpa_factor(axis, psi_deg=scan.psi_deg, geometry=geometry)
+        factor = lpa_factor(
+            axis,
+            psi_deg=scan.psi_deg,
+            geometry=geometry,
+            perpendicular_fraction=(
+                0.5 if radiation is None else radiation.polarization_perpendicular_fraction
+            ),
+        )
         factor = factor / factor[axis.size // 2]
         counts = counts / factor
         uncertainty = uncertainty / factor
@@ -2036,6 +2060,50 @@ class ResidualStressResult:
     tensor_unavailable_reason: str | None = None
     reflection_label: str = ""
     phase_name: str | None = None
+    included: np.ndarray | None = None
+    deleted_residuals: np.ndarray | None = None
+
+    def __post_init__(self) -> None:
+        mask = (
+            np.ones(len(self.peaks), dtype=bool)
+            if self.included is None
+            else np.asarray(self.included, dtype=bool).copy()
+        )
+        if mask.shape != (len(self.peaks),):
+            raise ValueError("ResidualStressResult.included must have one entry per peak.")
+        mask.setflags(write=False)
+        object.__setattr__(self, "included", mask)
+
+    @property
+    def included_mask(self) -> np.ndarray:
+        """Which measurements entered the fits (a read-only boolean array)."""
+
+        assert self.included is not None
+        return self.included
+
+    @property
+    def excluded_indices(self) -> tuple[int, ...]:
+        """Indices of the measurements left out of every fit."""
+
+        return tuple(int(index) for index in np.flatnonzero(~self.included_mask))
+
+    def suggested_outliers(self, threshold: float = 3.5) -> tuple[int, ...]:
+        """Included measurements whose deleted residual exceeds ``threshold``.
+
+        Each point is judged against the tensor fitted *without* it (see
+        :attr:`deleted_residuals`), so one bad point cannot hide itself by
+        pulling the fit towards it, and cannot make its good neighbours look
+        bad. A suggestion, not a verdict: a point off because the *model* is
+        wrong (a gradient, texture) should be understood rather than removed.
+        The analyst decides; see :func:`determine_residual_stress`'s
+        ``excluded``.
+        """
+
+        if self.deleted_residuals is None:
+            return ()
+        z = np.nan_to_num(self.deleted_residuals, nan=0.0)
+        flagged = (np.abs(z) > threshold) & self.included_mask
+        return tuple(int(index) for index in np.flatnonzero(flagged))
 
     @property
     def phi_deg(self) -> np.ndarray:
@@ -2082,6 +2150,13 @@ class ResidualStressResult:
             "regressions": [item.to_json() for item in self.regressions],
             "tensor": None if self.tensor is None else self.tensor.to_json(),
             "tensor_unavailable_reason": self.tensor_unavailable_reason,
+            "included": self.included_mask.tolist(),
+            "deleted_residuals": (
+                None
+                if self.deleted_residuals is None
+                else [None if not np.isfinite(v) else float(v) for v in self.deleted_residuals]
+            ),
+            "excluded_indices": list(self.excluded_indices),
         }
 
     def describe(self) -> str:
@@ -2108,6 +2183,16 @@ class ResidualStressResult:
             "surface normal S3; strain is (d - d0)/d0; tensile stress is positive; "
             "uncertainties are one standard uncertainty u.",
         ]
+        if self.excluded_indices:
+            left_out = ", ".join(
+                f"(phi {self.peaks[index].phi_deg:g}, psi {self.peaks[index].psi_deg:g})"
+                for index in self.excluded_indices
+            )
+            lines.append(
+                f"{len(self.excluded_indices)} of {len(self.peaks)} measurements were excluded "
+                f"from every fit by the analyst: {left_out}. They remain in the data with the "
+                "strain the fitted tensor predicts for them."
+            )
         if self.tensor is None:
             lines.append(
                 "The stress tensor was not determined: "
@@ -2184,6 +2269,7 @@ def determine_residual_stress(
     seed: int = 0,
     reflection_label: str = "",
     phase_name: str | None = None,
+    excluded: Iterable[int] = (),
 ) -> ResidualStressResult:
     """Determine the residual stress tensor from located peak positions.
 
@@ -2228,6 +2314,15 @@ def determine_residual_stress(
         Size and seed of the Monte Carlo cross-check; zero skips it.
     reflection_label, phase_name
         Recorded on the result.
+    excluded
+        Indices into ``peaks`` of measurements to leave out of every fit -- the
+        tensor, the per-azimuth lines, the budget and the Monte Carlo draws --
+        typically points an analyst has judged to be bad peak locations after
+        inspecting the d against sin^2(psi) plot. They stay in the result,
+        marked by :attr:`ResidualStressResult.included`, with the strain the
+        fitted tensor predicts for them, so the decision can be reviewed and
+        reversed. :func:`indices_of_orientations` turns ``(phi, psi)`` pairs
+        into these indices.
 
     Returns
     -------
@@ -2236,8 +2331,9 @@ def determine_residual_stress(
     Raises
     ------
     ValueError
-        For fewer than three peaks, a non-positive ``d0`` or wavelength, or
-        ``refine_d0`` with a triaxial state.
+        For fewer than three included peaks, an index out of range, a
+        non-positive ``d0`` or wavelength, or ``refine_d0`` with a triaxial
+        state.
     """
 
     if stress_state not in STRESS_STATES:
@@ -2262,6 +2358,21 @@ def determine_residual_stress(
     d = wavelength_angstrom / (2.0 * np.sin(theta))
     u_d = d / np.tan(theta) * np.deg2rad(0.5 * u_two_theta)
 
+    # Every array below the next line holds the included measurements only; the
+    # full-length ones are kept for the result.
+    included = np.ones(len(peaks), dtype=bool)
+    for index in excluded:
+        if not 0 <= int(index) < len(peaks):
+            raise ValueError(f"Excluded index {index} is outside 0..{len(peaks) - 1}.")
+        included[int(index)] = False
+    if int(np.count_nonzero(included)) < 3:
+        raise ValueError(
+            f"Only {int(np.count_nonzero(included))} measurements remain after the exclusions; "
+            "at least three are needed."
+        )
+    all_phi, all_psi, all_d, all_u_d = phi, psi, d, u_d
+    phi, psi, d, u_d = phi[included], psi[included], d[included], u_d[included]
+
     components = _STATE_COMPONENTS[stress_state]
     design = strain_design_matrix(
         phi,
@@ -2271,7 +2382,9 @@ def determine_residual_stress(
         components=components,
     )
 
-    nominal = all(peak.uncertainty_is_nominal for peak in peaks)
+    nominal = all(
+        peak.uncertainty_is_nominal for peak, keep in zip(peaks, included, strict=True) if keep
+    )
     tensor: StressTensorFit | None = None
     reason: str | None = None
     d0 = float(d0_angstrom)
@@ -2338,8 +2451,22 @@ def determine_residual_stress(
             external_only=nominal,
         )
 
-    strain = d / d0 - 1.0
-    u_strain = u_d / d0
+    if tensor is not None:
+        # The prediction, and so the residual, for every measurement -- the
+        # excluded ones too, so an analyst can see how far off the tensor
+        # fitted without them puts them.
+        full_design = strain_design_matrix(
+            all_phi,
+            all_psi,
+            s1_per_tpa=dec.s1_per_tpa,
+            half_s2_per_tpa=dec.half_s2_per_tpa,
+            components=tensor.component_names,
+        )
+        fitted = full_design @ tensor.values_mpa
+        tensor = replace(tensor, fitted_strain=fitted, residual_strain=(all_d / d0 - 1.0) - fitted)
+        deleted = _deleted_residuals(full_design, all_d / d0 - 1.0, all_u_d / d0, included)
+    else:
+        deleted = None
     regressions = fit_sin2psi_lines(phi, psi, d, u_d, d0_angstrom=d0, dec=dec)
     return ResidualStressResult(
         wavelength_angstrom=float(wavelength_angstrom),
@@ -2348,16 +2475,97 @@ def determine_residual_stress(
         d0_refined=bool(refine_d0 and tensor is not None),
         dec=dec,
         peaks=peaks,
-        d_angstrom=d,
-        d_uncertainty_angstrom=u_d,
-        strain=strain,
-        strain_uncertainty=u_strain,
+        d_angstrom=all_d,
+        d_uncertainty_angstrom=all_u_d,
+        strain=all_d / d0 - 1.0,
+        strain_uncertainty=all_u_d / d0,
         regressions=regressions,
         tensor=tensor,
         tensor_unavailable_reason=reason,
         reflection_label=reflection_label,
         phase_name=phase_name,
+        included=included,
+        deleted_residuals=deleted,
     )
+
+
+def _deleted_residuals(
+    design: np.ndarray, strain: np.ndarray, u_strain: np.ndarray, included: np.ndarray
+) -> np.ndarray:
+    """Return each measurement's residual against the fit made without it.
+
+    The externally studentized (deleted) residual: for point ``i`` the tensor
+    is refitted on the other included points, and
+    ``t_i = (e_i - a_i x_(i)) / sqrt(s^2_(i) (u_i^2 + a_i V_(i) a_i^T))``,
+    where ``s^2_(i) = max(1, chi2_nu)`` of that fit is the Birge factor. An
+    excluded point is judged against the fit of all included points. A point
+    that is wrong stands out by a large factor, because the fit it is compared
+    with never saw it. One small refit per point: a stress data set is tens of
+    points, so the loop costs nothing next to the peak fits.
+    """
+
+    count, parameters = design.shape
+    deleted = np.full(count, np.nan)
+    weights = 1.0 / u_strain**2
+    for index in range(count):
+        keep = included.copy()
+        keep[index] = False
+        dof = int(np.count_nonzero(keep)) - parameters
+        if dof < 1:
+            continue
+        rows = design[keep]
+        normal = rows.T @ (rows * weights[keep][:, None])
+        try:
+            covariance = np.linalg.inv(normal)
+        except np.linalg.LinAlgError:
+            continue
+        values = covariance @ (rows.T @ (weights[keep] * strain[keep]))
+        residual = strain[keep] - rows @ values
+        birge = max(1.0, float(np.sum(weights[keep] * residual**2)) / dof)
+        prediction = float(design[index] @ values)
+        variance = birge * (
+            u_strain[index] ** 2 + float(design[index] @ covariance @ design[index])
+        )
+        deleted[index] = (strain[index] - prediction) / np.sqrt(variance)
+    return deleted
+
+
+def indices_of_orientations(
+    peaks: Sequence[StressPeak],
+    orientations: Iterable[tuple[float, float]],
+    *,
+    tolerance_deg: float = 1e-3,
+) -> tuple[int, ...]:
+    """Return the indices of the peaks measured at the given ``(phi, psi)``.
+
+    Purpose
+    -------
+    Name a measurement by where it was taken rather than by its position in a
+    list, so an exclusion survives re-running the analysis with a different
+    peak-location method or elastic constants. Azimuths are compared modulo 360
+    degrees; every peak within ``tolerance_deg`` of a pair is returned.
+
+    Raises
+    ------
+    ValueError
+        If a pair matches no measurement, which usually means a typing error in
+        an angle and must not silently exclude nothing.
+    """
+
+    phi = np.array([peak.phi_deg for peak in peaks])
+    psi = np.array([peak.psi_deg for peak in peaks])
+    found: list[int] = []
+    for target_phi, target_psi in orientations:
+        azimuth = np.abs((phi - float(target_phi) + 180.0) % 360.0 - 180.0)
+        matches = np.flatnonzero(
+            (azimuth <= tolerance_deg) & (np.abs(psi - target_psi) <= tolerance_deg)
+        )
+        if matches.size == 0:
+            raise ValueError(
+                f"No measurement at phi = {target_phi:g}, psi = {target_psi:g} degrees to exclude."
+            )
+        found.extend(int(index) for index in matches)
+    return tuple(sorted(set(found)))
 
 
 def _solve_strain(
@@ -2553,6 +2761,7 @@ def residual_stress_pipeline(
     seed: int = 0,
     reflection_label: str = "",
     phase_name: str | None = None,
+    excluded: Iterable[int] = (),
 ) -> ResidualStressResult:
     """Locate every peak of a measurement and determine the stress.
 
@@ -2594,6 +2803,7 @@ def residual_stress_pipeline(
         seed=seed,
         reflection_label=reflection_label,
         phase_name=phase_name,
+        excluded=excluded,
     )
 
 
@@ -2630,6 +2840,8 @@ def simulate_sin2psi_measurement(
     apply_lpa: bool = True,
     seed: int = 0,
     name: str = "synthetic sin^2(psi) measurement",
+    corrupted: Iterable[tuple[float, float]] = (),
+    corruption_shift_deg: float = 0.25,
 ) -> Sin2PsiMeasurement:
     """Generate a measurement of a known stress, with counting noise.
 
@@ -2671,6 +2883,12 @@ def simulate_sin2psi_measurement(
         Seed of the counting noise.
     name
         Recorded on the measurement.
+    corrupted, corruption_shift_deg
+        ``(phi, psi)`` pairs at which the peak is displaced by
+        ``corruption_shift_deg`` in 2theta -- a bad measurement of the kind a
+        specimen-height error at one tilt, or a mis-set goniometer, produces --
+        so that finding and excluding an outlier can be practised on data whose
+        other points are known to be right.
 
     Returns
     -------
@@ -2683,6 +2901,7 @@ def simulate_sin2psi_measurement(
     generator = np.random.default_rng(seed)
     phis = [float(value) for value in phi_deg]
     psis = [float(value) for value in psi_deg]
+    bad_points = [(float(a), float(b)) for a, b in corrupted]
     ratio = kalpha_doublet_parameters(radiation)
     scans: list[StressScan] = []
     for phi in phis:
@@ -2694,6 +2913,11 @@ def simulate_sin2psi_measurement(
             ) * _PER_TPA_TO_PER_MPA
             d = d0_angstrom * (1.0 + strain)
             centre = float(np.rad2deg(2.0 * np.arcsin(radiation.wavelength_angstrom / (2.0 * d))))
+            if any(
+                abs((phi - bad_phi + 180.0) % 360.0 - 180.0) < 1e-6 and abs(psi - bad_psi) < 1e-6
+                for bad_phi, bad_psi in bad_points
+            ):
+                centre += corruption_shift_deg
             axis = np.arange(
                 centre - window_half_width_deg,
                 centre + window_half_width_deg + 0.5 * step_deg,
@@ -2709,7 +2933,12 @@ def simulate_sin2psi_measurement(
                     axis, centre_deg=partner, fwhm_deg=width, eta=eta
                 )
             if apply_lpa:
-                factor = lpa_factor(axis, psi_deg=psi, geometry=geometry)
+                factor = lpa_factor(
+                    axis,
+                    psi_deg=psi,
+                    geometry=geometry,
+                    perpendicular_fraction=radiation.polarization_perpendicular_fraction,
+                )
                 profile = profile * factor / factor[axis.size // 2]
             expected = peak_counts * profile + background_counts
             counts = generator.poisson(expected).astype(float)

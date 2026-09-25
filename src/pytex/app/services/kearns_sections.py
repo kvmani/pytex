@@ -46,6 +46,7 @@ import numpy as np
 from pytex.app.errors import InvalidInputError
 from pytex.app.logbook import APP_LOG
 from pytex.app.phases import phase_from_request
+from pytex.app.radiation import radiation_from_request, radiation_parameters
 from pytex.app.registry import (
     REGISTRY,
     ChoiceParameter,
@@ -82,13 +83,6 @@ _SECTIONS: tuple[tuple[str, str, str, str, tuple[float, float, float]], ...] = (
     ("transverse", "t", "transverse", "TD", (0.0, 1.0, 0.0)),
 )
 
-_RADIATION_OPTIONS = (
-    # Greek alpha is the published name of the characteristic line, not a confusable a.
-    ("cu_ka_doublet", "Cu Kα1/Kα2", "Common laboratory copper doublet."),  # noqa: RUF001
-    ("cu_ka", "Cu Kα (single averaged line)", "One copper line without splitting."),  # noqa: RUF001
-    ("mo_ka_doublet", "Mo Kα1/Kα2", "Short-wavelength molybdenum doublet."),  # noqa: RUF001
-    ("co_ka_doublet", "Co Kα1/Kα2", "Useful for reducing Fe fluorescence."),  # noqa: RUF001
-)
 
 _PEAK_GROUP = "Peaks and intensities"
 _DEMO_GROUP = "Demonstration scans"
@@ -103,17 +97,6 @@ _STATUS_TEXT = {
     "weak_random": "too weak in a random powder: excluded",
     "no_random_peak": "not found in the random standard: excluded",
 }
-
-
-def _radiation(name: str) -> Any:
-    from pytex.diffraction.xrd import RadiationSpec
-
-    return {
-        "cu_ka_doublet": RadiationSpec.cu_ka_doublet,
-        "cu_ka": RadiationSpec.cu_ka,
-        "mo_ka_doublet": RadiationSpec.mo_ka_doublet,
-        "co_ka_doublet": RadiationSpec.co_ka,
-    }[name]()
 
 
 def _expected_reflections(phase: Any, radiation: Any, low: float, high: float) -> list[Any]:
@@ -595,14 +578,11 @@ _QUADRATURE_COLUMNS = (
             ),
             default="tube",
         ),
-        ChoiceParameter(
-            name="radiation",
-            label="Radiation",
+        *radiation_parameters(
             help_text=(
                 "The radiation the scans were measured with. It places the expected reflections "
                 "and the K-alpha2 partners, and weights the calculated random intensities."
             ),
-            options=_RADIATION_OPTIONS,
             default="cu_ka_doublet",
         ),
         ChoiceParameter(
@@ -749,7 +729,7 @@ def _from_three_sections(request: dict[str, Any]) -> dict[str, Any]:
 
     spec, phase = phase_from_request(request["phase"])
     pole = _basal_pole(phase)
-    radiation = _radiation(str(request["radiation"]))
+    radiation = radiation_from_request(request)
     low = float(request["two_theta_min_deg"])
     high = float(request["two_theta_max_deg"])
     if not low < high:

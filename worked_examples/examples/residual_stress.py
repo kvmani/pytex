@@ -298,6 +298,107 @@ END_TO_END_FERRITE = WorkedExample(
 )
 
 
+SYNCHROTRON_WAVELENGTH = WorkedExample(
+    id="xray-wavelength-from-photon-energy",
+    title="The wavelength of a 30 keV synchrotron beam",
+    domain="residual-stress",
+    scenario=(
+        "A synchrotron beamline is set by photon energy, a diffraction analysis needs the "
+        "wavelength: lambda = hc / E with hc = 12.398419843 keV angstrom (CODATA 2018). At 30 keV "
+        "that is 12.398419843 / 30 = 0.4132807 angstrom, which puts ferrite (211) at "
+        "2 theta = 2 asin(0.4133 / (2 x 1.1702)) = 20.3 degrees instead of 156 degrees with Cr K-alpha."
+    ),
+    setup="from pytex.diffraction.xrd import RadiationSpec\n",
+    code="result = RadiationSpec.from_energy_kev(30.0).wavelength_angstrom",
+    expected=0.4132807,
+    unit="angstrom",
+    tolerance=1e-7,
+    reference="12.398419843 / 30 = 0.41328066, by hand.",
+    citation="CODATA 2018 recommended values of the fundamental physical constants (hc).",
+    symbols=(),
+    see_also=(_THEORY,),
+    result_format="{:.7f}",
+)
+
+
+HORIZONTAL_POLARIZATION = WorkedExample(
+    id="xray-polarization-factor-synchrotron",
+    title="The polarization factor of a synchrotron beam at 2 theta = 60 degrees",
+    domain="residual-stress",
+    scenario=(
+        "With a fraction f of the beam polarized perpendicular to the scattering plane the "
+        "polarization factor is P = f + (1 - f) cos^2(2 theta). At 2 theta = 60 degrees, "
+        "cos^2(60) = 1/4: an unpolarized tube (f = 1/2) gives P = 0.625; a synchrotron with a "
+        "vertical scattering plane (f = 0.95) gives 0.9625, almost no correction; with a "
+        "horizontal plane (f = 0.05) it gives 0.2875. The Lorentz-polarization factor carries "
+        "2P / (sin^2(theta) cos(theta)); its ratio to the unpolarized value is P / 0.625, so "
+        "for the horizontal plane 0.2875 / 0.625 = 0.46."
+    ),
+    setup=(
+        "import math\n"
+        "from pytex.diffraction.physics import lorentz_polarization_factor\n"
+    ),
+    code=(
+        "angle = math.radians(60.0)\n"
+        "result = lorentz_polarization_factor(angle, perpendicular_fraction=0.05) / (\n"
+        "    lorentz_polarization_factor(angle)\n"
+        ")"
+    ),
+    expected=0.46,
+    unit="",
+    tolerance=1e-9,
+    reference="(0.05 + 0.95 x 0.25) / (0.5 + 0.5 x 0.25) = 0.2875 / 0.625 = 0.46, by hand.",
+    citation=(
+        "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed. (2001), the polarization factor."
+    ),
+    symbols=(),
+    see_also=(_THEORY,),
+    result_format="{:.4f}",
+)
+
+
+EXCLUDING_A_BAD_POINT = WorkedExample(
+    id="stress-excluding-a-bad-point",
+    title="Excluding one bad measurement restores the exact stress",
+    domain="residual-stress",
+    scenario=(
+        "Exact peak positions of sigma_11 = -350, sigma_22 = -150, sigma_12 = 60 MPa at three "
+        "azimuths and seven tilts, with one position - phi = 45, psi = 30 degrees - moved by "
+        "0.3 degrees, as a specimen-height error at one tilt would. That single point drags "
+        "sigma_12 away from 60 MPa. Excluding it by its (phi, psi) leaves twenty exact points, "
+        "and the fit must return sigma_12 = 60 MPa exactly."
+    ),
+    setup=_SETUP_EXACT
+    + (
+        "from pytex.diffraction.xrd_residual_stress import indices_of_orientations\n"
+    ),
+    code=(
+        "dec = DiffractionElasticConstants(s1_per_tpa=-1.23, half_s2_per_tpa=5.69)\n"
+        "stress = np.array([[-350.0, 60.0, 0.0], [60.0, -150.0, 0.0], [0.0, 0.0, 0.0]])\n"
+        "peaks = exact_peaks(stress, dec, 1.1702, (0.0, 45.0, 90.0),\n"
+        "                    (-45.0, -30.0, -15.0, 0.0, 15.0, 30.0, 45.0))\n"
+        "bad = indices_of_orientations(peaks, [(45.0, 30.0)])[0]\n"
+        "peaks[bad] = StressPeak(phi_deg=45.0, psi_deg=30.0,\n"
+        "                        two_theta_deg=peaks[bad].two_theta_deg + 0.3,\n"
+        "                        two_theta_uncertainty_deg=1e-3, method='given')\n"
+        "fit = determine_residual_stress(peaks, wavelength_angstrom=WAVELENGTH,\n"
+        "                                d0_angstrom=1.1702, dec=dec, excluded=[bad])\n"
+        "result = fit.tensor.component('sigma_12')[0]"
+    ),
+    expected=60.0,
+    unit="MPa",
+    tolerance=1e-6,
+    reference=(
+        "The generating stress: with the corrupted point excluded, the remaining twenty "
+        "positions are exact."
+    ),
+    citation="Noyan & Cohen, Residual Stress, Springer (1987), doi:10.1007/978-1-4613-9570-6.",
+    symbols=(_PSI, _PHI),
+    see_also=(_THEORY, _ALGORITHM),
+    result_format="{:.6f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="residual-stress",
     title="Residual stress by the sin^2(psi) method",
@@ -305,8 +406,9 @@ GROUP = ExampleGroup(
         "The diffraction elastic constants checked against the isotropic formula, the cubic "
         "Reuss formula worked by hand and the root of Kroener's cubic; the sin^2(psi) law's "
         "slope, strain-free tilt and principal stresses checked against closed-form algebra on "
-        "exact data; and an end-to-end evaluation of noisy simulated scans checked against the "
-        "stress they were generated with."
+        "exact data; an end-to-end evaluation of noisy simulated scans checked against the "
+        "stress they were generated with; the exclusion of a bad measurement; and the wavelength "
+        "and polarization factor of a synchrotron beam."
     ),
     examples=(
         ISOTROPIC_CONSTANTS,
@@ -316,5 +418,8 @@ GROUP = ExampleGroup(
         STRAIN_FREE_DIRECTION,
         PRINCIPAL_STRESS,
         END_TO_END_FERRITE,
+        EXCLUDING_A_BAD_POINT,
+        SYNCHROTRON_WAVELENGTH,
+        HORIZONTAL_POLARIZATION,
     ),
 )

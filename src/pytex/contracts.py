@@ -1531,6 +1531,7 @@ def _serialize_radiation(radiation: RadiationSpec) -> dict[str, Any]:
         "kalpha2_relative_intensity": radiation.kalpha2_relative_intensity,
         "anode": radiation.anode,
         "kind": radiation.kind,
+        "polarization_perpendicular_fraction": radiation.polarization_perpendicular_fraction,
     }
 
 
@@ -1547,6 +1548,9 @@ def _deserialize_radiation(payload: dict[str, Any]) -> RadiationSpec:
         kalpha2_relative_intensity=float(payload.get("kalpha2_relative_intensity", 0.5)),
         anode=payload.get("anode"),
         kind=str(payload.get("kind", "xray")),
+        polarization_perpendicular_fraction=float(
+            payload.get("polarization_perpendicular_fraction", 0.5)
+        ),
     )
 
 

@@ -8607,4 +8607,43 @@ publication-quality figures.
 
 The goal is met: library, workbench view, staged report with publication figures, printable and
 bundled downloads, theory, algorithm page, worked examples, notebook, registry, changelog - all
-landed on `main` and verified as recorded above.
+landed on `main` and verified as recorded above. CI green on fdc7624 (after pinning the new
+examples in `test_app_xrd.py` and clearing four pre-existing HRTEM lint errors).
+
+## Goal - synchrotron wavelengths, and excluding stress measurements in the GUI (opened 2026-09-25)
+
+### Objective
+
+(1) Analyse monochromatic X-ray data of any wavelength (synchrotron) everywhere a tube line was
+the only choice. (2) In the residual-stress view, let the analyst inspect the d against sin²ψ
+points and select or deselect measurements to exclude outliers from the fit.
+
+### Decisions
+
+- `RadiationSpec` gains `polarization_perpendicular_fraction` (default 0.5 reproduces every
+  previous number exactly) and `monochromatic` / `synchrotron` / `from_energy_kev`.
+- One shared app declaration, `pytex.app.radiation`: `radiation` choice (tube doublets +
+  `monochromatic`), `wavelength_angstrom` (empty unless monochromatic), `polarization_fraction`
+  (advanced). Old stress keys `cr_ka`/`co_ka`/`fe_ka` became `*_doublet` (unreleased surface).
+- Demonstration scans keep 30-130 degrees for tubes; a monochromatic demonstration covers the
+  same d-range (sin(theta) ~ lambda).
+- Exclusions are named by (phi, psi), not index; excluded points stay in the result. Outlier
+  suggestion uses deleted (leave-one-out) residuals, threshold 3.5 - the ordinary residual
+  flagged 14 of 27 points around one bad point; the deleted residual flags exactly that one.
+- The GUI never refits on click: a click marks, Refit applies, the status line says a selection
+  is pending.
+
+### Increments
+
+- Increment 1 - all of it (landed with this entry): library, shared radiation declaration
+  replacing seven per-view lists, exclusion and deleted residuals in library, service and report
+  figures, clickable plot with Refit / Include all, planted-bad-point and synchrotron examples,
+  theory (powder note: wavelength and polarization; stress note sections 11-12), algorithm page
+  sections 8-9, registry symbols, three worked examples, notebook sections, changelog.
+
+### Verification of record
+
+- Library, radiation, app (manifest, XRD, lattice-report pins unchanged, figures, stages,
+  export, server, Kearns), worked examples, notebooks, atlas: green on Windows.
+- Playwright on a fresh :8777 server: XRD views, stress file, click-to-exclude-and-refit,
+  synchrotron lattice parameters - 4/4.

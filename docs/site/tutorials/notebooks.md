@@ -283,6 +283,7 @@ For the validated fixture-to-diffraction route, continue with:
     its uncertainty, draws d against sin²ψ at three azimuths, and recovers the tensor. Then, one
     ingredient at a time: the uncertainty budget and why d₀ dominates it while leaving the slopes
     untouched; d₀ determined from the data under plane stress; out-of-plane shear splitting the
-    ψ > 0 and ψ < 0 branches; and why the Kα2 line must be stripped before a parabola is fitted at
-    stress angles — or better, modelled.
+    ψ > 0 and ψ < 0 branches; why the Kα2 line must be stripped before a parabola is fitted at
+    stress angles — or better, modelled; finding a bad measurement by its deleted residual and
+    excluding it; and the same measurement at a synchrotron, 0.5 Å with χ-tilting.
 

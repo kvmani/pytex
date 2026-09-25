@@ -242,7 +242,17 @@ def stress_highlights(result: ResidualStressResult) -> tuple[ResultMetric, ...]:
             units="TPa⁻¹",
         )
     )
-    metrics.append(ResultMetric("Peak positions used", len(result.peaks)))
+    used = int(np.count_nonzero(result.included_mask))
+    metrics.append(
+        ResultMetric(
+            "Measurements used",
+            f"{used} of {len(result.peaks)}",
+            help_text=(
+                "Measurements left out by the analyst (Excluded measurements) enter no fit but "
+                "stay in the plots, as red crosses, and in the tables."
+            ),
+        )
+    )
     return tuple(metrics)
 
 
@@ -332,7 +342,10 @@ def stress_warnings(
         warnings.append(
             f"The reflection lies at 2θ ≈ {float(np.median(two_theta)):.0f}°. Strain "
             "sensitivity goes as tanθ, so a reflection above about 140° (Cr Kα on ferrite "
-            "(211), Cu Kα on nickel (420)) gives several times better precision."
+            "(211), Cu Kα on nickel (420)) gives several times better precision. At a "
+            "synchrotron's short wavelength every reflection is at low angle; there the remedy "
+            "is counting statistics, a higher-index reflection, and χ-tilting, since ω-tilting "
+            "soon takes the beam below the surface."
         )
     failed = [peak for peak in result.peaks if not peak.converged]
     if failed:
@@ -417,6 +430,10 @@ def peak_fits_figure(
         tilts = [tilts[round(i)] for i in np.linspace(0, len(tilts) - 1, maximum_rows)]
     peaks = {(round(p.phi_deg % 360.0, 6), round(p.psi_deg, 6)): p for p in result.peaks}
     scans = {(round(s.phi_deg % 360.0, 6), round(s.psi_deg, 6)): s for s in measurement.scans}
+    excluded = {
+        (round(result.peaks[i].phi_deg % 360.0, 6), round(result.peaks[i].psi_deg, 6))
+        for i in result.excluded_indices
+    }
     rows, columns = len(tilts), len(azimuths)
 
     def draw(figure: Any) -> None:
@@ -434,11 +451,18 @@ def peak_fits_figure(
                 if peak.lpa_corrected:
                     # Shown on the scale the peak was located on: divided by the
                     # LPA factor normalized at the same reference angle.
-                    factor = lpa_factor(axis, psi_deg=peak.psi_deg, geometry=measurement.geometry)
+                    fraction = measurement.radiation.polarization_perpendicular_fraction
+                    factor = lpa_factor(
+                        axis,
+                        psi_deg=peak.psi_deg,
+                        geometry=measurement.geometry,
+                        perpendicular_fraction=fraction,
+                    )
                     reference = lpa_factor(
                         [peak.lpa_reference_deg],
                         psi_deg=peak.psi_deg,
                         geometry=measurement.geometry,
+                        perpendicular_fraction=fraction,
                     )[0]
                     counts = counts / (factor / reference)
                 axes.plot(axis, counts, ".", ms=1.6, color=COLORS["data"])
@@ -455,11 +479,16 @@ def peak_fits_figure(
                     0.02,
                     0.95,
                     f"{_psi()} = {peak.psi_deg:g}°\n2θ = {peak.two_theta_deg:.3f}°\n"
-                    f"u = {1000.0 * peak.two_theta_uncertainty_deg:.1f} m°",
+                    f"u = {1000.0 * peak.two_theta_uncertainty_deg:.1f} m°"
+                    + ("\nexcluded" if (phi, psi) in excluded else ""),
                     transform=axes.transAxes,
                     va="top",
                     fontsize=5.5,
-                    color=COLORS["data"] if peak.converged else COLORS["warning"],
+                    color=(
+                        COLORS["data"]
+                        if peak.converged and (phi, psi) not in excluded
+                        else COLORS["warning"]
+                    ),
                 )
                 if row == 0:
                     axes.set_title(f"{_phi()} = {phi:g}°", fontsize=8)
@@ -584,6 +613,19 @@ def sin2psi_figure(result: ResidualStressResult) -> ResultFigure:
                     capsize=2,
                     label=f"{_psi()} < 0",
                 )
+            left_out = _excluded_at(result, line.phi_deg)
+            if left_out.size:
+                axes.errorbar(
+                    result.sin2psi[left_out],
+                    result.d_angstrom[left_out],
+                    yerr=result.d_uncertainty_angstrom[left_out],
+                    fmt="x",
+                    ms=6,
+                    mew=1.4,
+                    color=COLORS["warning"],
+                    capsize=2,
+                    label="Excluded by the analyst",
+                )
             top = float(np.max(line.sin2psi))
             psi_grid = np.rad2deg(np.arcsin(np.sqrt(np.linspace(0.0, top, 60))))
             grid_x = np.sin(np.deg2rad(psi_grid)) ** 2
@@ -638,8 +680,10 @@ def sin2psi_figure(result: ResidualStressResult) -> ResultFigure:
             axes.tick_params(labelsize=7)
             if slot % columns == 0:
                 axes.set_ylabel("d (Å)")
-            if slot == 0:
-                handles, names = axes.get_legend_handles_labels()
+            for handle, name in zip(*axes.get_legend_handles_labels(), strict=True):
+                if name not in names:
+                    handles.append(handle)
+                    names.append(name)
         figure.legend(
             handles,
             names,
@@ -669,6 +713,20 @@ def sin2psi_figure(result: ResidualStressResult) -> ResultFigure:
     )
 
 
+def _excluded_at(result: ResidualStressResult, phi_deg: float) -> np.ndarray:
+    """Indices of the excluded measurements taken at one azimuth."""
+
+    azimuth = round(phi_deg % 360.0, 6)
+    return np.array(
+        [
+            index
+            for index in result.excluded_indices
+            if round(result.peaks[index].phi_deg % 360.0, 6) == azimuth
+        ],
+        dtype=int,
+    )
+
+
 def _tensor_d_curve(
     result: ResidualStressResult, phi_deg: float, psi_deg: np.ndarray
 ) -> np.ndarray:
@@ -695,6 +753,17 @@ def strain_figure(result: ResidualStressResult) -> ResultFigure:
         for index, value in enumerate(azimuths):
             members = np.isclose(phi, value)
             color = _azimuth_color(index)
+            left_out = members & ~result.included_mask
+            members = members & result.included_mask
+            if np.any(left_out):
+                axes.plot(
+                    result.sin2psi[left_out],
+                    1e6 * result.strain[left_out],
+                    "x",
+                    ms=6,
+                    mew=1.4,
+                    color=COLORS["warning"],
+                )
             axes.errorbar(
                 result.sin2psi[members],
                 1e6 * result.strain[members],
@@ -1018,13 +1087,28 @@ def strain_residual_figure(result: ResidualStressResult) -> ResultFigure | None:
 
     def draw(figure: Any) -> None:
         axes = figure.subplots()
+        kept = result.included_mask
         draw_normalized_residuals(
             axes,
-            result.sin2psi,
-            normalized,
+            result.sin2psi[kept],
+            normalized[kept],
             xlabel=_sin2psi_label(),
             ylabel="(ε_obs − ε_fit) / u(ε)",
         )
+        if not np.all(kept):
+            axes.plot(
+                result.sin2psi[~kept],
+                normalized[~kept],
+                "x",
+                ms=7,
+                mew=1.5,
+                color=COLORS["warning"],
+                label="Excluded (not fitted)",
+            )
+            low, high = axes.get_ylim()
+            span = max(abs(low), abs(high), float(np.max(np.abs(normalized[~kept]))) * 1.1)
+            axes.set_ylim(-span, span)
+            axes.legend(loc="best", frameon=False, fontsize=7)
 
     return render_figure(
         draw,
@@ -1032,7 +1116,8 @@ def strain_residual_figure(result: ResidualStressResult) -> ResultFigure | None:
         title="Residuals of the stress fit",
         caption=(
             "The strain each measurement leaves after the tensor fit, in units of its own "
-            "standard uncertainty, against sin²ψ; bands at ±2 and ±3."
+            "standard uncertainty, against sin²ψ; bands at ±2 and ±3. Excluded measurements, "
+            "which were not fitted, are red crosses."
         ),
         interpretation=(
             "About 95 % inside ±2 when the model and the peak uncertainties are right. A "

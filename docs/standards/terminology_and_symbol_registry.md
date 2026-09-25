@@ -191,6 +191,9 @@ one a given control means even though the glyph is the same.
 | $M_{N}$ | de Wolff figure of merit, $Q_{N} / (2\langle|\Delta Q|\rangle N_{\mathrm{poss}})$. |
 | $F_{N}$ | Smith-Snyder figure of merit, $N / (\langle|\Delta 2\theta|\rangle N_{\mathrm{poss}})$. |
 | $R_{wp}$ | Weighted profile residual of a whole-pattern fit. |
+| $E_{\mathrm{ph}}$ | Photon energy of a monochromatic X-ray beam, $E_{\mathrm{ph}} = hc/\lambda$ with $hc = 12.398\,419\,843$ keV Å. Distinct from $E$, Young's modulus. |
+| $f_{\perp}$ | Fraction of the incident intensity polarized perpendicular to the scattering plane, giving the polarization factor $P = f_{\perp} + (1 - f_{\perp})\cos^{2}2\theta$: $\tfrac{1}{2}$ for a tube, near 1 for a synchrotron with a vertical scattering plane, near 0 with a horizontal one. |
+| $P(2\theta)$ | Polarization factor of the scattered intensity. |
 
 ### Residual stress by the sin²ψ method
 
@@ -215,6 +218,7 @@ polar angle and the Bunge angles, although $\psi$ is measured from the same spec
 | $E, \nu$ | Young's modulus and Poisson's ratio of an isotropic solid. |
 | $\Gamma$ | Cubic orientation parameter $(h^{2}k^{2} + k^{2}l^{2} + l^{2}h^{2})/(h^{2}+k^{2}+l^{2})^{2}$ on which the Reuss constants of a cubic reflection depend linearly. Numerically the $J$ of the elastic-properties table evaluated at the plane normal. |
 | $a_{1}, a_{2}$ | Branch mean $(d_{+} + d_{-})/2$ and half-difference $(d_{+} - d_{-})/2$ at one $\lvert\psi\rvert$: the psi-splitting (Dölle–Hauk) evaluation. |
+| $t_{i}$ | Deleted (externally studentized) residual of measurement $i$: its strain residual against the tensor fitted without it, in units of its Birge-scaled standard uncertainty. Beyond 3.5 a measurement is suggested as an outlier. |
 | $u(x)$ | Standard uncertainty of $x$. |
 | $\chi^{2}_{\nu}$ | Reduced chi-squared of a weighted fit; its square root scales the statistical uncertainty when it exceeds one (the Birge ratio). |
 

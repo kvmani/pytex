@@ -171,6 +171,43 @@ half-difference $a_{2}$ plots.
 The theory, the elastic constants (with the model comparison figure) and the algorithm as steps,
 so that the downloaded report is self-contained.
 
+## 8. Reviewing and excluding measurements
+
+The $d$ against $\sin^{2}\psi$ plot in the workbench is a control as well as a picture. Every
+measurement is drawn — each azimuth in its colour, $\psi<0$ open — and:
+
+- a point whose **deleted residual** $|t_{i}|$ exceeds 3.5 is **ringed in red** as a suggested
+  outlier. $t_{i}$ compares the point with the tensor fitted *without* it
+  ({doc}`../theory/residual_stress_sin2psi`, section 11), so one bad point cannot hide itself by
+  pulling the fit, nor make its good neighbours look bad;
+- **clicking a point** (or focusing it and pressing Enter) marks it for exclusion, drawn as a red
+  cross, and arms **Refit (n excluded)**; nothing is refitted until that is pressed, and the status
+  line says the selection has changed. **Include all** clears the selection;
+- the selection is the **Excluded measurements** field, as $\varphi\ \psi$ pairs separated by
+  semicolons, so it can also be typed, pasted, and is recorded in the result's inputs.
+
+After a refit the excluded measurements stay in every figure (red crosses), in the data table
+(**Used** = excluded) and in the **Excluded and suspect measurements** stage, each with its deleted
+residual against the fit of the included points: a large value confirms the exclusion, a small one
+questions it. The headline states *Measurements used: n of N*, and the summary says how many were
+excluded by the analyst. Exclude a measurement whose peak location is bad; do not exclude points that
+merely spoil a straight line — curvature and oscillation are stress gradients and texture.
+
+The example **Residual stress: find and exclude a bad measurement** plants one displaced peak
+(**Demonstration bad measurements**) so the whole procedure can be practised on data whose other
+points are known to be right: before, $\chi^{2}_{\nu} \approx 360$ and $\sigma_{12}$ is off by 25 MPa;
+after excluding the ringed point, $\chi^{2}_{\nu} \approx 1.4$ and the generating stress returns.
+
+## 9. Synchrotron and other monochromatic beams
+
+**Radiation** offers the tube doublets and **Monochromatic / synchrotron**, with the wavelength beside
+it ($\lambda[\text{Å}] = 12.3984/E_{\mathrm{ph}}[\mathrm{keV}]$) and, as an advanced control, the beam's
+polarization fraction $f_{\perp}$ (0.95 for a vertical scattering plane at a synchrotron). The peak fit
+then models one line per reflection, and the LPA correction uses $f_{\perp}$. At a short wavelength the
+stress reflection sits at low angle, where $\omega$-tilting beyond $\psi = \theta$ takes the beam below
+the surface: choose **χ (side-inclination)** tilting, as the example **Residual stress: synchrotron,
+0.5 Å, χ-tilting** does. The same radiation choice is offered by every XRD view.
+
 ## Verification
 
 - `tests/unit/test_xrd_residual_stress.py` — the library, against closed forms and exact data.
@@ -179,6 +216,10 @@ so that the downloaded report is self-contained.
   curve is $\sigma_{\varphi}$, the budget combines in quadrature and agrees with Monte Carlo), every
   input route and refusal, and the contents of the downloadable bundle.
 - `tests/unit/test_residual_stress_figures.py` — the geometry figure is the generator's output.
+- `tests/unit/test_monochromatic_radiation.py` — arbitrary wavelengths, photon energy, and the
+  polarization factor of a synchrotron beam.
+- Playwright: `a bad stress measurement is excluded by clicking it, then refitted` and `a lattice
+  parameter is determined at a synchrotron wavelength`.
 - Executable worked examples: {doc}`../examples/generated/residual-stress`.
 
 ## See also

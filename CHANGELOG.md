@@ -13,6 +13,28 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Any X-ray wavelength, including synchrotron beams.** `RadiationSpec.monochromatic`,
+  `RadiationSpec.synchrotron` and `RadiationSpec.from_energy_kev` (λ = hc/E, hc = 12.398419843 keV Å)
+  describe a single-wavelength beam with no Kα2 line, and `RadiationSpec.energy_kev` /
+  `is_monochromatic` report on any beam. Every XRD view of the workbench — pattern simulation,
+  background, lattice parameters, phase identification, Rietveld, residual stress and the Kearns
+  section scans — now offers the tube doublets (Cu, Mo, Co, Cr, Fe) and **Monochromatic /
+  synchrotron** with a wavelength field, from one shared declaration (`pytex.app.radiation`). A
+  demonstration scan at such a wavelength covers the same spacings as 30–130° of Cu Kα1.
+- **Beam polarization.** `RadiationSpec.polarization_perpendicular_fraction` (f⊥) sets the
+  polarization factor P = f⊥ + (1 − f⊥) cos²2θ in pattern simulation, Rietveld refinement, the
+  public `lorentz_polarization_factor` and the stress LPA correction: ½ for a tube (the textbook
+  factor, unchanged), ≈ 0.95 for a synchrotron with a vertical scattering plane, ≈ 0.05 with a
+  horizontal one. Carried through the JSON contract.
+- **Excluding measurements from a stress evaluation.** `determine_residual_stress(...,
+  excluded=...)` and `indices_of_orientations` leave chosen (φ, ψ) measurements out of every fit
+  while keeping them, flagged, in the result with the strain the tensor predicts for them.
+  `ResidualStressResult.deleted_residuals` judges each point against the fit made without it, and
+  `suggested_outliers()` lists those beyond 3.5. In the workbench, **click a point** in the d
+  against sin²ψ plot to exclude or include it and press **Refit**; suggested outliers are ringed,
+  excluded points drawn as red crosses in every figure, and a new report stage lists them. The
+  demonstration can plant a bad measurement to practise on (**Demonstration bad measurements**).
+
 - **Residual stress by the sin²ψ method, `pytex.diffraction.xrd_residual_stress`.** The position
   of one reflection measured at several specimen tilts ψ and azimuths φ, against a given
   stress-free spacing d₀, reduced to the stress tensor: biaxial (σ11, σ22, σ12), biaxial with

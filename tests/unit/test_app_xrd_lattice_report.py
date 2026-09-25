@@ -26,7 +26,8 @@ import pytest
 from pytex.app import REGISTRY
 from pytex.app.export import result_to_bundle, result_to_markdown
 from pytex.app.phases import phase_from_request
-from pytex.app.services.xrd import _RADIATION, _measured_from_request
+from pytex.app.radiation import radiation_from_request
+from pytex.app.services.xrd import _measured_from_request
 from pytex.app.services.xrd_lattice_report import (
     lattice_warnings,
     normalized_residuals,
@@ -216,7 +217,7 @@ class TestDerivedQuantities:
     def test_a_fitted_profile_reproduces_its_own_chi_squared(self) -> None:
         """PeakFit.evaluate is the model the fit minimized, doublet and background included."""
 
-        radiation = _RADIATION["cu_ka_doublet"]()
+        radiation = radiation_from_request({"radiation": "cu_ka_doublet"})
         _, phase = phase_from_request({"builtin": "ni_fcc"})
         request = REGISTRY.get(_LATTICE).bind({"phase": {"builtin": "ni_fcc"}})
         measured, _ = _measured_from_request(request, phase, radiation)
