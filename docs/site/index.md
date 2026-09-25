@@ -78,6 +78,8 @@ workflows/saed_generation
 workflows/kikuchi_geometry
 workflows/composite_or_diffraction
 workflows/saed_pattern_solving
+workflows/fib_lamella_planning
+workflows/fib_azimuth_calibration
 workflows/tem_pattern_indexing
 workflows/crystal_visualization
 workflows/style_customization

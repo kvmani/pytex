@@ -17,6 +17,7 @@ from pytex.app.services import ebsd as ebsd
 from pytex.app.services import ebsd_or as ebsd_or
 from pytex.app.services import ebsd_pattern as ebsd_pattern
 from pytex.app.services import ecci as ecci
+from pytex.app.services import fib_lamella as fib_lamella
 from pytex.app.services import kearns as kearns
 from pytex.app.services import kearns_sections as kearns_sections
 from pytex.app.services import tem as tem
@@ -35,6 +36,7 @@ __all__ = [
     "ebsd",
     "ebsd_or",
     "ecci",
+    "fib_lamella",
     "kearns",
     "kearns_sections",
     "tem",

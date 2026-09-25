@@ -145,6 +145,7 @@ _PANEL_DOCUMENTATION = {
         "Orientation relationships", "concepts/orientation_relationships"
     ),
     "ecci": DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
+    "fib_lamella": DocumentationLink("FIB lamella planning", "workflows/fib_lamella_planning"),
     "kearns": DocumentationLink(
         "The Kearns parameter and basal-pole texture",
         "theory/kearns_parameter_and_basal_pole_texture",

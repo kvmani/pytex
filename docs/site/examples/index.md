@@ -110,6 +110,16 @@ The complete set of computed-versus-expected values at a glance:
 | `tem-symmetry-orbit-multiplicity` | 48 | 48 | directions | ✅ |
 | `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | ✅ |
 | `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | ✅ |
+| `fib-constructed-residual` | 12.500000000 | 12.500000000 | deg | ✅ |
+| `fib-in-plane-target` | 0.000000 | 0.000000 | deg | ✅ |
+| `fib-111-along-normal` | 35.26438968 | 35.26438968 | deg | ✅ |
+| `fib-orientation-convention` | 18.74723725 | 18.74723725 | deg | ✅ |
+| `fib-lamella-azimuth` | 35.000000000 | 35.000000000 | deg | ✅ |
+| `fib-exact-mount-tilt` | 13.99545 | 13.99545 | deg | ✅ |
+| `fib-guaranteed-radius` | 25.0000 | 25.0000 | deg | ✅ |
+| `fib-footprint-clearance` | 9.000 | 9.000 | um | ✅ |
+| `fib-uncertainty-budget` | 5.0990195 | 5.0990195 | deg | ✅ |
+| `fib-fiducial-calibration` | -910.000 | -910.000 | sense x 1000 + R0 (deg) | ✅ |
 | `saed-practice-camera-constant-identity` | 4.95454 | 4.95454 | mm | ✅ |
 | `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | ✅ |
 | `saed-practice-hcp-prism-axial-ratio` | 1.08762 | 1.08762 | &mdash; | ✅ |
@@ -200,6 +210,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`The Kearns parameter <generated/kearns-parameter>` &mdash; The scalar texture index the zirconium industry specifies components against, checked against the identities that calibrate it -- 1/3 for a random texture, an exact sum of 1 over any orthonormal triad, (1/2, 1/2, 0) for an ideal basal girdle -- and against the tabulated calculation in Kearns' own 1965 report.
 - {doc}`Sample symmetry, ODF sections and component fractions <generated/texture-sections-and-sample-symmetry>` &mdash; The texture-analysis surfaces behind the workbench's measured-texture panel, each checked against its definition: axial sample symmetry removes exactly the azimuthal part of a figure, a random cubic texture holds the Haar volume of 24 balls within a tolerance, and a hexagonal ODF under orthorhombic sample symmetry spans 90, 90 and 60 degrees.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
+- {doc}`FIB lamella planning <generated/fib-lamella>` &mdash; The residual tilt of a vertically milled lamella checked on orientations built so it is known (0, 12.5 and 35.26 degrees), the crystal-to-specimen convention on a case that fails if it is read backwards, the lamella azimuth, the exact holder tilt for a mounted lamella against its small-angle approximation, a holder's guaranteed reach, the footprint clearance in a hand-measured grain, the uncertainty budget, and the recovery of a reversed FIB rotation from fiducials.
 - {doc}`Simulated SAED plates and the zone-axis atlas <generated/saed_practice_patterns>` &mdash; The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put, and the forbidden reflection that double diffraction puts on a real plate at exactly the radius a genuine one would occupy.
 - {doc}`Precise lattice-parameter determination <generated/lattice-parameters>` &mdash; The extrapolation functions and the drift-column identity checked against closed-form algebra, the hexagonal quadratic form checked against the textbook expression it must reduce to, and an end-to-end determination through a deliberately displaced specimen checked against the pinned fixture cell the pattern was generated from - alongside the same data solved by averaging, which leaves the displacement in the answer.
 - {doc}`Residual stress by the sin^2(psi) method <generated/residual-stress>` &mdash; The diffraction elastic constants checked against the isotropic formula, the cubic Reuss formula worked by hand and the root of Kroener's cubic; the sin^2(psi) law's slope, strain-free tilt and principal stresses checked against closed-form algebra on exact data; an end-to-end evaluation of noisy simulated scans checked against the stress they were generated with; the exclusion of a bad measurement; and the wavelength and polarization factor of a synchrotron beam.
@@ -236,6 +247,7 @@ generated/pole-figure-arithmetic
 generated/kearns-parameter
 generated/texture-sections-and-sample-symmetry
 generated/tem_tilt_navigation
+generated/fib-lamella
 generated/saed_practice_patterns
 generated/lattice-parameters
 generated/residual-stress

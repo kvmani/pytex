@@ -87,6 +87,26 @@ per the source-hierarchy rule in `AGENTS.md`. Filenames are not citations.
 - `page number(s)` refers to the printed page where the OCR or outline makes that reliable.
 - Where the PDF is only a partial extract, the remark includes both the printed page and the PDF page when needed.
 
+## Prior-Art Status: FIB Lamella Planning (`pytex.fib`)
+
+Recorded 2026-09-25, as section 16 of `docs/architecture/fib_lamella_planning_foundation.md`
+requires before any novelty is asserted. Scope: a brief web search, **not** a systematic review.
+
+- **Established.** EBSD-guided, site-specific FIB preparation of TEM lamellae along a targeted zone
+  axis is described in the microscopy literature and in instrument application notes (for example a
+  TESCAN practical tip on lamella zone-axis alignment, and published figures of "TEM sample
+  preparation along a targeted zone axis by an EBSD-FIB process"). Vendor patents describe
+  transforming feature and lamella placement from sample to FIB coordinates (e.g. US 11,264,200,
+  *Lamella alignment based on a reconstructed volume*). The geometry of `pytex.fib` is therefore
+  not claimed as new.
+- **Not found in this search.** An open-source tool that covers the whole EBSD → SEM image → FIB
+  ion view → TEM holder chain with stated conventions; an uncertainty budget propagated into the
+  residual TEM tilt; or feasibility marginalized over the uncontrolled in-plane mounting rotation.
+- **Status.** Unverified. The documentation classifies the last two as *potentially original
+  directions, prior art not verified*, and must not say more until a systematic search (Scopus/Web
+  of Science: "EBSD" AND "FIB" AND ("lift-out" OR "lamella") AND ("zone axis" OR "orientation"))
+  has been run and recorded here.
+
 ## References
 
 ### Normative

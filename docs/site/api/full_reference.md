@@ -172,6 +172,37 @@ support objects that are imported elsewhere in the library.
 .. automodule:: pytex.ebsd.texture_workflow
 ```
 
+## FIB Lamella Planning
+
+```{eval-rst}
+.. automodule:: pytex.fib
+   :no-members:
+```
+
+```{eval-rst}
+.. automodule:: pytex.fib.frames
+```
+
+```{eval-rst}
+.. automodule:: pytex.fib.geometry
+```
+
+```{eval-rst}
+.. automodule:: pytex.fib.placement
+```
+
+```{eval-rst}
+.. automodule:: pytex.fib.planning
+```
+
+```{eval-rst}
+.. automodule:: pytex.fib.selection
+```
+
+```{eval-rst}
+.. automodule:: pytex.fib.report
+```
+
 ## Diffraction
 
 ```{eval-rst}
@@ -252,6 +283,10 @@ support objects that are imported elsewhere in the library.
 
 ```{eval-rst}
 .. automodule:: pytex.plotting.ipf
+```
+
+```{eval-rst}
+.. automodule:: pytex.plotting.fib_figures
 ```
 
 ```{eval-rst}

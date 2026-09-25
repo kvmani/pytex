@@ -40,6 +40,7 @@ const PANEL_PATH = {
   'Kikuchi simulator': ['EBSD', 'Kikuchi simulator'],
   'ECCI workflow': ['EBSD', 'ECCI workflow'],
   'OR from grains': ['EBSD', 'OR from grains'],
+  'FIB lamella': ['EBSD', 'FIB lamella'],
   'Measured texture': ['Texture', 'Measured texture'],
   Texture: ['Texture', 'Texture'],
   'Kearns parameter': ['Texture', 'Kearns parameter'],
@@ -2999,6 +3000,7 @@ test('the EBSD workspace shows six scan views and three scanless tools', async (
     'Kikuchi simulator',
     'ECCI workflow',
     'OR from grains',
+    'FIB lamella',
   ]);
 
   // The three map tabs are the same panel opened on different colourings, and
@@ -3035,6 +3037,55 @@ test('the EBSD workspace shows six scan views and three scanless tools', async (
   await openPanel(page, 'Pole figures');
   await expect(page.locator('#stage .plot__status')).toContainText('not a density estimate', {
     timeout: 30_000,
+  });
+
+  expect(browserErrors).toEqual([]);
+});
+
+/**
+ * FIB lamella planning: the answer, its figures, and the page for the FIB.
+ *
+ * The view opens on its first example, so the headline must name a grain, a
+ * residual tilt with its uncertainty, and the FIB rotation with its calibration
+ * status; the six figures of the specification must be on the page; and the
+ * work order must download as a self-contained page that carries the
+ * UNCALIBRATED caveat. The second example (a harder target) must replace the
+ * answer rather than append to it, which is checked by polling the headline for
+ * the new target rather than counting completions.
+ */
+test('the FIB lamella view plans a site and hands over its work order', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'FIB lamella');
+
+  const headline = page.locator('[data-role="fib-headline"]');
+  await expect(headline).toContainText('Residual tilt', { timeout: STAGE_TIMEOUT_MS });
+  await expect(headline).toContainText('UNCALIBRATED');
+  await expect(page.locator('#stage')).toContainText('Why this azimuth');
+  await expect(page.locator('#stage')).toContainText('FIB lamella for <011>');
+  for (const title of [
+    'Plan view of the site',
+    'Feasibility over the unknown mounting rotation',
+    'Preparability map',
+    'Predicted diffraction pattern',
+  ]) {
+    await expect(page.locator('#stage')).toContainText(title);
+  }
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download work order' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^fib_work_order.*\.html$/);
+  const saved = readFileSync(await download.path(), 'utf-8');
+  expect(saved).toContain('<!DOCTYPE html>');
+  expect(saved).toContain('UNCALIBRATED');
+
+  await page
+    .locator('#rail-body')
+    .getByRole('button', { name: /A harder target/ })
+    .click();
+  await expect(page.locator('#stage')).toContainText('FIB lamella for <111>', {
+    timeout: STAGE_TIMEOUT_MS,
   });
 
   expect(browserErrors).toEqual([]);

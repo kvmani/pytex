@@ -13,6 +13,7 @@ generated figures, and the site's own README.
 - [Changelog](../CHANGELOG.md)
 - [Specifications](../specifications.md)
 - [Choose An Analysis From The Measurement](site/workflows/choosing_an_analysis.md)
+- [FIB Lamella Planning For A Target Zone Axis](site/workflows/fib_lamella_planning.md) and its instrument protocol, [Calibrating The FIB Pattern Rotation](site/workflows/fib_azimuth_calibration.md)
 - [Agent Instructions](../AGENTS.md)
 
 ## Architecture
@@ -165,6 +166,7 @@ index with cross-links to the matching implementation pages.
 - [Kikuchi Bands And The Gnomonic Projection](site/theory/kikuchi_bands_and_gnomonic_projection.md)
 - [Stereographic Kikuchi Maps And Zone-Axis Routing](site/theory/stereographic_kikuchi_maps.md)
 - [TEM Specimen Tilt Navigation](site/theory/tem_specimen_tilt_navigation.md)
+- [FIB Lamella Geometry for a Target Zone Axis](site/theory/fib_lamella_zone_axis_geometry.md)
 - [Convergent-Beam Electron Diffraction](site/theory/convergent_beam_electron_diffraction.md)
 - [Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, and Point-Group Determination](site/theory/dynamical_cbed_and_symmetry_determination.md)
 - [High-Resolution Electron Microscopy: Multislice Propagation and Contrast Transfer Function](site/theory/hrem_multislice_and_ctf.md)

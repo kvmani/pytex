@@ -112,6 +112,8 @@ MTEX is not the only validation authority PyTex needs.
   Validation may use public multi-material `PPF` or `EPF` exercise datasets through external acquisition scripts when redistribution terms are unclear, but the provenance, format semantics, and non-bundled status must be documented explicitly.
 - Future phase-transformation workflows:
   Validation must be anchored to literature-backed orientation-relationship and variant-generation references, not only to tool parity.
+- FIB lamella planning (`pytex.fib`):
+  **There is no MTEX equivalent of this workflow, so MTEX parity is not available as the validation floor.** The substitute lanes, in descending order of strength, are analytic cases with closed-form residuals (0, 90 and a constructed 12.5 degrees to 1e-9), an orientation-convention test that fails under the transposed matrix, symmetry invariance, frame round trips, registration round trips, a cross-check against `pytex.tem.navigation.plan_tilt_to_zone_axis`, mounting-rotation arcs against their closed form on an asymmetric envelope, footprint placement against a hand-computed rectangle, golden `describe()` prose, and the workbench panel under Playwright (`tests/unit/test_fib_*.py`, `tests/unit/test_app_fib_lamella.py`, `tests/browser/`). A real-instrument case — a lamella cut from a known EBSD scan with its achieved TEM tilt recorded — needs maintainer data; until it exists the chain is reported as unvalidated against a real instrument in the foundation document and in every `describe()`.
 
 ## Current Review Note
 

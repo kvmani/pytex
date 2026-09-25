@@ -8696,10 +8696,23 @@ together with every other component updated in the last week, and tag it for the
   `LamellaPlan.member_directions_sample` carries every orbit member for the stereogram.
   `tests/unit/test_fib_lamella_figures.py` (19).
 
+- Increment 3 - workbench panel, documentation, worked examples (landed): operation
+  `fib.lamella_plan` (`pytex.app.services.fib_lamella`), panel `fib_lamella` as the last EBSD
+  sub-tab (`js/panels/fiblamella.js`: shared scan, generated form, headline, Print / Download work
+  order), four runnable examples; theory note `theory/fib_lamella_zone_axis_geometry`, workflow
+  `workflows/fib_lamella_planning`, instrument protocol `workflows/fib_azimuth_calibration`, the
+  no-MTEX-parity statement in `docs/testing/strategy.md`, API reference entries, ten worked
+  examples (`worked_examples/examples/fib_lamella.py`), prior-art status in
+  `references/reference_index.md`, README link. Tests: `test_app_fib_lamella.py` (14), Playwright
+  `the FIB lamella view plans a site and hands over its work order` plus the EBSD sub-tab list.
+  Finding: `plan_tilt_to_zone_axis` always adds reversed members, so one-sense (polar) sweeps use
+  the exact closed form; prose must avoid underscore choice keys (`closed_form`), so no solver
+  choice is exposed in the GUI.
+
 ### Next actions
 
 1. (done) Figures.
-2. Workbench operation `fib.lamella_plan`, panel in the EBSD workspace, examples, Playwright.
+2. (done) Workbench operation `fib.lamella_plan`, panel in the EBSD workspace, examples, Playwright.
 3. Symbols and registry, theory note, workflow page, calibration protocol, worked examples,
    testing-strategy statement, reference-index novelty note, README, changelog.
 4. Release PyTex 0.12.0; ml_server_deploy suite release with PyTex 0.12.0 and the last week's

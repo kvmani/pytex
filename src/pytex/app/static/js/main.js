@@ -41,6 +41,7 @@ import * as ebsdFigures from './panels/ebsdfigures.js';
 import * as ebsdSummary from './panels/ebsdsummary.js';
 import * as ebsdKikuchi from './panels/ebsdkikuchi.js';
 import * as ebsdOr from './panels/ebsdor.js';
+import * as fibLamella from './panels/fiblamella.js';
 import * as ecciWorkflow from './panels/ecciWorkflow.js';
 import * as variants from './panels/variants.js';
 import * as textureAnalysis from './panels/textureanalysis.js';
@@ -99,6 +100,10 @@ const EBSD_ANALYSIS = {
     // the same question — what the named relationship looks like as crystals —
     // stays in Variants, and the two are joined by a hand-off.
     ebsdOr,
+    // FIB lamella planning reads the same open scan: which grain to cut for a
+    // TEM zone axis, where in it, and at what azimuth. It is the last step an
+    // EBSD scan feeds before the specimen leaves for the FIB.
+    fibLamella,
   ],
 };
 

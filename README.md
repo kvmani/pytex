@@ -46,6 +46,7 @@ The PyTex library is organized into complementary, layered modules:
 - [docs/README.md](docs/README.md) — Documentation overview and site structure
 - [docs/architecture/overview.md](docs/architecture/overview.md) — High-level architecture
 - [docs/architecture/canonical_data_model.md](docs/architecture/canonical_data_model.md) — Core data model
+- [docs/architecture/fib_lamella_planning_foundation.md](docs/architecture/fib_lamella_planning_foundation.md) — FIB lamella planning for a target TEM zone axis (`pytex.fib`, workbench EBSD → FIB lamella)
 
 **Testing & Validation**
 - [docs/testing/strategy.md](docs/testing/strategy.md) — Testing strategy and approach
