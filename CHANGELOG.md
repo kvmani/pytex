@@ -11,6 +11,13 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-29
+
+Minor rather than patch: a new public module (`pytex.core.variant_identification`), a new
+workbench operation, and a new optional field on result stages (`equations`, serialized only when
+present, so every existing result keeps its wire form). No existing number changes; no new
+dependency.
+
 ### Added
 
 - **Variant identification from one measured parent/child pair, derived step by step.**

@@ -83,7 +83,12 @@ failure, "keeps the structure and both orientation figures on screen together" (
 layout), passes alone on this branch twice and on the base commit, so it is a timing flake of the
 long sequential run, not a regression.
 
-**Status.** Complete on branch `claude/inspiring-wozniak-9jtx4l`. Not merged to `main`.
+**Release (user request, 2026-10-29).** PyTex **0.13.0**: version, CITATION.cff and CHANGELOG
+in the release commit, fast-forwarded to `main`; tag `v0.13.0` only after CI is green on that
+commit (the release workflow then publishes the GitHub release). Then portal `ml_server` **1.4.0**
+(PyTex tile searchable by variant / orientation relationship; help gains the variant-misfit
+equation) and `ml_server_deploy` suite **1.19.0** taking PyTex v0.13.0 and portal v1.4.0. No new
+dependency reaches the office mirror; no persistent-state or environment change.
 
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 
