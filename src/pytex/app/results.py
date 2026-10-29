@@ -24,6 +24,7 @@ __all__ = [
     "STAGE_STATUSES",
     "AppResult",
     "Column",
+    "ResultEquation",
     "ResultFigure",
     "ResultMetric",
     "ResultStage",
@@ -47,8 +48,13 @@ APP_RESULT_SCHEMA = "pytex.app_result/1"
 #: evidence that supports it, then the checks that could have exposed it, then
 #: how it was computed, and last the raw intermediate numbers. A stage names its
 #: section; the renderer and the Markdown export group by it.
+#:
+#: ``derivation`` is for a result whose reasoning *is* the deliverable: a
+#: calculation shown step by step, each equation with the values substituted
+#: into it. It is read straight after the answer, and every step starts open.
 REPORT_SECTIONS: dict[str, str] = {
     "result": "Result and reliability",
+    "derivation": "Step-by-step derivation",
     "evidence": "Evidence",
     "diagnostics": "Diagnostics",
     "method": "Method",
@@ -224,6 +230,57 @@ class ResultFigure:
 
 
 @dataclass(frozen=True)
+class ResultEquation:
+    """One displayed equation in a stage, with the sentence that introduces it.
+
+    Purpose
+    -------
+    A derivation is read as prose and equations in turn: "the measured rotation
+    is", then the equation with its numbers substituted. The equation itself is
+    a MathML element tree built with :mod:`pytex.app.mathml`, so the browser
+    typesets it natively, the HTML report embeds it as MathML, and the Markdown
+    report writes it as LaTeX -- one equation, three surfaces, no drift.
+
+    Attributes
+    ----------
+    math : mapping
+        The equation's tree, rooted at ``math`` (see
+        :func:`pytex.app.mathml.equation`). Validated on construction.
+    lead : str, optional
+        The sentence before the equation.
+    tag : str, optional
+        The equation number shown at the right margin, e.g. ``"3"``. Numbers
+        are assigned by the operation so that prose can cite "Eq. (3)".
+    note : str, optional
+        A sentence after the equation: what the number means, or a caveat.
+    """
+
+    math: Mapping[str, Any]
+    lead: str | None = None
+    tag: str | None = None
+    note: str | None = None
+
+    def __post_init__(self) -> None:
+        from pytex.app.mathml import validate
+
+        if self.math.get("tag") != "math":
+            raise ValueError("A result equation is rooted at a <math> element.")
+        validate(self.math)
+
+    def to_json(self) -> dict[str, Any]:
+        """Return the wire form of this equation."""
+
+        payload: dict[str, Any] = {"math": dict(self.math)}
+        if self.lead is not None:
+            payload["lead"] = self.lead
+        if self.tag is not None:
+            payload["tag"] = self.tag
+        if self.note is not None:
+            payload["note"] = self.note
+        return payload
+
+
+@dataclass(frozen=True)
 class ResultStage:
     """One intermediate step on the way to a result, reported in its own right.
 
@@ -259,6 +316,9 @@ class ResultStage:
         that names a section.
     figures : tuple of ResultFigure
         The stage's own plots, for instance the fitted peaks over the scan.
+    equations : tuple of ResultEquation
+        The stage's displayed equations, in reading order, shown after the
+        summary. Serialized only when present.
     """
 
     key: str
@@ -270,6 +330,7 @@ class ResultStage:
     status: str = "ok"
     section: str | None = None
     figures: tuple[ResultFigure, ...] = ()
+    equations: tuple[ResultEquation, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.key.strip() or not self.title.strip():
@@ -280,6 +341,7 @@ class ResultStage:
             raise ValueError(f"A result stage section must be one of {tuple(REPORT_SECTIONS)}.")
         object.__setattr__(self, "metrics", tuple(self.metrics))
         object.__setattr__(self, "figures", tuple(self.figures))
+        object.__setattr__(self, "equations", tuple(self.equations))
 
     def to_json(self) -> dict[str, Any]:
         """Return the wire form of this stage."""
@@ -299,6 +361,8 @@ class ResultStage:
             payload["section"] = self.section
         if self.figures:
             payload["figures"] = [figure.to_json() for figure in self.figures]
+        if self.equations:
+            payload["equations"] = [equation.to_json() for equation in self.equations]
         return payload
 
 

@@ -42,6 +42,7 @@ from xml.sax.saxutils import escape
 
 from pytex.app.contracts import to_jsonable
 from pytex.app.errors import InvalidInputError
+from pytex.app.mathml import to_latex, to_markup
 from pytex.app.results import REPORT_SECTIONS
 
 __all__ = [
@@ -182,6 +183,16 @@ def result_to_xlsx(result: Mapping[str, Any]) -> bytes:
         metric_rows: list[list[Any]] = []
         for stage in stages:
             metric_rows.append([stage.get("title", ""), "Summary", stage.get("summary", ""), ""])
+            for equation in stage.get("equations") or ():
+                tag = equation.get("tag")
+                metric_rows.append(
+                    [
+                        stage.get("title", ""),
+                        f"Equation ({tag})" if tag else "Equation",
+                        to_latex(equation["math"]),
+                        "LaTeX",
+                    ]
+                )
             for metric in stage.get("metrics") or ():
                 metric_rows.append(
                     [
@@ -357,6 +368,14 @@ figcaption strong { color: #111827; }
   padding: 0.6rem 0.9rem; font-size: 0.92rem; }
 .explanation::before { content: "How to read this. "; font-weight: 600; }
 .sources li { font-size: 0.9rem; }
+.equation { display: grid; grid-template-columns: 1fr auto; align-items: center;
+  column-gap: 1rem; margin: 0.6rem 0; break-inside: avoid; page-break-inside: avoid; }
+.equation__lead, .equation__note { grid-column: 1 / -1; margin: 0.2rem 0; }
+.equation__note { color: #374151; font-size: 0.92rem; }
+.equation math { font-size: 1.08rem; overflow-x: auto; }
+.equation__tag { font-family: "Source Serif 4", Georgia, serif; color: #374151; }
+math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; }
+mtd { padding: 0.12em 0.45em; text-align: right; }
 @media print {
   body { margin: 0; max-width: none; font-size: 10pt; }
   h2 { page-break-after: avoid; break-after: avoid; }
@@ -451,6 +470,22 @@ def result_to_html(result: Mapping[str, Any]) -> bytes:
             "</tbody></table>",
         ]
 
+    def equation_block(equation: Mapping[str, Any]) -> list[str]:
+        parts = ['<div class="equation">']
+        lead = str(equation.get("lead") or "").strip()
+        if lead:
+            parts.append(f'<p class="equation__lead">{text(lead)}</p>')
+        parts.append(to_markup(equation["math"]))
+        tag = equation.get("tag")
+        parts.append(
+            f'<span class="equation__tag">({text(tag)})</span>' if tag else "<span></span>"
+        )
+        note = str(equation.get("note") or "").strip()
+        if note:
+            parts.append(f'<p class="equation__note">{text(note)}</p>')
+        parts.append("</div>")
+        return parts
+
     def stage_block(stage: Mapping[str, Any]) -> list[str]:
         marker = (
             ' <span class="check">(check this)</span>'
@@ -461,6 +496,8 @@ def result_to_html(result: Mapping[str, Any]) -> bytes:
         summary = str(stage.get("summary") or "").strip()
         if summary:
             parts.append(f"<p>{text(summary)}</p>")
+        for equation in stage.get("equations") or ():
+            parts += equation_block(equation)
         metrics = list(stage.get("metrics") or ())
         if metrics:
             parts += metric_table(metrics)
@@ -683,6 +720,8 @@ def _stage_block(stage: Mapping[str, Any], link: Callable[[Mapping[str, Any]], s
     stage_summary = str(stage.get("summary") or "").strip()
     if stage_summary:
         lines += [stage_summary, ""]
+    for equation in stage.get("equations") or ():
+        lines += _equation_block(equation)
     metrics = list(stage.get("metrics") or ())
     if metrics:
         lines += _metric_table(metrics)
@@ -699,6 +738,22 @@ def _stage_block(stage: Mapping[str, Any], link: Callable[[Mapping[str, Any]], s
     explanation = str(stage.get("explanation") or "").strip()
     if explanation:
         lines += [f"*How to read this.* {explanation}", ""]
+    return lines
+
+
+def _equation_block(equation: Mapping[str, Any]) -> list[str]:
+    """One displayed equation as LaTeX between ``$$``, numbered with ``\\tag``."""
+
+    lines: list[str] = []
+    lead = str(equation.get("lead") or "").strip()
+    if lead:
+        lines += [lead, ""]
+    tag = equation.get("tag")
+    body = to_latex(equation["math"]) + (f" \\tag{{{tag}}}" if tag else "")
+    lines += ["$$", body, "$$", ""]
+    note = str(equation.get("note") or "").strip()
+    if note:
+        lines += [note, ""]
     return lines
 
 

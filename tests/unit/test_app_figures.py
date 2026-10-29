@@ -97,7 +97,14 @@ def test_result_figure_rejects_non_svg_and_blank_key() -> None:
 
 
 def test_stage_section_is_validated() -> None:
-    assert list(REPORT_SECTIONS) == ["result", "evidence", "diagnostics", "method", "audit"]
+    assert list(REPORT_SECTIONS) == [
+        "result",
+        "derivation",
+        "evidence",
+        "diagnostics",
+        "method",
+        "audit",
+    ]
     with pytest.raises(ValueError, match="section"):
         ResultStage(key="k", title="t", summary="s", section="appendix")
 
