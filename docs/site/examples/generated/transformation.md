@@ -1301,3 +1301,113 @@ result = np.array(
 **Citation**: Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Morito et al., Acta Mater. 51 (2003) 1789.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## A measured ferrite grain is identified as its Kurdjumov-Sachs variant
+
+A ferrite grain is built as variant 9 of the Kurdjumov-Sachs relationship from an austenite grain at Bunge (30, 40, 10), and then written in a different but equivalent cubic setting, as an indexing program may report it. Identifying it must return variant 9 at zero misfit whatever the setting, and the runner-up must lie at the smallest Kurdjumov-Sachs intervariant angle, which is what makes the answer unambiguous.
+
+**Symbols**
+
+- $\mathbf{V}_{k}$ &mdash; Rotation of transformation variant k.
+- $\theta^{*}$ &mdash; Misfit of the identified variant: its smallest rotation from the measured child.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+
+from pytex import Orientation, Rotation
+from pytex.core.variant_identification import identify_variant
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("x", "y", "z"),
+    handedness=Handedness.RIGHT,
+)
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+parent_matrix = Rotation.from_bunge_euler(30.0, 40.0, 10.0).as_matrix()
+# The child is variant 9, written in another of its cubic settings (operator 5).
+child_matrix = (
+    parent_matrix
+    @ ks.generate_variants()[8].parent_to_child_rotation.as_matrix().T
+    @ ferrite.symmetry.operators[5]
+)
+parent = Orientation(
+    rotation=Rotation.from_matrix(parent_matrix),
+    crystal_frame=parent_frame,
+    specimen_frame=specimen,
+    symmetry=austenite.symmetry,
+    phase=austenite,
+)
+child = Orientation(
+    rotation=Rotation.from_matrix(child_matrix),
+    crystal_frame=child_frame,
+    specimen_frame=specimen,
+    symmetry=ferrite.symmetry,
+    phase=ferrite,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+report = identify_variant(parent, child, ks)
+result = np.array(
+    [report.variant_index, report.misfit_deg, report.runner_up_misfit_deg]
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-variant-identified-from-a-measured-pair` | [9.0000, 0.0000, 10.5288] | [9.0000, 0.0000, 10.5300] | variant index, deg, deg | 1.22e-03 | 5e-03 | ✅ pass |
+
+**Why this value**: The variant index and the zero misfit are analytic identities of the construction C = P V_9^T S_c. The runner-up is the smallest Kurdjumov-Sachs intervariant disorientation, 10.53 deg, tabulated by Morito et al. (quoted to two decimals, which sets the tolerance).
+
+**Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Mater. 51 (2003) 1789.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

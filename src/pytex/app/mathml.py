@@ -97,6 +97,7 @@ ALLOWED_TAGS = frozenset(
         "msubsup",
         "mfrac",
         "msqrt",
+        "mphantom",
         "mover",
         "munder",
         "mtable",
@@ -239,18 +240,27 @@ def fenced(content: Node, open_: str = "(", close: str = ")") -> Node:
 def matrix(values: Sequence[Sequence[float]] | Any, *, digits: int = 4) -> Node:
     """A numeric matrix in square brackets, every entry to ``digits`` decimals."""
 
-    rows = [list(entry) for entry in values]
+    rows = [[float(value) for value in entry] for entry in values]
     if not rows or any(len(entry) != len(rows[0]) for entry in rows):
         raise ValueError("A matrix needs rows of one length.")
+    # A column holding a negative entry gets an invisible minus in front of
+    # its other entries -- LaTeX's \phantom{-} -- so the decimal points line up
+    # whatever the renderer does with cell alignment.
+    signed = [
+        any(number(row_[column], digits)["text"].startswith(MINUS) for row_ in rows)
+        for column in range(len(rows[0]))
+    ]
+
+    def cell(value: float, column: int) -> Node:
+        entry = number(value, digits)
+        if signed[column] and not entry["text"].startswith(MINUS):
+            entry = row({"tag": "mphantom", "children": [mo(MINUS)]}, entry)
+        return {"tag": "mtd", "children": [entry]}
+
     table = {
         "tag": "mtable",
         "children": [
-            {
-                "tag": "mtr",
-                "children": [
-                    {"tag": "mtd", "children": [number(float(value), digits)]} for value in entry
-                ],
-            }
+            {"tag": "mtr", "children": [cell(value, column) for column, value in enumerate(entry)]}
             for entry in rows
         ],
     }
@@ -279,16 +289,17 @@ def matrix_of(rows: Sequence[Sequence[Node | str]]) -> Node:
 def function(name: str, *argument: Node | str) -> Node:
     """A named function applied to its argument: ``cos ω``, ``tr(X)``.
 
-    One argument that is a bare identifier or number is written without
-    parentheses, as the literature writes ``cos ω``; anything else is
-    parenthesized.
+    One argument that is a bare identifier, a number or a built-up fraction
+    is written without parentheses, as the literature writes ``cos ω``;
+    anything else is parenthesized.
     """
 
     head = mi(name, font="upright")
     if len(argument) == 1 and isinstance(argument[0], dict):
         only = argument[0]
-        if only.get("tag") in {"mi", "mn"}:
-            return row(head, mo("\u2061"), only)
+        # A lone built-up fraction needs no parentheses: arccos (tr R - 1)/2.
+        if only.get("tag") in {"mi", "mn", "mfrac"}:
+            return row(head, mo("\u2061"), space(0.17), only)
     return row(head, mo("\u2061"), fenced(row(*argument)))
 
 
@@ -349,7 +360,7 @@ _FONT_COMMANDS: Mapping[str, str] = {
 }
 
 #: Accents: the overbar of a negative index and the hat of a unit vector.
-_ACCENTS: Mapping[str, str] = {"bar": "¯", "hat": "^"}
+_ACCENTS: Mapping[str, str] = {"bar": "¯", "hat": "ˆ"}
 _ACCENT_STRETCH: Mapping[str, str] = {"bar": "true", "hat": "false"}
 _ACCENT_LATEX: Mapping[str, str] = {glyph: name for name, glyph in _ACCENTS.items()}
 
@@ -536,8 +547,38 @@ def to_markup(node: Mapping[str, Any]) -> str:
     )
     if tag in _LEAVES:
         return f"<{opening}>{html.escape(str(node['text']))}</{tag}>"
+    if is_bracket_matrix(node):
+        table = node["children"][1]
+        inner = "".join(to_markup(child) for child in table.get("children", ()))
+        return f'<mtable class="{BRACKET_MATRIX_CLASS}">{inner}</mtable>'
     inner = "".join(to_markup(child) for child in node.get("children", ()))
     return f"<{opening}>{inner}</{tag}>"
+
+
+#: Class of a matrix whose square brackets are drawn by the stylesheet.
+#:
+#: A stretchy bracket needs an OpenType MATH font, which a Linux desktop often
+#: lacks; there the bracket stays one line high beside a three-line matrix.
+#: Borders drawn by CSS stretch with any font, so both the workbench and the
+#: HTML report draw a bracketed matrix that way. The tree keeps the brackets as
+#: operators, which is what the LaTeX form and a screen reader need.
+BRACKET_MATRIX_CLASS = "math-bmatrix"
+
+
+def is_bracket_matrix(node: Mapping[str, Any]) -> bool:
+    """Whether ``node`` is a table between stretchy square brackets."""
+
+    children = list(node.get("children", ()))
+    if node.get("tag") != "mrow" or len(children) != 3:
+        return False
+    first, middle, last = children
+    return bool(
+        middle.get("tag") == "mtable"
+        and first.get("tag") == "mo"
+        and first.get("text") == "["
+        and last.get("tag") == "mo"
+        and last.get("text") == "]"
+    )
 
 
 _OPERATOR_LATEX: Mapping[str, str] = {
@@ -625,6 +666,8 @@ def to_latex(node: Mapping[str, Any]) -> str:
         )
     if tag == "mfrac":
         return rf"\frac{{{to_latex(children[0])}}}{{{to_latex(children[1])}}}"
+    if tag == "mphantom":
+        return rf"\phantom{{{_latex_row(children)}}}"
     if tag == "msqrt":
         return rf"\sqrt{{{_latex_row(children)}}}"
     if tag == "mover":

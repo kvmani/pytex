@@ -3730,6 +3730,53 @@ test('draws both crystals of a variant, and every variant at one camera', async 
 });
 
 
+test('identifies the variant of a measured child and typesets the derivation', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Variants');
+
+  await expectNewCompletedCalculation(page, () =>
+    page.locator('#rail-body').getByLabel('View').selectOption('variants.identify_variant'),
+  );
+
+  /*
+   * The defaults are the panel's exact Burgers pair, so the answer is known:
+   * variant 1 at zero misfit, assigned without ambiguity.
+   */
+  const head = page.locator('#stage .result-head');
+  await expect(head).toContainText('variant V1 of 12');
+  await expect(head).toContainText('assigned (unambiguous)');
+
+  // Nine numbered steps, all open, every one carrying typeset MathML.
+  const steps = page.locator('#stage .report-section--derivation details.stage');
+  await expect(steps).toHaveCount(9);
+  for (let index = 0; index < 9; index += 1) {
+    await expect(steps.nth(index)).toHaveAttribute('open', '');
+    await expect(steps.nth(index).locator('math').first()).toBeAttached();
+  }
+
+  // Equations are numbered once, in order, at the right margin.
+  const tags = page.locator('#stage .equation__tag');
+  await expect(tags.first()).toHaveText('(1)');
+  const count = await tags.count();
+  expect(count).toBeGreaterThanOrEqual(20);
+  await expect(tags.nth(count - 1)).toHaveText(`(${count})`);
+
+  // A matrix is a bracketed MathML table, drawn by the stylesheet.
+  await expect(page.locator('#stage mtable.math-bmatrix').first()).toBeVisible();
+
+  // The matching operators are written out in Step 7.
+  const winner = steps.nth(6);
+  await expect(winner).toContainText('The parent operator that generates V1');
+  await expect(winner).toContainText('The child operator that brings the measured child');
+
+  // No drawing frame: the answer is the derivation and its figure.
+  await expect(page.locator('#stage .plot')).toBeHidden();
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('names the relationship between two measured grains and prices its statement', async ({
   page,
 }) => {

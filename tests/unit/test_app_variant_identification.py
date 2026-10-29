@@ -99,6 +99,9 @@ def _matrices(node: dict) -> list[np.ndarray]:
                 cells = []
                 for td in tr["children"]:
                     leaf = td["children"][0]
+                    if leaf.get("tag") == "mrow":
+                        # A phantom minus pads a positive entry in a signed column.
+                        leaf = leaf["children"][-1]
                     if leaf.get("tag") != "mn":
                         return
                     cells.append(float(leaf["text"].replace(MINUS, "-")))

@@ -187,6 +187,35 @@ class TestMeasuredDeviation:
         assert report.verdict == "ambiguous"
 
 
+class TestNumberingConvention:
+    def test_the_number_follows_the_parent_setting_but_the_parallelism_does_not(self, ks):
+        """Variant numbers are relative to how the parent was written down.
+
+        ``P`` and ``P S_p`` are the same grain, but ``V_m`` changes, and with it
+        which ``V_k = R S_p,kᵀ`` matches. The parallelism measured on the two
+        grains in the specimen frame is a property of the grains, and must not.
+        """
+
+        parent, child = _pair(ks, 4)
+        reference = identify_variant(parent, child, ks)
+        numbers = {reference.variant_index}
+        for operator in (3, 7, 15):
+            rewritten = _orientation(
+                parent.as_matrix() @ ks.parent_phase.symmetry.operators[operator],
+                ks.parent_phase,
+            )
+            report = identify_variant(rewritten, child, ks)
+            numbers.add(report.variant_index)
+            assert report.misfit_deg < 1e-6
+            for check, expected in zip(
+                report.parallelism_checks, reference.parallelism_checks, strict=True
+            ):
+                assert np.allclose(
+                    np.abs(check.parent_specimen @ expected.parent_specimen), 1.0, atol=1e-9
+                )
+        assert len(numbers) > 1
+
+
 class TestAgreement:
     def test_it_agrees_with_or_deviation(self, ks):
         generator = np.random.default_rng(20261029)

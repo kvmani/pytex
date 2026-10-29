@@ -84,7 +84,11 @@ RECIPROCAL_STAR = "*"
 
 _FAMILIES = ("direction", "plane")
 _SCOPES = ("specific", "family")
-_STYLES = ("mathtext", "plain")
+_STYLES = ("mathtext", "plain", "unicode")
+
+#: U+0305 COMBINING OVERLINE: drawn over the digit it follows, so ``1`` then
+#: the overline reads as a barred one in any Unicode-capable text surface.
+_COMBINING_OVERLINE = "\u0305"
 
 # Opening/closing delimiters keyed by (family, scope). The family forms are the
 # international standard: braces for a plane family, angle brackets for a
@@ -119,6 +123,12 @@ def _mathtext_component(value: int) -> str:
 
 
 def _plain_component(value: int) -> str:
+    return str(value)
+
+
+def _unicode_component(value: int) -> str:
+    if value < 0:
+        return "".join(digit + _COMBINING_OVERLINE for digit in str(abs(value)))
     return str(value)
 
 
@@ -168,7 +178,9 @@ def format_miller_indices(
         ``"plane"`` or ``"direction"``.
     style:
         ``"mathtext"`` (matplotlib/LaTeX math, overbars for negatives, wrapped
-        in ``$``) or ``"plain"`` (bare ASCII with leading minus signs).
+        in ``$``), ``"plain"`` (bare ASCII with leading minus signs), or
+        ``"unicode"`` (overbars as combining overlines and angle brackets as
+        ``⟨⟩``, for HTML prose and tables that cannot typeset mathtext).
     scope:
         ``"specific"`` for one plane or direction — ``(hkl)`` / ``[uvw]`` — or
         ``"family"`` for the symmetry-related set — ``{hkl}`` / ``<uvw>``.
@@ -205,8 +217,11 @@ def format_miller_indices(
         payload = separator.join(_mathtext_component(value) for value in normalized)
         return f"${opener}{payload}{closer}$"
     opener, closer = _DELIMITERS[(family, scope)]
+    if style == "unicode" and scope == "family" and family == "direction":
+        opener, closer = "\u27e8", "\u27e9"
     separator = " " if _needs_separator(normalized, style=style) else ""
-    payload = separator.join(_plain_component(value) for value in normalized)
+    component = _unicode_component if style == "unicode" else _plain_component
+    payload = separator.join(component(value) for value in normalized)
     return f"{opener}{payload}{closer}"
 
 
@@ -222,9 +237,7 @@ def format_plane_indices(indices: Sequence[int], *, style: str = "mathtext") -> 
     return format_miller_indices(indices, family="plane", style=style)
 
 
-def format_direction_family_indices(
-    indices: Sequence[int], *, style: str = "mathtext"
-) -> str:
+def format_direction_family_indices(indices: Sequence[int], *, style: str = "mathtext") -> str:
     """Render a symmetry-related direction family as ``<uvw>`` (or ``<uvtw>``).
 
     Use this whenever the quantity is the whole orbit rather than one member —
@@ -317,9 +330,7 @@ def format_reciprocal_axis_labels(
     return tuple(format_reciprocal_axis_label(label, style=style) for label in labels)
 
 
-def format_reciprocal_lattice_vector(
-    indices: Sequence[int], *, style: str = "mathtext"
-) -> str:
+def format_reciprocal_lattice_vector(indices: Sequence[int], *, style: str = "mathtext") -> str:
     """Render a reciprocal-lattice vector as ``g_hkl``.
 
     What it does

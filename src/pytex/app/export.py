@@ -376,6 +376,11 @@ figcaption strong { color: #111827; }
 .equation__tag { font-family: "Source Serif 4", Georgia, serif; color: #374151; }
 math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; }
 mtd { padding: 0.12em 0.45em; text-align: right; }
+mtable.math-bmatrix { border: solid currentColor; border-width: 0 1.2px; padding: 0 0.15em;
+  background: linear-gradient(currentColor, currentColor) top left / 0.32em 1.2px no-repeat,
+    linear-gradient(currentColor, currentColor) bottom left / 0.32em 1.2px no-repeat,
+    linear-gradient(currentColor, currentColor) top right / 0.32em 1.2px no-repeat,
+    linear-gradient(currentColor, currentColor) bottom right / 0.32em 1.2px no-repeat; }
 @media print {
   body { margin: 0; max-width: none; font-size: 10pt; }
   h2 { page-break-after: avoid; break-after: avoid; }

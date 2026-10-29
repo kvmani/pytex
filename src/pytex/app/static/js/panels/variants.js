@@ -148,6 +148,7 @@ const VIEWS = [
   'variants.composite_scene',
   'variants.contact_sheet',
   'variants.or_from_grains',
+  'variants.identify_variant',
   'variants.measured_composite',
   'variants.custom_relationship',
 ];
@@ -159,6 +160,7 @@ const VIEW_MODES = {
   'variants.composite_scene': 'composite',
   'variants.contact_sheet': 'sheet',
   'variants.or_from_grains': 'table',
+  'variants.identify_variant': 'table',
   'variants.measured_composite': 'measured',
   'variants.custom_relationship': 'table',
 };
@@ -273,7 +275,7 @@ export function mount(context) {
       el('label.field__label', { text: 'View' }),
       operationSelect,
       explainer(
-        'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals. The last view takes a relationship you state yourself — two phases, two parallelisms and a name — and answers the same questions about it.',
+        'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals. The variant identification takes a measured parent and child grain and shows, equation by equation, which variant the child is. The last view takes a relationship you state yourself — two phases, two parallelisms and a name — and answers the same questions about it.',
         { label: 'What each figure is' },
       ),
     ]),
@@ -323,6 +325,7 @@ export function mount(context) {
   function takesMeasuredPair() {
     return (
       state.operation.id === 'variants.or_from_grains' ||
+      state.operation.id === 'variants.identify_variant' ||
       state.operation.id === 'variants.measured_composite'
     );
   }

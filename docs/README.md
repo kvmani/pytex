@@ -148,6 +148,7 @@ index with cross-links to the matching implementation pages.
 - [Multiphase EBSD Graph Workflows](site/theory/multiphase_ebsd_graph_workflows.md)
 - [Determining An Orientation Relationship From Measured Orientations](site/theory/orientation_relationship_determination.md)
 - [Orientation-Relationship Index Correspondence](site/theory/orientation_relationship_index_correspondence.md)
+- [Identifying The Variant Of A Measured Child Grain](site/theory/variant_identification_from_a_measured_pair.md)
 - [Phase-Transformation Relationship Construction From Plane-Direction Correspondence](site/theory/phase_transformation_relationship_construction.md)
 - [Experimental Parent Candidate Scoring](site/theory/experimental_parent_candidate_scoring.md)
 - [Diffraction Geometry And Bragg Rings](site/theory/diffraction_geometry_and_bragg_rings.md)

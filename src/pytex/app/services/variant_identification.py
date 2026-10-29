@@ -46,6 +46,7 @@ from pytex.app.phases import PhaseSpec, phase_from_request
 from pytex.app.registry import (
     REGISTRY,
     ChoiceParameter,
+    DocumentationLink,
     ExampleScenario,
     IntegerParameter,
     NumberParameter,
@@ -75,7 +76,6 @@ from pytex.app.services.variants import (
     _CITATION_MORITO,
     _MEASURED_PAIR_PARAMETERS,
     _euler_angles,
-    _nearest_axis,
     _orientation_from_euler,
 )
 from pytex.core._angles import rotation_angle_from_matrix_rad
@@ -90,12 +90,13 @@ from pytex.core.variant_identification import (
 
 __all__: tuple[str, ...] = ()
 
-_CITATION_HUMBERT = (
-    "Humbert, Gey, Muller & Esling, J. Appl. Cryst. 29 (1996) 662 (variant identification "
-    "from measured orientations)."
+_CITATION_CAYRON = (
+    "Cayron, J. Appl. Cryst. 40 (2007) 1183 (ARPGE: variants identified from measured "
+    "orientations through the parent and child symmetry groups)."
 )
 _CITATION_GEY = (
-    "Gey & Humbert, Acta Mater. 50 (2002) 277 (variant identification in Ti and Zr, Burgers)."
+    "Gey & Humbert, Acta Mater. 50 (2002) 277 (variant identification and selection in "
+    "titanium under Burgers)."
 )
 
 #: Euler conventions: the axis of each factor and the registered angle symbols.
@@ -128,7 +129,13 @@ def _sub(name: str, script: str | mm.Node) -> mm.Node:
 
 
 def _transpose(node: mm.Node) -> mm.Node:
-    return mm.sup(node, mm.mi("T", font="sans"))
+    """``Xᵀ``; a subscripted symbol takes the T above its subscript, as in print."""
+
+    transpose = mm.mi("T", font="sans")
+    if node.get("tag") == "msub":
+        base, script = node["children"]
+        return mm.subsup(base, script, transpose)
+    return mm.sup(node, transpose)
 
 
 def _degrees(value: float, digits: int) -> mm.Node:
@@ -186,6 +193,52 @@ def _miller_node(indices: Sequence[int], *, spec: PhaseSpec, family: str = "plan
         converter = plane_hkl_to_hkil_array if family == "plane" else direction_uvw_to_uvtw_array
         values = tuple(int(value) for value in converter(np.asarray(values))[0])
     return mm.miller(values, family=family)
+
+
+def _plane_text(indices: Sequence[int], *, spec: PhaseSpec) -> str:
+    """A plane label with true overbars, four-index for hexagonal phases."""
+
+    return plane_label(indices, spec=spec, style="unicode")
+
+
+def _direction_text(indices: Sequence[int], *, spec: PhaseSpec) -> str:
+    """A direction label with true overbars, four-index for hexagonal phases."""
+
+    return direction_label(indices, spec=spec, style="unicode")
+
+
+def _axis_indices(
+    axis_cartesian: np.ndarray, phase: Any, *, keep_sense: bool
+) -> tuple[int, int, int]:
+    """The primitive low-index lattice direction along a point-group rotation axis.
+
+    Point-group axes are lattice rows of index at most two in every crystal
+    system, so a search to three is exhaustive. A rotation by less than 180
+    degrees has a sense, and its axis is returned pointing the way the rotation
+    is right-handed about (``keep_sense``); a two-fold is the same rotation about
+    either end, so its axis is given with the first nonzero index positive.
+    """
+
+    from itertools import product
+    from math import gcd
+
+    basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
+    target = np.asarray(axis_cartesian, dtype=float)
+    target = target / np.linalg.norm(target)
+    best: tuple[int, int, int] = (0, 0, 1)
+    best_cosine = -2.0
+    for triple in product(range(-3, 4), repeat=3):
+        if gcd(gcd(abs(triple[0]), abs(triple[1])), abs(triple[2])) != 1:
+            continue
+        image = basis @ np.asarray(triple, dtype=float)
+        cosine = float(image @ target) / float(np.linalg.norm(image))
+        if cosine > best_cosine + 1e-9:
+            best, best_cosine = (triple[0], triple[1], triple[2]), cosine
+    if keep_sense:
+        return best
+    first = next(value for value in best if value != 0)
+    sign = 1 if first > 0 else -1
+    return (sign * best[0], sign * best[1], sign * best[2])
 
 
 def _direction_indices(member: Any) -> tuple[int, int, int]:
@@ -294,7 +347,10 @@ _PARAMETERS = (
         "runner-up decides whether the answer is unambiguous.\n\n"
         "**Variant numbers** are PyTex's generation order, not a published table. The "
         "parallelism each variant realizes is stated beside its number, and that statement "
-        "is the convention-free identity of the variant."
+        "is the convention-free identity of the variant. The number also depends on which of "
+        "the parent's equivalent Euler triples was recorded: the same parent written in another "
+        "of its symmetry settings relabels the variants, while the parallelism measured on the "
+        "two grains (Step 8) does not change."
     ),
     parameters=_PARAMETERS,
     returns=(
@@ -302,7 +358,11 @@ _PARAMETERS = (
         "typeset equations; the identification under `data`."
     ),
     panel="variants",
-    citations=(_CITATION_BUNGE, _CITATION_HUMBERT, _CITATION_GEY, _CITATION_MORITO),
+    citations=(_CITATION_BUNGE, _CITATION_CAYRON, _CITATION_GEY, _CITATION_MORITO),
+    documentation=DocumentationLink(
+        "Identifying the variant of a measured child grain",
+        "theory/variant_identification_from_a_measured_pair",
+    ),
     tags=(
         "variant",
         "variant identification",
@@ -460,7 +520,7 @@ def _identify_variant(request: dict[str, Any]) -> dict[str, Any]:
             "tolerance_deg": tolerance,
             "digits": digits,
         },
-        citations=(_CITATION_BUNGE, _CITATION_HUMBERT, _CITATION_GEY, _CITATION_MORITO),
+        citations=(_CITATION_BUNGE, _CITATION_CAYRON, _CITATION_GEY, _CITATION_MORITO),
     )
     return result.to_json()
 
@@ -531,15 +591,15 @@ class _Context:
         if planes:
             parent_plane, child_plane = planes[0]
             parts.append(
-                f"{plane_label(_plane_indices(parent_plane), spec=self.parent_spec)} ∥ "
-                f"{plane_label(_plane_indices(child_plane), spec=self.child_spec)}"
+                f"{_plane_text(_plane_indices(parent_plane), spec=self.parent_spec)} ∥ "
+                f"{_plane_text(_plane_indices(child_plane), spec=self.child_spec)}"
             )
         if directions:
             parent_direction, child_direction = directions[0]
             parts.append(
-                f"{direction_label(_direction_indices(parent_direction), spec=self.parent_spec)}"
+                f"{_direction_text(_direction_indices(parent_direction), spec=self.parent_spec)}"
                 " ∥ "
-                f"{direction_label(_direction_indices(child_direction), spec=self.child_spec)}"
+                f"{_direction_text(_direction_indices(child_direction), spec=self.child_spec)}"
             )
         return ", ".join(parts) if parts else "no stated parallelism"
 
@@ -555,8 +615,8 @@ class _Context:
             if parent
             else self.report.relationship.child_phase
         )
-        axis_label, _residual = _nearest_axis(axis, phase, spec)
-        return f"{angle:.0f}° about {axis_label}"
+        indices = _axis_indices(axis, phase, keep_sense=abs(angle - 180.0) > 1e-6)
+        return f"{angle:.0f}° about {_direction_text(indices, spec=spec)}"
 
     def packets(self) -> list[int]:
         """Packet number of each variant: one per distinct parent plane held parallel."""
@@ -588,7 +648,7 @@ class _Context:
                     "variant": int(variant.variant_index),
                     "packet": packets[position],
                     "parent_plane": (
-                        plane_label(_plane_indices(planes[0][0]), spec=self.parent_spec)
+                        _plane_text(_plane_indices(planes[0][0]), spec=self.parent_spec)
                         if planes
                         else "—"
                     ),
@@ -845,15 +905,15 @@ class _Context:
         if relationship.parallel_planes:
             parent_plane, child_plane = relationship.parallel_planes[0]
             parts.append(
-                f"{plane_label(_plane_indices(parent_plane), spec=self.parent_spec)} ∥ "
-                f"{plane_label(_plane_indices(child_plane), spec=self.child_spec)}"
+                f"{_plane_text(_plane_indices(parent_plane), spec=self.parent_spec)} ∥ "
+                f"{_plane_text(_plane_indices(child_plane), spec=self.child_spec)}"
             )
         if relationship.parallel_directions:
             parent_direction, child_direction = relationship.parallel_directions[0]
             parts.append(
-                f"{direction_label(_direction_indices(parent_direction), spec=self.parent_spec)}"
+                f"{_direction_text(_direction_indices(parent_direction), spec=self.parent_spec)}"
                 " ∥ "
-                f"{direction_label(_direction_indices(child_direction), spec=self.child_spec)}"
+                f"{_direction_text(_direction_indices(child_direction), spec=self.child_spec)}"
             )
         return " with ".join(parts) if parts else "a rotation with no stated parallelism"
 
@@ -1007,11 +1067,11 @@ class _Context:
                     Column("variant", "Variant k", numeric=True),
                     Column(
                         "operator_index",
-                        "Operator in Gp",
+                        f"Operator in {symbol_text('parent_point_group')}",
                         numeric=True,
-                        help_text="One-based position of S_p,k in the parent point group.",
+                        help_text="Position of the generating operator in the parent group.",
                     ),
-                    Column("operator", "S_p,k as a rotation"),
+                    Column("operator", f"{symbol_text('parent_operator')},k as a rotation"),
                     Column("packet", "Packet", numeric=True),
                     Column(
                         "statement",
@@ -1020,7 +1080,7 @@ class _Context:
                     ),
                     Column(
                         "angle_deg",
-                        "Rotation angle of V_k",
+                        f"Rotation angle of {symbol_text('variant_rotation')}",
                         units="°",
                         numeric=True,
                         digits=3,
@@ -1255,14 +1315,14 @@ class _Context:
             )
             family = "plane" if is_plane else "direction"
             parent_label = (
-                plane_label(parent_indices, spec=self.parent_spec)
+                _plane_text(parent_indices, spec=self.parent_spec)
                 if is_plane
-                else direction_label(parent_indices, spec=self.parent_spec)
+                else _direction_text(parent_indices, spec=self.parent_spec)
             )
             child_label = (
-                plane_label(child_indices, spec=self.child_spec)
+                _plane_text(child_indices, spec=self.child_spec)
                 if is_plane
-                else direction_label(child_indices, spec=self.child_spec)
+                else _direction_text(child_indices, spec=self.child_spec)
             )
             vector = _s("unit_normal") if is_plane else _s("unit_direction")
             self.equations.add(
@@ -1418,21 +1478,30 @@ def _misfit_figure(context: _Context) -> ResultFigure:
             ls="--",
             label=f"Assignment tolerance {tolerance:g}°",
         )
-        axes.text(
-            best,
-            max(float(misfits[best]), 0.05) + 1.0,
-            f"{misfits[best]:.2f}°",
+        # The identified variant is usually the bar too small to see, so it is
+        # marked and labelled rather than left to its height.
+        top = max(float(np.max(misfits)) * 1.08, tolerance * 1.5)
+        axes.plot([best], [float(misfits[best])], marker="D", markersize=5, color=COLORS["accent"])
+        axes.annotate(
+            f"{labels[best]} identified: {misfits[best]:.2f}°",
+            xy=(best, float(misfits[best])),
+            xytext=(best, max(tolerance * 2.6, top * 0.22)),
             ha="center",
-            va="bottom",
-            fontsize=7,
+            fontsize=7.5,
             color=COLORS["accent"],
+            arrowprops={"arrowstyle": "->", "color": COLORS["accent"], "lw": 0.8},
+            bbox={"boxstyle": "round,pad=0.25", "fc": "white", "ec": COLORS["accent"], "lw": 0.6},
         )
         axes.set_xticks(
             positions, labels=labels, fontsize=7, rotation=90 if len(labels) > 12 else 0
         )
+        for index, tick in enumerate(axes.get_xticklabels()):
+            if index == best:
+                tick.set_fontweight("bold")
+                tick.set_color(COLORS["accent"])
         axes.set_xlabel("Variant")
         axes.set_ylabel("Misfit to the measured child (°)")
-        axes.set_ylim(0.0, max(float(np.max(misfits)) * 1.08, tolerance * 1.5))
+        axes.set_ylim(0.0, top)
         axes.legend(loc="upper right", frameon=False, fontsize=7)
 
     margin = report.margin_deg
@@ -1463,13 +1532,16 @@ REGISTRY.add_examples(
             id="variants.example.identify_burgers",
             title="Which Burgers variant is this alpha grain?",
             panel="variants",
-            summary="A beta-zirconium parent and an alpha child, identified step by step.",
+            summary="A beta-zirconium parent and an alpha child in a rotated setting.",
             teaches=(
-                "The two Euler triples are an exact Burgers pair, so the derivation should end at "
-                "a misfit of zero, and it does: variant 1, with the runner-up more than ten "
-                "degrees behind. Read Step 7 for the two operators that produce it, and Step 8 "
-                "for the check a metallurgist trusts most — the (110) of the parent and the "
-                "basal plane of the child, measured parallel on the two grains."
+                "The child was built as Burgers variant 9 of this parent and then written in a "
+                "different but equivalent hexagonal setting (a two-fold rotation of its axes), "
+                "the way an indexing program may report it. The derivation still ends at a "
+                "misfit of zero on variant 9. Step 7 is the one to read: it writes out the parent "
+                "operator that generates variant 9 and the child two-fold that undoes the "
+                "setting, and the residual rotation they leave is the identity. Step 8 then "
+                "shows the parent {110} plane and the child basal plane measured parallel on "
+                "the two grains."
             ),
             operation="variants.identify_variant",
             request={
@@ -1480,9 +1552,9 @@ REGISTRY.add_examples(
                 "parent_angle1": 30.0,
                 "parent_angle2": 40.0,
                 "parent_angle3": 10.0,
-                "child_angle1": 167.5709,
-                "child_angle2": 58.2280,
-                "child_angle3": 0.9653,
+                "child_angle1": 271.7913,
+                "child_angle2": 68.3653,
+                "child_angle3": 290.2329,
                 "tolerance_deg": 5.0,
             },
         ),

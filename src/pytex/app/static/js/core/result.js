@@ -15,6 +15,7 @@
 
 import { clear, el, formatNumber, markdown } from './dom.js';
 import { PRINT_DPI, exportMenu, fileStem } from './imageexport.js';
+import { equationBlock } from './mathml.js';
 
 /**
  * The export formats, as the manifest declares them.
@@ -179,6 +180,7 @@ export function figureCard(figure) {
 /** The order a report is read in; mirrors `REPORT_SECTIONS` in `pytex.app.results`. */
 const REPORT_SECTIONS = [
   ['result', 'Result in detail'],
+  ['derivation', 'Step-by-step derivation'],
   ['evidence', 'Evidence'],
   ['diagnostics', 'Diagnostics'],
   ['method', 'Method'],
@@ -268,6 +270,9 @@ function stageSection(stage, open) {
       ]),
       el('div.stage__body', {}, [
         el('p.stage__text', { text: stage.summary }),
+        stage.equations?.length
+          ? el('div.stage__equations', {}, stage.equations.map((equation) => equationBlock(equation)))
+          : null,
         metrics,
         stage.figures?.length
           ? el('div.figure-grid', {}, stage.figures.map((figure) => figureCard(figure)))

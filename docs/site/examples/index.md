@@ -161,6 +161,7 @@ The complete set of computed-versus-expected values at a glance:
 | `or-fcc-twin-is-sigma-3` | [180.0000, 60.0000, 4.0000] | [180.0000, 60.0000, 4.0000] | deg, deg, count | ✅ |
 | `or-cube-on-cube-is-the-identity` | [0.0000, 1.0000, 1.0000, 1.0000, 2.0000] | [0.0000, 1.0000, 1.0000, 1.0000, 2.0000] | deg, count, indices | ✅ |
 | `or-custom-statement-reproduces-ks` | [0.0000, 24.0000, 42.8478] | [0.0000, 24.0000, 42.8500] | deg, count, deg | ✅ |
+| `or-variant-identified-from-a-measured-pair` | [9.0000, 0.0000, 10.5288] | [9.0000, 0.0000, 10.5300] | variant index, deg, deg | ✅ |
 | `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | ✅ |
 | `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | ✅ |
 | `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | ✅ |

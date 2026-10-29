@@ -4717,6 +4717,79 @@ dl.detail dd {
   max-width: 76ch;
 }
 
+/*
+ * Typeset equations (MathML Core), as a derivation step shows them.
+ *
+ * The equation sits in the reading column with its number at the right
+ * margin, the way a paper prints it. A wide matrix scrolls inside its own line
+ * rather than widening the card, so the number stays in place.
+ */
+.stage__equations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 76ch;
+}
+
+.equation__lead,
+.equation__note {
+  margin: 0.15rem 0 0;
+  line-height: 1.55;
+}
+
+.equation__note {
+  color: var(--ink-muted);
+  font-size: 0.92em;
+}
+
+.equation__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1rem;
+  padding: 0.35rem 0;
+}
+
+.equation__body {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem 0;
+}
+
+.equation__tag {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.equation math {
+  font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math;
+  font-size: 1.12em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.equation mtd {
+  padding: 0.1em 0.5em;
+  text-align: right;
+}
+
+/* Square brackets drawn as borders, so they span the matrix with any font. */
+.equation mtable.math-bmatrix {
+  border: solid currentColor;
+  border-width: 0 1.2px;
+  padding: 0 0.15em;
+  background:
+    linear-gradient(currentColor, currentColor) top left / 0.32em 1.2px no-repeat,
+    linear-gradient(currentColor, currentColor) bottom left / 0.32em 1.2px no-repeat,
+    linear-gradient(currentColor, currentColor) top right / 0.32em 1.2px no-repeat,
+    linear-gradient(currentColor, currentColor) bottom right / 0.32em 1.2px no-repeat;
+}
+
+.math-font--bold { font-weight: 700; }
+.math-font--sans { font-family: var(--font-ui); }
+.math-font--bold-italic { font-weight: 700; font-style: italic; }
+
 .stage__metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

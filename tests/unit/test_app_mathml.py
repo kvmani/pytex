@@ -85,13 +85,35 @@ class TestValidation:
             ResultEquation(math=mm.mi("x"))
 
 
+class TestAlignment:
+    def test_a_signed_column_pads_its_positive_entries(self) -> None:
+        table = mm.matrix([[1.0, -2.0], [3.0, 4.0]], digits=1)["children"][1]
+        first_row, second_row = (row["children"] for row in table["children"])
+        assert first_row[0]["children"][0]["tag"] == "mn"
+        assert second_row[1]["children"][0]["children"][0]["tag"] == "mphantom"
+
+    def test_a_bracketed_matrix_is_drawn_by_the_stylesheet_in_html(self) -> None:
+        markup = mm.to_markup(mm.equation(mm.matrix([[1.0]])))
+        assert '<mtable class="math-bmatrix">' in markup
+        assert ">[<" not in markup
+
+
+class TestNotation:
+    def test_the_unicode_style_overbars_negative_indices(self) -> None:
+        from pytex.core.notation import format_miller_indices
+
+        text = format_miller_indices((1, -1, 0), family="plane", style="unicode")
+        assert text == "(11\u03050)"
+
+
 class TestLatex:
     def test_a_matrix_is_a_bracketed_matrix_environment(self) -> None:
         latex = mm.to_latex(
             mm.equation(mm.symbol("phi_1"), "=", mm.matrix([[1, -2], [3, 4]], digits=1))
         )
         assert latex == (
-            r"{\varphi}_{1} = \left[ \begin{matrix}1.0 & -2.0 \\ 3.0 & 4.0\end{matrix} \right]"
+            r"{\varphi}_{1} = \left[ \begin{matrix}1.0 & -2.0 \\ 3.0 & \phantom{-} 4.0"
+            r"\end{matrix} \right]"
         )
 
     def test_a_minimum_over_a_set_is_a_subscripted_min(self) -> None:

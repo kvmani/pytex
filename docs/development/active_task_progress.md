@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Variant identification from a measured parent/child pair, derived step by step — IN PROGRESS (2026-10-29)
+## Variant identification from a measured parent/child pair, derived step by step — COMPLETE (2026-10-29)
 
 **Objective (user request).** In the Variants panel, a user enters the measured Euler angles of
 a parent grain and a neighbouring product grain and picks the orientation relationship (Burgers,
@@ -59,20 +59,31 @@ steps open, equations numbered continuously and typeset as MathML:
 - `variants.identify_variant` operation; `js/core/mathml.js` renderer; CSS.
 - Theory note, registry symbols, worked example, tests.
 
-**Done.** (updated as increments land)
+**Done.**
 
-- Plan written.
-- Core `identify_variant` + 34 tests (constructed children, any child setting, known turns,
-  agreement with `or_deviation`). Commit `d32f30b`.
-- Equation layer `pytex.app.mathml`, `ResultEquation`, `derivation` section, HTML/MD/XLSX
-  export. Commit `91a9436`.
-- Operation `variants.identify_variant` (`services/variant_identification.py`): nine derivation
-  stages, ~27 numbered equations, misfit figure, three examples (Burgers, KS, GT-tested-as-KS);
-  21 new registry symbols (module + registry doc); 18 app tests reading the typeset matrices
-  back out of the MathML.
+| Part | Outcome | Commit |
+| --- | --- | --- |
+| Core | `identify_variant` → `VariantIdentificationReport`; 35 tests (constructed children in any child setting, known turns, agreement with `or_deviation`, numbering-vs-parent-setting invariance) | `d32f30b`, final |
+| Equation layer | `pytex.app.mathml` (whitelisted MathML tree; MathML markup and LaTeX printers; phantom-minus column alignment; CSS-drawn matrix brackets so no OpenType MATH font is needed), `ResultEquation`, `derivation` section, HTML/MD/XLSX export | `91a9436`, final |
+| Operation | `variants.identify_variant`: nine stages, 27 numbered equations, misfit figure, three examples; operator axes stated as rotations ("120° about [111]"), sense kept for non-two-folds | `666a481`, final |
+| Notation and symbols | `pytex.core.notation` `"unicode"` style (combining overline); 23 registered symbols, module and registry document | final |
+| Frontend | `js/core/mathml.js` (createElementNS from the whitelist, never parses markup); stage equations in `result.js`; CSS; the view in `variants.js` | final |
+| Docs | Theory note `theory/variant_identification_from_a_measured_pair` (linked from the operation's help), worked example `or-variant-identified-from-a-measured-pair`, README index, CHANGELOG | final |
 
-**Next.** Browser renderer (`js/core/mathml.js`, `result.js`, CSS, `variants.js` view entry),
-visual check with Playwright; theory note + Sphinx link; worked example; CHANGELOG; full suite.
+**Finding worth keeping.** Variant numbers are relative to the parent's recorded setting:
+replacing P by an equivalent P S relabels the identified variant (verified: one child read as V5,
+V17 and V6 under three parent settings) while the specimen-frame parallelism is unchanged. The
+result states each variant by its parallelism, the help and theory note say so, and a test pins it.
+
+**Verification.** ruff, mypy (203 files), repo integrity clean. Unit tests for the new surfaces
+green (new and adjacent app, export, manifest, symbol, notation and worked-example suites). The
+full pytest run with the coverage ratchet and the Sphinx zero-warning build were started at this
+commit; their outcome is recorded in the next commit. Browser lane: 77/78 with the new test passing; the one
+failure, "keeps the structure and both orientation figures on screen together" (Crystal Viewer
+layout), passes alone on this branch twice and on the base commit, so it is a timing flake of the
+long sequential run, not a regression.
+
+**Status.** Complete on branch `claude/inspiring-wozniak-9jtx4l`. Not merged to `main`.
 
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 

@@ -11,6 +11,43 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **Variant identification from one measured parent/child pair, derived step by step.**
+  `pytex.core.variant_identification.identify_variant(parent, child, relationship)` returns which
+  variant of an orientation relationship a measured child grain is, keeping every intermediate:
+  the measured rotation V_m = C^T P, each variant V_k = R S_p,k^T, every variant's misfit
+  theta_k minimized over the child point group with the operator achieving it, the winning
+  residual, the variant's own plane and direction pair tested on the two measured grains, and an
+  assigned / ambiguous / no-fit verdict against a tolerance (default 5 deg). Agrees with
+  `or_deviation` by test; `describe()` and `to_json_dict()` in lockstep.
+- **Workbench: Variants → "Identify the variant of a measured child grain".** Enter two Euler
+  triples and a relationship (catalogued or stated); the result is the answer and a nine-step
+  derivation in which every equation is typeset and every measured value is substituted: both
+  orientation matrices from their Euler products, the relationship's rotation from its triads
+  R = F_c F_p^T, the measured rotation, the variant table with each generating operator as a
+  rotation ("120 deg about [111]"), the misfit of every variant (table and figure), the winning
+  parent and child operators and residual written out as matrices, the physical parallelism
+  check, and the decision. Three examples (Burgers in a rotated child setting, Kurdjumov-Sachs,
+  and a Greninger-Troiano child tested against Kurdjumov-Sachs at 2.40 deg).
+- **Typeset equations in every result.** `pytex.app.mathml` builds equations as a whitelisted
+  MathML element tree that the browser renders natively and offline, the printable HTML report
+  embeds as MathML and the Markdown report writes as numbered LaTeX. `ResultStage.equations` and
+  a `derivation` report section carry them; any operation can now show its working.
+- `pytex.core.notation` gains a `"unicode"` style: negative indices overbarred with a combining
+  overline, for HTML prose and tables.
+- 23 registered symbols for the derivation (orientation matrices, variant and operator symbols,
+  misfits, triads, Matthies angles) in `pytex.core.symbols` and the registry document.
+- Theory note *Identifying The Variant Of A Measured Child Grain*, and the worked example
+  `or-variant-identified-from-a-measured-pair`.
+
+### Notes
+
+- Variant numbers are PyTex's generation order and are relative to the parent's recorded
+  setting: the same child is reported under another number if the parent's Euler triple is
+  replaced by a symmetry-equivalent one, while the parallelism measured in the specimen frame is
+  unchanged. The result states each variant by its parallelism for that reason.
+
 ## [0.12.0] - 2026-09-25
 
 ### Added

@@ -68,9 +68,7 @@ _M_RECIP = SymbolUse(
 _HKL = SymbolUse(r"(hkl)", "Miller plane indices.")
 _UVW = SymbolUse(r"[uvw]", "Miller direction indices.")
 
-_OR_CONCEPT = SeeAlso(
-    "Orientation relationships", "../../concepts/orientation_relationships"
-)
+_OR_CONCEPT = SeeAlso("Orientation relationships", "../../concepts/orientation_relationships")
 _API = SeeAlso("Transformation API", "../../api/index")
 
 
@@ -192,7 +190,9 @@ KS_MISORIENTATION_REPRESENTATION = WorkedExample(
 )
 
 
-OR_FITTING_SETUP = CORRESPONDENCE_SETUP + """
+OR_FITTING_SETUP = (
+    CORRESPONDENCE_SETUP
+    + """
 from pytex import (
     Orientation,
     OrientationSet,
@@ -236,6 +236,7 @@ children = OrientationSet(
     phase=ferrite,
 )
 """
+)
 
 
 OR_FITTING_RECOVERS_GT = WorkedExample(
@@ -272,7 +273,6 @@ OR_FITTING_RECOVERS_GT = WorkedExample(
     symbols=(_OMEGA,),
     see_also=(_OR_CONCEPT, _API),
 )
-
 
 
 _FINGERPRINT = SymbolUse(
@@ -574,10 +574,7 @@ result = [worst_deviation_deg, float(len(parent_members))]
 
 VARIANT_PARALLELISMS_ARE_THE_VARIANTS_OWN = WorkedExample(
     id="or-ks-variant-parallelisms-are-per-variant",
-    title=(
-        "Every Kurdjumov-Sachs variant carries its own {111}-{011} pair, "
-        "not variant 1's"
-    ),
+    title=("Every Kurdjumov-Sachs variant carries its own {111}-{011} pair, not variant 1's"),
     domain="transformation",
     scenario=(
         "A variant is generated as ``V = S_c R S_p^T``, so the parallelism it "
@@ -905,11 +902,91 @@ CUSTOM_STATEMENT_REPRODUCES_KS = WorkedExample(
         "Kurdjumov-Sachs."
     ),
     citation=(
-        "Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Morito et al., "
-        "Acta Mater. 51 (2003) 1789."
+        "Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Morito et al., Acta Mater. 51 (2003) 1789."
     ),
     symbols=(_HKL, _UVW),
     see_also=(_OR_CONCEPT, _API),
+)
+
+
+VARIANT_IDENTIFICATION_SETUP = (
+    CORRESPONDENCE_SETUP
+    + """
+from pytex import Orientation, Rotation
+from pytex.core.variant_identification import identify_variant
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("x", "y", "z"),
+    handedness=Handedness.RIGHT,
+)
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+parent_matrix = Rotation.from_bunge_euler(30.0, 40.0, 10.0).as_matrix()
+# The child is variant 9, written in another of its cubic settings (operator 5).
+child_matrix = (
+    parent_matrix
+    @ ks.generate_variants()[8].parent_to_child_rotation.as_matrix().T
+    @ ferrite.symmetry.operators[5]
+)
+parent = Orientation(
+    rotation=Rotation.from_matrix(parent_matrix),
+    crystal_frame=parent_frame,
+    specimen_frame=specimen,
+    symmetry=austenite.symmetry,
+    phase=austenite,
+)
+child = Orientation(
+    rotation=Rotation.from_matrix(child_matrix),
+    crystal_frame=child_frame,
+    specimen_frame=specimen,
+    symmetry=ferrite.symmetry,
+    phase=ferrite,
+)
+"""
+)
+
+_THETA_STAR = SymbolUse(
+    r"\theta^{*}",
+    "Misfit of the identified variant: its smallest rotation from the measured child.",
+)
+_VARIANT = SymbolUse(r"\mathbf{V}_{k}", "Rotation of transformation variant k.")
+
+
+VARIANT_IDENTIFIED_FROM_A_MEASURED_PAIR = WorkedExample(
+    id="or-variant-identified-from-a-measured-pair",
+    title="A measured ferrite grain is identified as its Kurdjumov-Sachs variant",
+    domain="transformation",
+    scenario=(
+        "A ferrite grain is built as variant 9 of the Kurdjumov-Sachs relationship from an "
+        "austenite grain at Bunge (30, 40, 10), and then written in a different but equivalent "
+        "cubic setting, as an indexing program may report it. Identifying it must return "
+        "variant 9 at zero misfit whatever the setting, and the runner-up must lie at the "
+        "smallest Kurdjumov-Sachs intervariant angle, which is what makes the answer "
+        "unambiguous."
+    ),
+    setup=VARIANT_IDENTIFICATION_SETUP,
+    code=(
+        "report = identify_variant(parent, child, ks)\n"
+        "result = np.array(\n"
+        "    [report.variant_index, report.misfit_deg, report.runner_up_misfit_deg]\n"
+        ")"
+    ),
+    expected=[9.0, 0.0, 10.53],
+    unit="variant index, deg, deg",
+    tolerance=5e-3,
+    reference=(
+        "The variant index and the zero misfit are analytic identities of the construction "
+        "C = P V_9^T S_c. The runner-up is the smallest Kurdjumov-Sachs intervariant "
+        "disorientation, 10.53 deg, tabulated by Morito et al. (quoted to two decimals, which "
+        "sets the tolerance)."
+    ),
+    citation=("Morito, Tanaka, Konishi, Furuhara and Maki, Acta Mater. 51 (2003) 1789."),
+    symbols=(_VARIANT, _THETA_STAR),
+    see_also=(_OR_CONCEPT, _API),
+    result_format="{:.4f}",
 )
 
 
@@ -939,5 +1016,6 @@ GROUP = ExampleGroup(
         TWIN_IS_SIGMA_3,
         CUBE_ON_CUBE_IS_THE_IDENTITY,
         CUSTOM_STATEMENT_REPRODUCES_KS,
+        VARIANT_IDENTIFIED_FROM_A_MEASURED_PAIR,
     ),
 )
