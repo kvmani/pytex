@@ -62,6 +62,17 @@ steps open, equations numbered continuously and typeset as MathML:
 **Done.** (updated as increments land)
 
 - Plan written.
+- Core `identify_variant` + 34 tests (constructed children, any child setting, known turns,
+  agreement with `or_deviation`). Commit `d32f30b`.
+- Equation layer `pytex.app.mathml`, `ResultEquation`, `derivation` section, HTML/MD/XLSX
+  export. Commit `91a9436`.
+- Operation `variants.identify_variant` (`services/variant_identification.py`): nine derivation
+  stages, ~27 numbered equations, misfit figure, three examples (Burgers, KS, GT-tested-as-KS);
+  21 new registry symbols (module + registry doc); 18 app tests reading the typeset matrices
+  back out of the MathML.
+
+**Next.** Browser renderer (`js/core/mathml.js`, `result.js`, CSS, `variants.js` view entry),
+visual check with Playwright; theory note + Sphinx link; worked example; CHANGELOG; full suite.
 
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 

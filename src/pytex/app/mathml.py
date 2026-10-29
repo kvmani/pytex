@@ -57,7 +57,9 @@ __all__ = [
     "fenced",
     "frac",
     "from_mathtext",
+    "function",
     "matrix",
+    "matrix_of",
     "mi",
     "miller",
     "mn",
@@ -255,6 +257,41 @@ def matrix(values: Sequence[Sequence[float]] | Any, *, digits: int = 4) -> Node:
     return fenced(table, "[", "]")
 
 
+def matrix_of(rows: Sequence[Sequence[Node | str]]) -> Node:
+    """A matrix of expressions in square brackets, for symbolic entries."""
+
+    entries = [list(entry) for entry in rows]
+    if not entries or any(len(entry) != len(entries[0]) for entry in entries):
+        raise ValueError("A matrix needs rows of one length.")
+    table = {
+        "tag": "mtable",
+        "children": [
+            {
+                "tag": "mtr",
+                "children": [{"tag": "mtd", "children": _children((cell,))} for cell in entry],
+            }
+            for entry in entries
+        ],
+    }
+    return fenced(table, "[", "]")
+
+
+def function(name: str, *argument: Node | str) -> Node:
+    """A named function applied to its argument: ``cos ω``, ``tr(X)``.
+
+    One argument that is a bare identifier or number is written without
+    parentheses, as the literature writes ``cos ω``; anything else is
+    parenthesized.
+    """
+
+    head = mi(name, font="upright")
+    if len(argument) == 1 and isinstance(argument[0], dict):
+        only = argument[0]
+        if only.get("tag") in {"mi", "mn"}:
+            return row(head, mo("\u2061"), only)
+    return row(head, mo("\u2061"), fenced(row(*argument)))
+
+
 def vector(values: Sequence[float] | Any, *, digits: int = 4) -> Node:
     """A column vector."""
 
@@ -310,6 +347,11 @@ _FONT_COMMANDS: Mapping[str, str] = {
     "mathsf": "sans",
     "boldsymbol": "bold-italic",
 }
+
+#: Accents: the overbar of a negative index and the hat of a unit vector.
+_ACCENTS: Mapping[str, str] = {"bar": "¯", "hat": "^"}
+_ACCENT_STRETCH: Mapping[str, str] = {"bar": "true", "hat": "false"}
+_ACCENT_LATEX: Mapping[str, str] = {glyph: name for name, glyph in _ACCENTS.items()}
 
 _TOKEN = re.compile(r"\\[A-Za-z]+|\\[;,! {}]|[A-Za-z]|[0-9]+(?:\.[0-9]+)?|\S")
 
@@ -368,11 +410,14 @@ class _Parser:
             name = token[1:]
             if name in _FONT_COMMANDS:
                 return _single(self.group(_FONT_COMMANDS[name]))
-            if name == "bar":
+            if name in _ACCENTS:
                 return {
                     "tag": "mover",
                     "attrs": {"accent": "true"},
-                    "children": [_single(self.group(font)), mo("¯", stretchy="true")],
+                    "children": [
+                        _single(self.group(font)),
+                        mo(_ACCENTS[name], stretchy=_ACCENT_STRETCH[name]),
+                    ],
                 }
             if name in {";", ","}:
                 return space(0.28 if name == ";" else 0.17)
@@ -511,7 +556,20 @@ _OPERATOR_LATEX: Mapping[str, str] = {
     "}": r"\}",
     "‖": r"\|",
     "⁡": "",
+    "°": r"^{\circ}",
+    "⇒": r"\Rightarrow",
     "⁢": "",
+}
+
+#: Function names in their LaTeX spelling.
+_FUNCTION_LATEX: Mapping[str, str] = {
+    "cos": r"\cos",
+    "sin": r"\sin",
+    "arccos": r"\arccos",
+    "det": r"\det",
+    "min": r"\min",
+    "tr": r"\operatorname{tr}",
+    "atan2": r"\operatorname{atan2}",
 }
 
 _FONT_LATEX: Mapping[str, str] = {
@@ -535,6 +593,8 @@ def to_latex(node: Mapping[str, Any]) -> str:
     children = list(node.get("children", ()))
     if tag == "mi":
         text = str(node["text"])
+        if text in _FUNCTION_LATEX:
+            return _FUNCTION_LATEX[text]
         latex = _latex_text(text)
         font = node.get("font")
         if font is not None:
@@ -568,7 +628,8 @@ def to_latex(node: Mapping[str, Any]) -> str:
     if tag == "msqrt":
         return rf"\sqrt{{{_latex_row(children)}}}"
     if tag == "mover":
-        return rf"\bar{{{to_latex(children[0])}}}"
+        accent = _ACCENT_LATEX.get(str(children[1].get("text")), "bar")
+        return rf"\{accent}{{{to_latex(children[0])}}}"
     if tag == "munder":
         base = children[0]
         if base.get("tag") == "mo" and str(base.get("text")).isalpha():

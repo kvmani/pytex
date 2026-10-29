@@ -24,6 +24,7 @@ from pytex.app.services import tem as tem
 from pytex.app.services import tem_hrem as tem_hrem
 from pytex.app.services import texture as texture
 from pytex.app.services import texture_analysis as texture_analysis
+from pytex.app.services import variant_identification as variant_identification
 from pytex.app.services import variants as variants
 from pytex.app.services import xrd as xrd
 from pytex.app.services import xrd_stress as xrd_stress
@@ -43,6 +44,7 @@ __all__ = [
     "tem_hrem",
     "texture",
     "texture_analysis",
+    "variant_identification",
     "variants",
     "xrd",
     "xrd_stress",

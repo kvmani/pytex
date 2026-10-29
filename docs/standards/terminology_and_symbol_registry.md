@@ -262,6 +262,28 @@ $X_s, Y_s, Z_s$ with $Z_s$ the **outward** surface normal, built from the EBSD s
 | $\mathbf{V}_i = \mathbf{C}_i^{\mathsf{T}} \mathbf{P}_i$ | Measured parent-to-child rotation of one orientation pair, in the canonical crystal-to-specimen convention $\mathbf{C} = \mathbf{P}\,\mathbf{V}^{\mathsf{T}}$. The quantity every OR fitting and determination surface averages. |
 | $G_c \mathbf{V} G_p$ | Double coset of one measured pair: all symmetry-equivalent descriptions of its parent-to-child rotation. Its maximum-trace (minimum-angle) element is the pair's disorientation description of the relationship, and is the seed for determining an OR with no nominal supplied. Not unique when the relationship's own rotation is symmetric. |
 
+### Variant identification from one measured pair
+
+Used by `pytex.core.variant_identification` and the workbench's step-by-step variant
+identification. Orientations are crystal-to-specimen matrices throughout.
+
+| Symbol | Meaning |
+| --- | --- |
+| $\mathbf{P}$, $\mathbf{C}$ | Parent and child orientation matrices, taking crystal components to specimen components. |
+| $\mathbf{R}_{z}(\alpha)$, $\mathbf{R}_{x}(\alpha)$ | Elementary rotations about one coordinate axis; Bunge $\mathbf{P} = \mathbf{R}_{z}(\varphi_1)\mathbf{R}_{x}(\Phi)\mathbf{R}_{z}(\varphi_2)$. |
+| $\mathbf{R}$ | Parent-to-child rotation of an orientation relationship, crystal to crystal: $\mathbf{u}_{c} = \mathbf{R}\,\mathbf{u}_{p}$ for Cartesian components. |
+| $\mathbf{F}$ | Orthonormal triad $[\hat{\mathbf{x}}\;\hat{\mathbf{y}}\;\hat{\mathbf{n}}]$ of a plane-and-direction statement, so $\mathbf{R} = \mathbf{F}_{c}\mathbf{F}_{p}^{\mathsf{T}}$. |
+| $\hat{\mathbf{n}}$, $\hat{\mathbf{d}}$ | Unit plane normal and unit direction vector in a crystal Cartesian frame. |
+| $\hat{\mathbf{x}}$, $\hat{\mathbf{y}}$ | Triad axes: $\hat{\mathbf{d}}$ made normal to $\hat{\mathbf{n}}$ and normalized, and $\hat{\mathbf{n}} \times \hat{\mathbf{x}}$. |
+| $\mathbf{V}_{\mathrm{m}}$ | Measured parent-to-child rotation of the pair, $\mathbf{C}^{\mathsf{T}}\mathbf{P}$ (the $\mathbf{V}_i$ above for one pair). |
+| $\mathbf{V}_{k}$ | Rotation of variant $k$, $\mathbf{R}\,\mathbf{S}_{p,k}^{\mathsf{T}}$, in PyTex generation order. |
+| $\mathbf{S}_{p}$, $\mathbf{S}_{c}$ | A proper rotation of the parent and of the child point group, $\mathbf{S}_{p} \in G_p$, $\mathbf{S}_{c} \in G_c$. |
+| $\theta_{k}$ | Misfit of variant $k$: $\min_{\mathbf{S}_{c} \in G_c}$ of the rotation angle of $\mathbf{V}_{k}\mathbf{V}_{\mathrm{m}}^{\mathsf{T}}\mathbf{S}_{c}$. |
+| $\theta^{*}$ | Misfit of the identified variant, $\min_k \theta_k$; $\mathbf{S}_{c}^{*}$ is the child operator achieving it. |
+| $\Delta\mathbf{g}$ | Residual rotation of the identified variant, $\mathbf{V}_{k^{*}}\mathbf{V}_{\mathrm{m}}^{\mathsf{T}}\mathbf{S}_{c}^{*}$. |
+| $\tau$ | Assignment tolerance: a variant is accepted when $\theta^{*} \le \tau$ and no other variant is inside $\tau$. |
+| $\delta$ | Angle between the specimen-frame images of a parent and a child member a variant holds parallel. |
+
 ### Orientation and misorientation
 
 For measured-pair OR fitting, $w_i$ is the normalized non-negative scalar evidence weight

@@ -438,6 +438,7 @@ class TestCanonicalExamples:
             "diffraction.example.burgers",
             "variants.example.burgers_poles",
             "variants.example.burgers_wall",
+            "variants.example.identify_burgers",
         }
         for example in examples.values():
             assert example.request["phase"] == {"builtin": "zr_bcc_beta"}
@@ -482,6 +483,7 @@ class TestCanonicalExamples:
             "diffraction.composite_saed",
             "variants.composite_scene",
             "variants.contact_sheet",
+            "variants.identify_variant",
             "variants.intervariant_misorientations",
             "variants.pole_figure",
             "variants.render",

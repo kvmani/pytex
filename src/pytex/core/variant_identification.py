@@ -65,6 +65,7 @@ import numpy as np
 
 from pytex.core._angles import angle_between_unit_vectors_rad, rotation_angle_from_matrix_rad
 from pytex.core.lattice import CrystalDirection, CrystalPlane, phases_semantically_match
+from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.core.orientation import Orientation, Rotation
 from pytex.core.transformation import (
     OrientationRelationship,
@@ -390,11 +391,18 @@ def _operators(symmetry: object) -> np.ndarray:
 
 
 def _indices_text(member: CrystalPlane | CrystalDirection) -> str:
+    """Plain-style label of a plane or direction, through :mod:`pytex.core.notation`."""
+
     if isinstance(member, CrystalPlane):
-        values = member.miller.indices
-        return "(" + " ".join(str(int(value)) for value in values) + ")"
+        return format_plane_indices(
+            tuple(int(value) for value in member.miller.indices), style="plain"
+        )
     coordinates = np.asarray(member.coordinates, dtype=np.float64)
-    return "[" + " ".join(f"{value:g}" for value in coordinates) + "]"
+    rounded = np.rint(coordinates)
+    if np.allclose(coordinates, rounded, atol=1e-8):
+        return format_direction_indices(tuple(int(value) for value in rounded), style="plain")
+    # An irrational direction has no index notation; it is written as a vector.
+    return "[" + ", ".join(f"{value:.4f}" for value in coordinates) + "]"
 
 
 def _require_orientation(
