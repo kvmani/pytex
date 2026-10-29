@@ -9,10 +9,15 @@ name: Publish release
 # Release named v0.4.0 built from a tree that says 0.3.9 is worse than no
 # Release at all, because every downstream pin resolves it and believes it.
 
+# A release may also be started from the browser: create the tag through
+# GitHub's "Draft a new release" page (which creates the release too), and, if
+# that does not start this workflow, run it from the Actions tab with "Use
+# workflow from" set to the tag. Run from a branch, the tag check below fails.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -73,7 +78,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "${GITHUB_REF_NAME}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --title "PyTex ${GITHUB_REF_NAME}" \
-            --notes-file release_notes.md
+          # A release created in the browser already exists by the time this
+          # runs; its notes are then replaced by the changelog's, so the two
+          # stay the same text whichever way the tag was made.
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "PyTex ${GITHUB_REF_NAME}" \
+              --notes-file release_notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "PyTex ${GITHUB_REF_NAME}" \
+              --notes-file release_notes.md
+          fi
