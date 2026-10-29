@@ -128,6 +128,14 @@ enforces it, so this is checked rather than remembered. Adding a macOS runner re
 maintainer to reverse this decision explicitly, and that change must update this section, the test
 and `docs/testing/strategy.md` together.
 
+CI is also **started by hand only**, by the maintainer's decision (2026-10-29): `ci.yml` is
+triggered by `workflow_dispatch` alone, and no push, pull request or schedule may start it. Run it
+from the repository's Actions tab ("Run workflow") when a change needs the hosted gate, and always
+before tagging a release. The local base lane (`ruff`, `mypy`, `pytest`) remains the per-commit
+obligation. The release workflow (`release.yml`) still runs when a `v*` tag is pushed, because
+pushing a tag is itself the deliberate manual act of releasing. `tests/unit/test_ci_policy.py`
+enforces both rules.
+
 ## Engineering Priorities
 
 1. correctness

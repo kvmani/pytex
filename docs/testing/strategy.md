@@ -22,6 +22,11 @@ PyTex treats the test and quality surface as two explicit lanes:
 - `browser lane`: Python 3.11 plus Node 22 and pinned Playwright/Chromium for the shared workbench's
   critical user journeys; the dependency is test-only and the delivered frontend stays self-contained
 
+CI is **manual only**: the workflow runs when the maintainer starts it from the Actions tab
+(`workflow_dispatch`), never on a push, a pull request or a schedule, and it is run before every
+release tag (see *Continuous Integration Platforms* in `AGENTS.md`). Between runs, the local base
+lane is the gate every commit must pass.
+
 The base CI matrix covers Ubuntu on Python 3.11–3.13 plus Windows on Python 3.11. **macOS is
 not a CI platform**, by project policy (see *Continuous Integration Platforms* in `AGENTS.md`):
 no workflow may schedule a macOS runner, and `tests/unit/test_ci_policy.py` fails if one does.

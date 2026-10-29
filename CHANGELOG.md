@@ -48,6 +48,12 @@ dependency.
 - Theory note *Identifying The Variant Of A Measured Child Grain*, and the worked example
   `or-variant-identified-from-a-measured-pair`.
 
+### Changed
+
+- CI (`.github/workflows/ci.yml`) is started by hand only (`workflow_dispatch`): no push, pull
+  request or schedule runs it. The release workflow still runs on a pushed `v*` tag. Pinned by
+  `tests/unit/test_ci_policy.py`; stated in `AGENTS.md` and `docs/testing/strategy.md`.
+
 ### Notes
 
 - Variant numbers are PyTex's generation order and are relative to the parent's recorded

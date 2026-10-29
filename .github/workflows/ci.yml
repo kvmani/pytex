@@ -1,8 +1,10 @@
 name: ci
 
+# Manual only, by the maintainer's decision (2026-10-29): no push, pull request
+# or schedule starts this workflow. Run it from the Actions tab ("Run workflow").
+# AGENTS.md, "Continuous Integration Platforms"; tests/unit/test_ci_policy.py.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   base:
