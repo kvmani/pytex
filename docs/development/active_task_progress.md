@@ -90,6 +90,20 @@ commit (the release workflow then publishes the GitHub release). Then portal `ml
 equation) and `ml_server_deploy` suite **1.19.0** taking PyTex v0.13.0 and portal v1.4.0. No new
 dependency reaches the office mirror; no persistent-state or environment change.
 
+**Release state (2026-10-29, end of session).**
+
+- Full local suite on the release sources: green except the class-model atlas (stale after the two
+  new public dataclasses; regenerated in `b8f137b`) and the two version-literal tests, which ran
+  while `_version.py` was being bumped and pass on their own. CI on `92edc4b` failed on the same
+  atlas checks only (Linux 3.11/3.12/3.13 and Windows), coverage 92.2%; docs and browser green.
+- CI is now started by hand only, by the maintainer's decision (`663f73c`; also in `ml_server`
+  and `ml_server_deploy`). The redundant automatic runs still in flight were cancelled.
+- **Tags not pushed from the session:** the session's git proxy refuses tag pushes (HTTP 403;
+  branch pushes work). Committed and on `main`, awaiting the maintainer's tags, in this order:
+  PyTex `v0.13.0` on `main` (`663f73c` or later), `ml_server` `v1.4.0` on its `main`
+  (`50f6abf`), then `ml_server_deploy` `v1.19.0` on its `main` (`5838ef8`), whose release
+  workflow builds `ml-server-suite-v1.19.0.tar.gz`.
+
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 
 **Objective.** Provide a small Windows/VS Code-driven script that reads an atomic snapshot from
