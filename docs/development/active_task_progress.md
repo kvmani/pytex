@@ -5,6 +5,64 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Variant identification from a measured parent/child pair, derived step by step — IN PROGRESS (2026-10-29)
+
+**Objective (user request).** In the Variants panel, a user enters the measured Euler angles of
+a parent grain and a neighbouring product grain and picks the orientation relationship (Burgers,
+Kurdjumov-Sachs, ... or a stated one). The workbench identifies which variant the product is and
+shows, on screen, every step of how it got there: each equation, the values substituted into it,
+the symmetry operators that turned out to match, and the result of each step — written to a
+publication standard.
+
+**Branch.** Work lands on `claude/inspiring-wozniak-9jtx4l` (the session's designated branch),
+not `main`.
+
+**Plan — what the result looks like.**
+
+Head card: title, prose summary, highlights (identified variant $V_k$, its packet, misfit
+$\theta^{*}$, runner-up variant and its misfit, margin, verdict), and a bar chart of the misfit of
+every variant with the tolerance drawn on it. Below it a section **Step-by-step derivation**, all
+steps open, equations numbered continuously and typeset as MathML:
+
+1. Parent orientation matrix: $\mathbf{P} = \mathbf{R}_z(\varphi_1)\mathbf{R}_x(\Phi)\mathbf{R}_z(\varphi_2)$
+   (convention-aware), the elementary rotations written out, the angles substituted, the numeric
+   $\mathbf{P}$, and its orthogonality check.
+2. Child orientation matrix $\mathbf{C}$, the same way.
+3. The relationship: the parallelism statement, the triads
+   $\mathbf{F} = [\hat{\mathbf{x}}\;\hat{\mathbf{y}}\;\hat{\mathbf{n}}]$ of each phase with their
+   unit vectors substituted, and $\mathbf{R} = \mathbf{F}_c\mathbf{F}_p^{\mathsf{T}}$ numerically.
+4. The measured parent-to-child rotation $\mathbf{V}_{\mathrm{m}} = \mathbf{C}^{\mathsf{T}}\mathbf{P}$
+   and its (unreduced) rotation angle.
+5. The variants $\mathbf{V}_k = \mathbf{R}\,\mathbf{S}_{p,k}^{\mathsf{T}}$, $\mathbf{S}_{p,k} \in G_p$,
+   distinct modulo $G_c$: a table of every variant with its generating operator (axis-angle) and
+   the parent plane it carries into parallelism.
+6. The misfit of each variant,
+   $\theta_k = \min_{\mathbf{S}_c \in G_c} \arccos\{[\operatorname{tr}(\mathbf{V}_k\mathbf{V}_{\mathrm{m}}^{\mathsf{T}}\mathbf{S}_c) - 1]/2\}$,
+   as a table (and the figure above).
+7. The winning variant substituted in full: $\mathbf{S}_{p,k^{*}}$, $\mathbf{V}_{k^{*}}$, the
+   matching child operator $\mathbf{S}_{c}^{*}$, the residual
+   $\Delta\mathbf{g} = \mathbf{V}_{k^{*}}\mathbf{V}_{\mathrm{m}}^{\mathsf{T}}\mathbf{S}_{c}^{*}$, its
+   trace, and $\theta^{*}$.
+8. Physical check: the variant's own parallel plane and direction pair carried into the specimen
+   frame by $\mathbf{P}$ and $\mathbf{C}\mathbf{S}_c^{*}$, and the measured angle between them.
+9. Decision: assigned when $\theta^{*} \le \tau$ and the runner-up is outside $\tau$; ambiguous when
+   both are inside; no variant fits when $\theta^{*} > \tau$.
+
+**Architecture.**
+
+- `pytex.core.variant_identification.identify_variant` → `VariantIdentificationReport`
+  (every intermediate, `describe()`, `to_json_dict()`), vectorized.
+- `pytex.app.mathml`: a small typed builder of a JSON MathML element tree (whitelisted tags),
+  registry symbols converted from `pytex.core.symbols`, rendered to MathML markup for the HTML
+  report and to LaTeX for the Markdown report. Browsers render MathML natively, offline.
+- `ResultEquation` on `ResultStage`; a `derivation` report section, rendered open.
+- `variants.identify_variant` operation; `js/core/mathml.js` renderer; CSS.
+- Theory note, registry symbols, worked example, tests.
+
+**Done.** (updated as increments land)
+
+- Plan written.
+
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 
 **Objective.** Provide a small Windows/VS Code-driven script that reads an atomic snapshot from
