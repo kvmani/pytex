@@ -103,6 +103,18 @@ dependency reaches the office mirror; no persistent-state or environment change.
   PyTex `v0.13.0` on `main` (`663f73c` or later), `ml_server` `v1.4.0` on its `main`
   (`50f6abf`), then `ml_server_deploy` `v1.19.0` on its `main` (`5838ef8`), whose release
   workflow builds `ml-server-suite-v1.19.0.tar.gz`.
+- **Done (2026-10-30).** The maintainer created the three tags in the browser (GitHub "Draft a
+  new release"; `release.yml` now accepts an existing release and can be run by hand on a tag).
+  Suite 1.19.0 is deployed on the office server `meghvm`: `update.sh` passed preflight and all
+  health checks, restarted only the portal and PyTex, and pruned release 1.12.0; `status.sh`
+  shows gateway `v1.4.0` (`50f6abf`) and pytex `v0.13.0` (`7f41ac0`). A full pre-upgrade safety
+  copy (SQLite online backups, integrity ok, plus `shared/`, release 1.18.0 and the user units)
+  is at `~/pre-1.19.0-safety-20261030-102911` on the server. Variant identification was checked
+  working in the browser by the maintainer.
+- **Open, next suite (1.20.0):** the nightly backup system (design proposed, awaiting answers on
+  the network share, local disk, `.venv`, alerts, encryption), and making the pip extra index
+  empty by default for the air-gapped office server (`download.pytorch.org` is unresolvable
+  there and only costs retries; torch is held back as pre-installed).
 
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 
