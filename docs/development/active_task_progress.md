@@ -111,10 +111,16 @@ dependency reaches the office mirror; no persistent-state or environment change.
   copy (SQLite online backups, integrity ok, plus `shared/`, release 1.18.0 and the user units)
   is at `~/pre-1.19.0-safety-20261030-102911` on the server. Variant identification was checked
   working in the browser by the maintainer.
-- **Open, next suite (1.20.0):** the nightly backup system (design proposed, awaiting answers on
-  the network share, local disk, `.venv`, alerts, encryption), and making the pip extra index
-  empty by default for the air-gapped office server (`download.pytorch.org` is unresolvable
-  there and only costs retries; torch is held back as pre-installed).
+- **Suite 1.20.0 committed** on `ml_server_deploy` `main` (`23dcab9`), not yet tagged: the
+  nightly backup system (`deploy/backup.sh`/`backup.py`, stdlib only; local folder + network
+  share via smbclient or a verified mount; SQLite online backups with integrity check, per-file
+  SHA-256 manifest, upload-as-`.partial` then read-back verify, keep 10 distinct per destination,
+  pruning only after a verified store, stored credentials with expiry/rejection classification,
+  JSON run records, systemd user timer at 00:00; `.venv` excluded), a Backups section in
+  `status.sh`, RUNBOOK Backups/Restoring sections, and `pip.extra_index_urls: []`. 112 unit
+  tests pass; verified end to end against a real Samba share including a password change.
+  **Open:** maintainer tags v1.20.0 in the browser, deploys it, and fills in the share details
+  (`share`, `remote_dir`, credentials) on the server.
 
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 
