@@ -57,7 +57,8 @@ def test_ci_is_started_by_hand_only() -> None:
 
     No push, pull request or schedule may start the CI workflow. The release
     workflow is the one exception, on a pushed version tag, because pushing a
-    tag is itself the deliberate act of releasing.
+    tag is itself the deliberate act of releasing; it may also be started by
+    hand with the version to release, and then creates the tag itself.
     """
 
     assert _triggers(WORKFLOWS / "ci.yml") == {"workflow_dispatch"}

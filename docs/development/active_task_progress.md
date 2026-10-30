@@ -119,8 +119,14 @@ dependency reaches the office mirror; no persistent-state or environment change.
   JSON run records, systemd user timer at 00:00; `.venv` excluded), a Backups section in
   `status.sh`, RUNBOOK Backups/Restoring sections, and `pip.extra_index_urls: []`. 112 unit
   tests pass; verified end to end against a real Samba share including a password change.
-  **Open:** maintainer tags v1.20.0 in the browser, deploys it, and fills in the share details
-  (`share`, `remote_dir`, credentials) on the server.
+  **Open:** release v1.20.0 (now by a hand-started workflow, below), deploy it, and fill in the
+  share details (`share`, `remote_dir`, credentials) on the server.
+- **Agent-run releases (2026-10-30).** A cloud session can start workflows but not push tags, so
+  every release workflow now tags and publishes itself when started by hand on `main`: PyTex and
+  the portal (`release.yml`, input `version`, from the shared template
+  `ml_server_deploy/tools/templates/component-release.yml`), and the suite (`publish=false`
+  rehearsal, `publish=true` tags only after every gate). `ml_server_deploy/RELEASING.md` is the
+  procedure; `tools/component_updates.py` lists what is new per component. Pushed tags still work.
 
 ## CIF-driven HRTEM focal and thickness script — COMPLETE (2026-09-22)
 

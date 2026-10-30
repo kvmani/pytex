@@ -132,9 +132,12 @@ CI is also **started by hand only**, by the maintainer's decision (2026-10-29): 
 triggered by `workflow_dispatch` alone, and no push, pull request or schedule may start it. Run it
 from the repository's Actions tab ("Run workflow") when a change needs the hosted gate, and always
 before tagging a release. The local base lane (`ruff`, `mypy`, `pytest`) remains the per-commit
-obligation. The release workflow (`release.yml`) still runs when a `v*` tag is pushed, because
-pushing a tag is itself the deliberate manual act of releasing. `tests/unit/test_ci_policy.py`
-enforces both rules.
+obligation. The release workflow (`release.yml`) runs when a `v*` tag is pushed, because pushing a
+tag is itself the deliberate manual act of releasing, or when it is started by hand on `main` with
+the `version` to release; it then checks the version literal and the CHANGELOG section, creates
+the tag on that commit and publishes the Release. The second form is how an agent in a cloud
+session releases on the maintainer's request, since it can start a workflow but not push a tag
+(procedure: `ml_server_deploy/RELEASING.md`). `tests/unit/test_ci_policy.py` enforces both rules.
 
 ## Engineering Priorities
 
